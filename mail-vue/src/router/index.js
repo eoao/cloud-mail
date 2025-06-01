@@ -13,6 +13,16 @@ const routes = [
         component: () => import('@/layout/index.vue'),
         children: [
             {
+                path: '/send',
+                name: 'SendEmail',
+                component: () => import('@/components/SendEmail.vue'),
+                meta: {
+                    title: '发送邮件',
+                    menu: true,
+                    icon: 'icon-send'
+                }
+            },
+            {
                 path: '/email',
                 name: 'email',
                 component: () => import('@/views/email/index.vue'),
