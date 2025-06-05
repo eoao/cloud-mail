@@ -10,6 +10,8 @@ export const att = sqliteTable('attachments', {
 	filename: text('filename'),
 	mimeType: text('mime_type'),
 	size: integer('size'),
+	status: text('status').default(0).notNull(),
+	type: integer('type').default(0).notNull(),
 	disposition: text('disposition'),
 	related: text('related'),
 	contentId: text('content_id'),

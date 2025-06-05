@@ -1,9 +1,5 @@
-import {createRouter, createWebHashHistory} from 'vue-router'
-import {loginUserInfo} from "@/request/user.js";
+    import {createRouter, createWebHistory} from 'vue-router'
 import {useUiStore} from "@/store/ui.js";
-import {useAccountStore} from "@/store/account.js";
-import {useUserStore} from "@/store/user.js";
-import {useSettingStore} from "@/store/setting.js";
 
 const routes = [
     {
@@ -19,6 +15,16 @@ const routes = [
                 meta: {
                     title: '收件箱',
                     name: 'email',
+                    menu: true
+                }
+            },
+            {
+                path: '/send',
+                name: 'send',
+                component: () => import('@/views/send/index.vue'),
+                meta: {
+                    title: '已发送',
+                    name: 'send',
                     menu: true
                 }
             },
@@ -39,16 +45,6 @@ const routes = [
                 meta: {
                     title: '个人设置',
                     name: 'setting',
-                    menu: true
-                }
-            },
-            {
-                path: '/sys-setting',
-                name: 'sys-setting',
-                component: () => import('@/views/sys-setting/index.vue'),
-                meta: {
-                    title: '系统设置',
-                    name: 'sys-setting',
                     menu: true
                 }
             },
@@ -74,28 +70,26 @@ const routes = [
         path: '/test',
         name: 'test',
         component: () => import('@/views/test/index.vue')
+    },
+    {
+        path: '/:pathMatch(.*)*',
+        name: '404',
+        component: () => import('@/views/404/index.vue')
     }
 ]
 
 
 const router = createRouter({
-    history: createWebHashHistory(import.meta.env.BASE_URL),
+    history: createWebHistory(import.meta.env.BASE_URL),
     routes
 })
 
-let firstLogin = true
-
 router.beforeEach(async (to, from, next) => {
-
-    const uiStore = useUiStore()
-
-    if (uiStore.init && to.name === 'login') {
-        await initSetting()
-    }
 
     const token = localStorage.getItem('token')
 
     if (!token && to.name !== 'login') {
+
         return next({
             name: 'login'
         })
@@ -103,18 +97,6 @@ router.beforeEach(async (to, from, next) => {
 
     if (!token && to.name === 'login') {
         return next()
-    }
-
-    if (uiStore.init && to.name !== 'login') {
-        await initSettingAndUserInfo()
-        firstLogin = false
-        return next()
-    }
-
-    if (firstLogin) {
-        await initUserInfo()
-        firstLogin = false
-        return  next()
     }
 
     next()
@@ -125,60 +107,16 @@ router.afterEach((to) => {
 
     const uiStore = useUiStore()
     if (to.meta.menu) {
-        if (['content', 'email'].includes(to.meta.name)) {
+        if (['content', 'email', 'send'].includes(to.meta.name)) {
             uiStore.accountShow = window.innerWidth > 767;
         } else {
             uiStore.accountShow = false
         }
     }
 
-    if (to.name === 'login') {
-        firstLogin = true
-    }
-
-    if (window.innerWidth < 768) {
+    if (window.innerWidth < 1024) {
         uiStore.asideShow = false
     }
 })
-
-
-async function initSettingAndUserInfo() {
-    const uiStore = useUiStore()
-    const userStore = useUserStore()
-    const settingStore = useSettingStore()
-    const accountStore = useAccountStore()
-    const [setting,user] = await Promise.all([settingStore.initSetting(),loginUserInfo()])
-    uiStore.init = false
-    accountStore.currentAccountId = user.accountId
-    userStore.user = user
-}
-
-
-async function initUserInfo() {
-    const uiStore = useUiStore()
-    const userStore = useUserStore()
-    try {
-        const user = await loginUserInfo()
-        const accountStore = useAccountStore()
-        accountStore.currentAccountId = user.accountId
-        userStore.user = user
-        uiStore.loginLoading = false
-    } catch (e) {
-        uiStore.loginLoading = false
-        throw e
-    }
-}
-
-
-async function initSetting() {
-    const settingStore = useSettingStore()
-    const uiStore = useUiStore()
-    try {
-        await settingStore.initSetting();
-        uiStore.init = false
-    } catch (e) {
-        throw e
-    }
-}
 
 export default router

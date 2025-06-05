@@ -3,10 +3,9 @@ import emailService from '../service/email-service';
 import accountService from '../service/account-service';
 import settingService from '../service/setting-service';
 import attService from '../service/att-service';
-import r2Service from '../service/r2-service';
 import constant from '../const/constant';
-import { v4 as uuidv4 } from 'uuid';
 import fileUtils from '../utils/file-utils';
+import { emailConst, isDel } from '../const/entity-const';
 
 export async function email(message, env, ctx) {
 
@@ -37,38 +36,38 @@ export async function email(message, env, ctx) {
 			content: email.html,
 			text: email.text,
 			userId: account.userId,
-			accountId: account.accountId
+			accountId: account.accountId,
+			isDel: isDel.DELETE,
+			status: emailConst.status.SAVING
 		};
 
-		const emailRow = await emailService.receive({ env }, params);
+		const attachments = [];
+		const cidAttachments = [];
 
-		if (!env.r2) {
-			console.warn('r2对象存储未配置, 附件取消保存');
-			return;
-		}
-
-		if (email.attachments.length > 0) {
-
-			let attachments = email.attachments.map(item => {
-				let attachment = { ...item };
-				attachment.emailId = emailRow.emailId;
-				attachment.userId = emailRow.userId;
-				attachment.accountId = emailRow.accountId;
-				attachment.key = constant.ATTACHMENT_PREFIX + uuidv4() + fileUtils.getExtFileName(item.filename);
-				attachment.size = item.content.length ?? item.content.byteLength;
-				return attachment;
-			});
-
-			await attService.addAtt({ env }, attachments);
-
-			for (let attachment of attachments) {
-				await r2Service.putObj({ env }, attachment.key, attachment.content, {
-					contentType: attachment.mimeType,
-					contentDisposition: `attachment; filename="${attachment.filename}"`
-				});
+		for(let item of email.attachments) {
+			let attachment = { ...item };
+			attachment.key = constant.ATTACHMENT_PREFIX + await fileUtils.getBuffHash(attachment.content) + fileUtils.getExtFileName(item.filename);
+			attachment.size = item.content.length ?? item.content.byteLength;
+			attachments.push(attachment);
+			if (attachment.contentId) {
+				cidAttachments.push(attachment)
 			}
-
 		}
+
+		const emailRow = await emailService.receive({ env }, params, cidAttachments);
+
+		attachments.forEach(attachment => {
+			attachment.emailId = emailRow.emailId;
+			attachment.userId = emailRow.userId;
+			attachment.accountId = emailRow.accountId;
+		})
+
+		if (attachments.length > 0) {
+			await attService.addAtt({ env }, attachments);
+		}
+
+		await emailService.completeReceive({ env }, emailRow.emailId);
+
 	} catch (e) {
 		console.error('邮件接收异常: ', e);
 	}

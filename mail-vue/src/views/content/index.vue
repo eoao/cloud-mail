@@ -2,9 +2,11 @@
   <div class="box">
     <div class="header-actions">
       <Icon class="icon" icon="material-symbols-light:arrow-back-ios-new" width="20" height="20" @click="handleBack"/>
-      <Icon class="icon" icon="uiw:delete" width="16" height="16" @click="handleDelete"/>
-      <Icon class="icon" @click="changeStar" v-if="email.isStar" icon="fluent-color:star-16" width="20" height="20"/>
-      <Icon class="icon" @click="changeStar" v-else icon="solar:star-line-duotone" width="18" height="18"/>
+      <Icon v-perm="'email:delete'" class="icon" icon="uiw:delete" width="16" height="16" @click="handleDelete"/>
+      <template v-if="emailStore.contentData.showStar">
+        <Icon class="icon" @click="changeStar" v-if="email.isStar" icon="fluent-color:star-16" width="20" height="20"/>
+        <Icon class="icon" @click="changeStar" v-else icon="solar:star-line-duotone" width="18" height="18"/>
+      </template>
     </div>
     <div></div>
     <el-scrollbar class="scrollbar">
@@ -26,95 +28,107 @@
                 <div>{{ formatDetailDate(email.createTime) }}</div>
               </div>
             </div>
-            <div class="icon">
 
-            </div>
+            <el-alert v-if="email.status === 3" :closable="false" :title="'发送失败: ' + toMessage(email.message)" class="email-msg" type="error" show-icon />
+            <el-alert v-if="email.status === 4" :closable="false" title="被标记为垃圾邮件" class="email-msg" type="warning" show-icon />
+            <el-alert v-if="email.status === 5" :closable="false" title="邮件发送被延迟" class="email-msg" type="warning" show-icon />
           </div>
-          <el-scrollbar class="htm-scrollbar">
-            <div v-html="email.content"/>
+          <el-scrollbar class="htm-scrollbar" :class="email.attList.length === 0 ? 'bottom-distance' : ''">
+            <ShadowHtml :html="formatImage(email)" />
           </el-scrollbar>
-          <div class="att" v-if="atts.length > 0">
-            <div class="att-title">附件列表</div>
-            <div class="att-item" v-for="att in atts" :key="att.attId">
-              <img v-if="isImage(att.filename)" class="att-image" :src="cvtR2Url(att.key)"/>
-              <div class="att-icon" v-else>
-                <Icon :icon="toIcon(att.filename)" width="20" height="20"/>
-              </div>
-              <div class="att-name">
-                {{ att.filename }}
-              </div>
-              <div>{{ formatBytes(att.size) }}</div>
-              <div class="down-icon att-icon">
-                <a style="color: #333" :href="cvtR2Url(att.key)" download>
-                  <Icon icon="system-uicons:push-down" width="22" height="22"/>
-                </a>
+          <div class="att" v-if="email.attList.length > 0">
+            <div class="att-title">
+              <span>附件列表</span>
+              <span>共 {{email.attList.length}} 个</span>
+            </div>
+            <div class="att-box">
+
+              <div class="att-item" v-for="att in email.attList" :key="att.attId">
+                <div class="att-icon" @click="showImage(att.key)">
+                  <Icon :icon="getIconByName(att.filename)" width="20" height="20"/>
+                </div>
+                <div class="att-name" @click="showImage(att.key)">
+                  {{ att.filename }}
+                </div>
+                <div style="color: rgba(24, 36, 48, 0.6);">{{ formatBytes(att.size) }}</div>
+                <div class="opt-icon att-icon">
+                  <Icon v-if="isImage(att.filename)" icon="hugeicons:view" width="22" height="22" @click="showImage(att.key)"/>
+                  <a :href="cvtR2Url(att.key)" download>
+                    <Icon icon="system-uicons:push-down" width="22" height="22"/>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </el-scrollbar>
+    <el-image-viewer
+        v-if="showPreview"
+        :url-list="srcList"
+        show-progress
+        @close="showPreview = false"
+    />
   </div>
 </template>
 <script setup>
-import {reactive, watch} from "vue";
+import ShadowHtml from '@/components/shadow-html/index.vue'
+import {reactive, ref, watch} from "vue";
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {attList, emailDelete} from "@/request/email.js";
+import {emailDelete} from "@/request/email.js";
 import {Icon} from "@iconify/vue";
 import {useEmailStore} from "@/store/email.js";
 import {useAccountStore} from "@/store/account.js";
-import day from "@/day/day.js";
+import {formatDetailDate} from "@/utils/day.js";
 import {starAdd, starCancel} from "@/request/star.js";
 import {getExtName, formatBytes} from "@/utils/file-utils.js";
-import {cvtR2Url} from "@/utils/convert-utils.js";
+import {cvtR2Url} from "@/utils/convert.js";
+import {getIconByName} from "@/utils/icon-utils.js";
+import {useSettingStore} from "@/store/setting.js";
+import {sysEmailDelete} from "@/request/sys-email.js";
 
+const settingStore = useSettingStore();
 const accountStore = useAccountStore();
-
 const emailStore = useEmailStore();
-
 const router = useRouter()
-const email = emailStore.readEmail
-const atts = reactive([])
-
-attList(email.emailId).then(list => {
-  atts.push(...list)
-})
+const email = emailStore.contentData.email
+const showPreview = ref(false)
+const srcList = reactive([])
 
 watch(() => accountStore.currentAccountId, () => {
   handleBack()
 })
 
-function toIcon(filename) {
-  const extName = getExtName(filename)
-  if (['zip', 'rar', '7z', 'tar', 'tgz'].includes(extName)) return 'hugeicons:file-zip';
-  if (['mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv'].includes(extName)) return 'fluent:video-clip-24-regular';
-  if (['txt', 'doc', 'docx', 'md'].includes(extName)) return 'hugeicons:google-doc'
-  if (['xls', 'csv', 'xlsx'].includes(extName)) return 'codicon:table';
-  if (['mp3', 'wav', 'aac', 'ogg', 'flac', 'm4a'].includes(extName)) return 'mynaui:music';
-  if (['.ppt', 'pptx', 'pps', 'potx', 'pot'].includes(extName)) return 'lsicon:file-ppt-filled'
-  if (extName === 'pdf') return 'hugeicons:pdf-02';
-  if (extName === 'apk') return 'proicons:android';
-  if (extName === 'exe') return 'bi:filetype-exe';
-  return "hugeicons:attachment-01"
+function toMessage(message) {
+  return  message ? JSON.parse(message).message : '';
 }
 
+function formatImage(email) {
+  let content = email.content || email.text || ''
+  const domain = settingStore.settings.r2Domain;
+  return content.replace('{{domain}}', domain + '/');
+}
+
+function showImage(key) {
+  if (!isImage(key)) return;
+  const url = cvtR2Url(key)
+  srcList.length = 0
+  srcList.push(url)
+  showPreview.value = true
+}
 
 function isImage(filename) {
   return ['png', 'jpg', 'jpeg', 'bmp', 'gif'].includes(getExtName(filename))
 }
 
 
-const formatDetailDate = (time) => {
-  return day(time).format('YYYY年M月D日 ddd AH:mm')
-}
 
 function changeStar() {
   if (email.isStar) {
     email.isStar = 0;
     starCancel(email.emailId).then(() => {
       email.isStar = 0;
-      emailStore.emailScroll?.editEmailStar(email.emailId, 0)
       emailStore.starScroll?.deleteEmail([email.emailId])
     }).catch((e) => {
       console.error(e)
@@ -124,8 +138,7 @@ function changeStar() {
     email.isStar = 1;
     starAdd(email.emailId).then(() => {
       email.isStar = 1;
-      emailStore.emailScroll?.editEmailStar(email.emailId, 1)
-      emailStore.starScroll?.addItemStar(email)
+      emailStore.starScroll?.addItem(email)
     }).catch((e) => {
       console.error(e)
       email.isStar = 0;
@@ -143,14 +156,27 @@ const handleDelete = () => {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    emailDelete(email.value.emailId).then(() => {
-      ElMessage({
-        message: '删除成功',
-        type: 'success',
-        plain: true,
+    if (emailStore.contentData.delType === 'logic') {
+      emailDelete(email.emailId).then(() => {
+        ElMessage({
+          message: '删除成功',
+          type: 'success',
+          plain: true,
+        })
+        emailStore.deleteIds = [email.emailId]
       })
-      emailStore.deleteIds = [email.value.emailId]
-    })
+    } else  {
+
+      sysEmailDelete(email.emailId).then(() => {
+        ElMessage({
+          message: '删除成功',
+          type: 'success',
+          plain: true,
+        })
+        emailStore.deleteIds = [email.emailId]
+      })
+    }
+
     router.back()
   })
 }
@@ -165,7 +191,7 @@ const handleDelete = () => {
   padding: 9px 15px;
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 20px;
   box-shadow: inset 0 -1px 0 0 rgba(100, 121, 143, 0.12);
   font-size: 18px;
 
@@ -193,8 +219,6 @@ const handleDelete = () => {
   }
 
   .htm-scrollbar {
-    padding-bottom: 15px;
-    word-break: break-all;
   }
 
   .content {
@@ -202,28 +226,41 @@ const handleDelete = () => {
     flex-direction: column;
 
     .att {
-      margin-top: 20px;
-      padding-top: 10px;
-      border-top: 1px solid #e7e9ec;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+      margin-top: 30px;
+      margin-bottom: 30px;
+      border: 1px solid #e4e7ed;
+      box-shadow: var(--el-box-shadow-light);
+      padding: 10px;
+      border-radius: 4px;
+      width: fit-content;
+      .att-box {
+        min-width: min(410px,calc(100vw - 53px));
+        display: grid;
+        gap: 10px;
+        grid-template-rows: 1fr;
+      }
 
       .att-title {
-        font-weight: bold;
+        margin-bottom: 5px;
+        display: flex;
+        justify-content: space-between;
+        span:first-child {
+          font-weight: bold;
+        }
       }
 
       .att-item {
+        cursor: pointer;
         div {
           align-self: center;
         }
 
-        padding: 10px;
+        padding: 5px 8px;
         border-radius: 4px;
         align-self: start;
         border: 1px solid #e7e9ec;
         display: grid;
-        grid-template-columns: auto 1fr auto 20px;
+        grid-template-columns: auto 1fr auto auto;
         gap: 10px;
 
         .att-icon {
@@ -231,7 +268,7 @@ const handleDelete = () => {
         }
 
         .att-name {
-
+          margin-right: 10px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -244,27 +281,34 @@ const handleDelete = () => {
           object-fit: contain;
         }
 
-        .down-icon {
+        .opt-icon {
+          color: rgba(24, 36, 48, 0.6);
+          align-items: center;
+          display: flex;
+          gap: 8px;
           cursor: pointer;
+          a {
+            color: rgba(24, 36, 48, 0.6);
+            align-items: center;
+            display: flex;
+          }
         }
       }
     }
 
     .email-info {
-      display: flex;
-      justify-content: space-between;
+
       border-bottom: 1px solid #e7e9ec;
       margin-bottom: 15px;
-
-      /*.date {
-        display: flex;
-        flex-wrap: wrap;
-        align-content: flex-start;
-      }*/
-
       .date {
         color: #585d69;
         margin-bottom: 6px;
+      }
+
+      .email-msg {
+        max-width: 400px;
+        width: fit-content;
+        margin-bottom: 15px;
       }
 
       .send {
@@ -278,7 +322,7 @@ const handleDelete = () => {
         }
 
         .send-name-title {
-          padding-right: 10px;
+          padding-right: 5px;
         }
       }
 
@@ -304,5 +348,10 @@ const handleDelete = () => {
     }
   }
 }
+
+.bottom-distance {
+  margin-bottom: 30px;
+}
+
 
 </style>

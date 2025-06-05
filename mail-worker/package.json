@@ -1,5 +1,5 @@
 {
-	"name": "mail-cf",
+	"name": "mail-worker",
 	"version": "0.0.0",
 	"private": true,
 	"scripts": {
@@ -18,7 +18,10 @@
 		"dayjs": "^1.11.13",
 		"drizzle-orm": "^0.42.0",
 		"hono": "^4.7.5",
+		"linkedom": "^0.18.10",
 		"postal-mime": "^2.4.3",
+		"resend": "^4.5.1",
+		"ua-parser-js": "^2.0.3",
 		"uuid": "^11.1.0"
 	}
 }

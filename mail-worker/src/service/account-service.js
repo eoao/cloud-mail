@@ -5,15 +5,15 @@ import userService from './user-service';
 import emailService from './email-service';
 import orm from '../entity/orm';
 import account from '../entity/account';
-import { and, asc, eq, gt } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, count, like } from 'drizzle-orm';
 import { isDel } from '../const/entity-const';
 import settingService from './setting-service';
 import turnstileService from './turnstile-service';
+import roleService from './role-service';
 
 const accountService = {
 
 	async add(c, params, userId) {
-
 
 		if (!await settingService.isAddEmail(c)) {
 			throw new BizError('添加邮箱功能已关闭');
@@ -30,7 +30,7 @@ const accountService = {
 		}
 
 		if (!c.env.domain.includes(emailUtils.getDomain(email))) {
-			throw new BizError('未配置改邮箱域名');
+			throw new BizError('不存在的邮箱域名');
 		}
 
 		const accountRow = await this.selectByEmailIncludeDel(c, email);
@@ -41,6 +41,16 @@ const accountService = {
 
 		if (accountRow) {
 			throw new BizError('该邮箱已被注册');
+		}
+
+		const userRow = await userService.selectById(c, userId);
+		const roleRow = await roleService.selectById(c, userRow.type);
+
+		if (roleRow.accountCount) {
+
+			const userAccountCount = await accountService.countUserAccount(c, userId)
+			if(userAccountCount >= roleRow.accountCount) throw new BizError(`添加邮箱数量限制${roleRow.accountCount}个`, 403);
+
 		}
 
 		if (await settingService.isAddEmailVerify(c)) {
@@ -105,7 +115,6 @@ const accountService = {
 			and(eq(account.userId, userId),
 				eq(account.accountId, accountId)))
 			.run();
-		await emailService.removeByAccountId(c, accountId);
 	},
 
 	selectById(c, accountId) {
@@ -119,8 +128,50 @@ const accountService = {
 		await orm(c).insert(account).values({ ...params }).returning();
 	},
 
-	async removeByUserId(c, userId) {
-		await orm(c).update(account).set({ isDel: isDel.DELETE }).where(eq(account.userId, userId)).run();
+	async physicsDeleteAll(c) {
+		const accountIdsRow = await orm(c).select({accountId: account.accountId}).from(account).where(eq(account.isDel,isDel.DELETE)).limit(99);
+		if (accountIdsRow.length === 0) {
+			return;
+		}
+		const accountIds = accountIdsRow.map(item => item.accountId)
+		await emailService.physicsDeleteAccountIds(c, accountIds);
+		await orm(c).delete(account).where(inArray(account.accountId,accountIds)).run();
+		if (accountIdsRow.length === 99) {
+			await this.physicsDeleteAll(c)
+		}
+	},
+
+	async physicsDeleteByUserIds(c, userIds) {
+		await emailService.physicsDeleteUserIds(c, userIds);
+		await orm(c).delete(account).where(inArray(account.userId,userIds)).run();
+	},
+
+	async selectUserAccountCountList(c, userIds, del = isDel.NORMAL) {
+		const result = await orm(c)
+			.select({
+				userId: account.userId,
+				count: count(account.accountId)
+			})
+			.from(account)
+			.where(and(
+				inArray(account.userId, userIds),
+				eq(account.isDel, del)
+			))
+			.groupBy(account.userId)
+		return result;
+	},
+
+	async countUserAccount(c, userId) {
+		const { num } = await orm(c).select({num: count()}).from(account).where(and(eq(account.userId, userId),eq(account.isDel, isDel.NORMAL))).get();
+		return num;
+	},
+
+	async restoreByEmail(c, email) {
+		await orm(c).update(account).set({isDel: isDel.NORMAL}).where(eq(account.email, email)).run();
+	},
+
+	async restoreByUserId(c, userId) {
+		await orm(c).update(account).set({isDel: isDel.NORMAL}).where(eq(account.userId, userId)).run();
 	}
 };
 

@@ -14,6 +14,7 @@ app.post('/register', async (c) => {
 });
 
 app.delete('/logout', async (c) => {
-	await loginService.logout(c, await userContext.getUserId(c));
+	await loginService.logout(c, userContext.getUserId(c));
 	return c.json(result.ok());
 });
+

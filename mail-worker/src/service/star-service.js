@@ -2,11 +2,13 @@ import orm from '../entity/orm';
 import { star } from '../entity/star';
 import emailService from './email-service';
 import BizError from '../error/biz-error';
-import { and, desc, eq, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, lt, sql, inArray } from 'drizzle-orm';
 import email from '../entity/email';
 import { isDel } from '../const/entity-const';
+import { att } from '../entity/att';
+import userService from './user-service';
 
-const startService = {
+const starService = {
 
 	async add(c, params, userId) {
 		const { emailId } = params;
@@ -63,7 +65,10 @@ const startService = {
 			.limit(size)
 			.all();
 		return { list };
+	},
+	async removeByEmailIds(c, emailIds) {
+		await orm(c).delete(star).where(inArray(star.emailId, emailIds)).run();
 	}
 };
 
-export default startService;
+export default starService;

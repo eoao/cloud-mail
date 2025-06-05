@@ -13,7 +13,7 @@
         </div>
       </div>
     </div>
-    <div class="del-email">
+    <div class="del-email" v-perm="'my:delete'">
       <div class="title">删除账户</div>
       <div style="color: #585d69;">
         此操作将永久删除您的账户及其所有数据，无法恢复
@@ -23,20 +23,18 @@
       </div>
     </div>
     <el-dialog v-model="pwdShow" title="修改密码" width="340">
-      <form>
         <div class="update-pwd">
           <el-input type="password"  placeholder="新的密码" v-model="form.password"/>
           <el-input type="password"  placeholder="确认密码" v-model="form.newPwd"/>
           <el-button type="primary" :loading="setPwdLoading"  @click="submitPwd">保存</el-button>
         </div>
-      </form>
     </el-dialog>
   </div>
 </template>
 <script setup>
 import {defineOptions} from "vue";
 import {reactive, ref} from 'vue'
-import {resetPassword, userDelete} from "@/request/user.js";
+import {resetPassword, userDelete} from "@/request/my.js";
 import {ElMessage, ElMessageBox} from "element-plus";
 import {useUserStore} from "@/store/user.js";
 import router from "@/router/index.js";

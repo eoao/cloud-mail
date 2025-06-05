@@ -9,7 +9,6 @@
         :class="(uiStore.asideShow && isMobile)? 'overlay-show':'overlay-hide'"
         @click="uiStore.asideShow = false"
     ></div>
-
     <el-container class="main-container">
       <el-main>
         <el-header>
@@ -19,6 +18,7 @@
       </el-main>
     </el-container>
   </el-container>
+  <writer ref="writerRef" />
 </template>
 
 <script setup>
@@ -27,17 +27,20 @@ import Header from '@/layout/header/index.vue'
 import Main from '@/layout/main/index.vue'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import {useUiStore} from "@/store/ui.js";
+import writer from '@/layout/write/index.vue'
 
 const uiStore = useUiStore();
-const isMobile = ref(window.innerWidth < 768)
-
-
+const writerRef = ref({})
+const isMobile = ref(window.innerWidth < 1024)
 const handleResize = () => {
-  isMobile.value = window.innerWidth < 768
-  uiStore.asideShow = window.innerWidth >= 992;
+  isMobile.value = window.innerWidth < 1024
+  uiStore.asideShow = window.innerWidth >= 1024;
 }
 
 onMounted(() => {
+
+  uiStore.writerRef = writerRef
+
   window.addEventListener('resize', handleResize)
   handleResize()
 })
@@ -58,10 +61,12 @@ onBeforeUnmount(() => {
 }
 
 .aside-show {
+  -webkit-box-shadow: 3px 0 5px rgba(0, 21, 41, .35);
+  box-shadow: 3px 0 5px rgba(0, 21, 41, 0.35);
   transform: translateX(0);
   transition: all 100ms ease;
   z-index: 101;
-  @media (max-width: 767px) {
+  @media (max-width: 1024px) {
     position: fixed;
     top: 0;
     left: 0;

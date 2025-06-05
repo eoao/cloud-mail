@@ -64,6 +64,26 @@ button, input, select, textarea {
     outline: none;
 }
 
+.tox .tox-dialog--width-lg {
+    @media (min-width: 1024px) {
+        height: 850px !important;
+    }
+}
+
+.tox .tox-dialog__body-content {
+    max-height: min(850px, calc(100vh - 110px)) !important;
+    @media (min-width: 1024px) {
+        max-height: min(850px, calc(100vh - 110px));
+    }
+}
+
+.tox .tox-dialog__body-content {
+    @media (min-width: 1024px) {
+        max-height: min(850px, calc(100vh - 110px)) !important;
+    }
+}
+
+
 :root {
     --el-color-primary: #1890ff;
     --el-color-primary-dark-2: #1064c0;
@@ -72,4 +92,33 @@ button, input, select, textarea {
     --el-color-primary-light-7: #91d5ff;
     --el-color-primary-light-9: #e6f7ff;
     --el-text-color-regular: #333;
+}
+
+.message-bottom {
+    top: auto !important;
+    bottom: 20px !important;
+    .el-icon {
+        display: none !important;
+    }
+}
+
+@media (pointer: fine) and (hover: hover) {
+    /* 整个滚动条 */
+    ::-webkit-scrollbar {
+        width: 6px; /* 垂直滚动条宽度 */
+        height: 6px; /* 水平滚动条高度 */
+    }
+
+    /* 滚动条轨道 */
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+
+    /* 滚动条滑块 */
+    ::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 10px;
+        cursor: pointer;
+    }
 }

@@ -1,5 +1,5 @@
 {
-  "name": "video-admin-vue",
+  "name": "mail-vue",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -15,14 +15,17 @@
     "@wangeditor/editor": "^5.1.23",
     "@wangeditor/editor-for-vue": "^5.1.12",
     "axios": "^1.7.8",
+    "compressorjs": "^1.2.1",
     "date-time-format-timezone": "^1.0.22",
     "dayjs": "^1.11.13",
     "element-plus": "^2.9.5",
+    "lodash-es": "^4.17.21",
     "path": "^0.12.7",
     "pinia": "^3.0.2",
     "pinia-plugin-persistedstate": "^4.2.0",
     "postal-mime": "^2.4.3",
     "vue": "^3.5.13",
+    "vue-cropper": "^1.1.4",
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
@@ -30,6 +33,6 @@
     "less": "^4.2.2",
     "sass": "^1.82.0",
     "terser": "^5.39.0",
-    "vite": "6.2.6"
+    "vite": "6.3.4"
   }
 }

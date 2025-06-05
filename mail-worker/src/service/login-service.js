@@ -13,7 +13,8 @@ import settingService from './setting-service';
 import saltHashUtils from '../utils/crypto-utils';
 import cryptoUtils from '../utils/crypto-utils';
 import turnstileService from './turnstile-service';
-
+import roleService from './role-service';
+import dayjs from 'dayjs';
 
 const loginService = {
 
@@ -37,14 +38,14 @@ const loginService = {
 			throw new BizError('非法邮箱域名');
 		}
 
-		const userRow = await userService.selectByEmailIncludeDel(c, email);
+		const accountRow = await accountService.selectByEmailIncludeDel(c, email);
 
-		if (userRow && userRow.isDel === isDel.DELETE) {
+		if (accountRow && accountRow.isDel === isDel.DELETE) {
 			throw new BizError('该邮箱已被注销');
 		}
 
-		if (userRow) {
-			throw new BizError('该邮箱已被注册');
+		if (accountRow) {
+			throw new BizError('该邮箱已被其他用户绑定');
 		}
 
 		if (await settingService.isRegisterVerify(c)) {
@@ -53,7 +54,12 @@ const loginService = {
 
 		const { salt, hash } = await saltHashUtils.hashPassword(password);
 
-		const userId = await userService.insert(c, { email, password: hash, salt, type: userConst.type.COMMON });
+		const roleRow = await roleService.selectDefaultRole(c);
+
+		const userId = await userService.insert(c, { email, password: hash, salt, type: roleRow.roleId });
+
+		await userService.updateUserInfo(c, userId, true);
+
 		await accountService.insert(c, { userId: userId, email });
 	},
 
@@ -65,10 +71,18 @@ const loginService = {
 			throw new BizError('邮箱和密码不能为空');
 		}
 
-		const userRow = await userService.selectByEmail(c, email);
+		const userRow = await userService.selectByEmailIncludeDel(c, email);
 
 		if (!userRow) {
-			throw new BizError('该邮箱不存在');
+			throw new BizError('该用户不存在');
+		}
+
+		if(userRow.isDel === isDel.DELETE) {
+			throw new BizError('该用户已被注销');
+		}
+
+		if(userRow.status === userConst.status.BAN) {
+			throw new BizError('该用户已被禁用');
 		}
 
 		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password)) {
@@ -89,19 +103,22 @@ const loginService = {
 			authInfo = {
 				tokens: [],
 				user: userRow,
-				refreshTime: new Date().toISOString()
+				refreshTime: dayjs().toISOString()
 			};
 
 			authInfo.tokens.push(uuid);
 
 		}
 
+
+		await userService.updateUserInfo(c, userRow.userId);
+
 		await c.env.kv.put(KvConst.AUTH_INFO + userRow.userId, JSON.stringify(authInfo), { expirationTtl: constant.TOKEN_EXPIRE });
 		return jwt;
 	},
 
 	async logout(c, userId) {
-		const token = await userContext.getToken(c);
+		const token =userContext.getToken(c);
 		const authInfo = await c.env.kv.get(KvConst.AUTH_INFO + userId, { type: 'json' });
 		const index = authInfo.tokens.findIndex(item => item === token);
 		authInfo.tokens.splice(index, 1);

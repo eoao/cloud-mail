@@ -5,7 +5,11 @@
                :getEmailList="starList"
                :emailDelete="emailDelete"
                :star-add="starAdd"
-               :star-cancel="starCancel"/>
+               :star-cancel="starCancel"
+               @jump="jumpContent"
+               actionLeft="6px"
+               :show-account-icon="false"
+  />
 </template>
 
 <script setup>
@@ -14,6 +18,7 @@ import {emailDelete} from "@/request/email.js";
 import {starAdd, starCancel, starList} from "@/request/star.js";
 import {useEmailStore} from "@/store/email.js";
 import {defineOptions, onMounted, ref} from "vue";
+import router from "@/router/index.js";
 
 defineOptions({
   name: 'star'
@@ -22,8 +27,14 @@ defineOptions({
 const scroll = ref({})
 const emailStore = useEmailStore();
 
+function jumpContent(email) {
+  emailStore.contentData.email = email
+  emailStore.contentData.delType = 'logic'
+  emailStore.contentData.showStar = true
+  router.push('/content')
+}
+
 function cancelStar(email) {
-  emailStore.emailScroll?.editEmailStar(email.emailId, 0)
   scroll.value.deleteEmail([email.emailId])
 }
 

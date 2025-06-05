@@ -1,7 +1,7 @@
 <template>
   <div class="account-box">
-    <div class="head-opt">
-      <Icon v-if="settingStore.settings.addEmail === 0" class="icon" icon="ion:add-outline" width="23" height="23" @click="add" />
+    <div class="head-opt" >
+      <Icon v-if="settingStore.settings.addEmail === 0" v-perm="'account:add'" class="icon" icon="ion:add-outline" width="23" height="23" @click="add" />
       <Icon class="icon" icon="ion:reload" width="18" height="18"  @click="refresh" />
     </div>
     <el-scrollbar class="scrollbar">
@@ -15,7 +15,7 @@
               <Icon  icon="eva:email-fill" width="22" height="22" color="#fbbd08" />
             </div>
             <div class="settings" @click.stop>
-              <Icon v-if="item.accountId === userStore.user.accountId" icon="fluent:settings-24-filled" width="20" height="20" color="#909399" />
+              <Icon v-if="item.accountId === userStore.user.accountId || !hasPerm('account:delete')" icon="fluent:settings-24-filled" width="20" height="20" color="#909399" />
               <el-dropdown v-else >
                 <Icon icon="fluent:settings-24-filled" width="20" height="20" color="#909399" />
                 <template #dropdown >
@@ -68,7 +68,6 @@
 
     </el-scrollbar>
     <el-dialog v-model="showAdd" title="添加邮箱" >
-      <form>
         <div class="container">
           <el-input v-model="addForm.email" type="text" placeholder="邮箱" autocomplete="off">
             <template #append>
@@ -97,7 +96,6 @@
           >添加
           </el-button>
         </div>
-      </form>
       <div
           class="add-email-turnstile"
           :class="verifyShow ? 'turnstile-show' : 'turnstile-hide'"
@@ -116,6 +114,7 @@ import {isEmail} from "@/utils/verify-utils.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useAccountStore} from "@/store/account.js";
 import {useUserStore} from "@/store/user.js";
+import hasPerm from "@/utils/perm.js";
 
 const userStore = useUserStore();
 const accountStore = useAccountStore();
@@ -136,12 +135,15 @@ const addForm = reactive({
 })
 const queryParams = {
   accountId: 0,
-  size: 12
+  size: 20
 }
 
 const mySelect = ref()
 
-getAccountList()
+if (hasPerm('account:query')) {
+  getAccountList()
+}
+
 
 const openSelect = () => {
   mySelect.value.toggleMenu()
@@ -192,6 +194,7 @@ function refresh() {
 }
 function changeAccount(account) {
   accountStore.currentAccountId = account.accountId
+  accountStore.currentAccount = account
 }
 
 function add() {
@@ -270,6 +273,7 @@ function submit()  {
       type: "success",
       plain: true
     })
+    userStore.refreshUserInfo()
   }).catch(res => {
     if (res.code === 400) {
       verifyToken = ''
@@ -292,12 +296,13 @@ function submit()  {
     align-items: center;
     height: 38px;
     box-shadow: inset 0 -1px 0 0 rgba(100, 121, 143, 0.12);
+    padding-left: 10px;
+    padding-right: 10px;
     .icon{
       cursor: pointer;
-      margin-left: 10px;
     }
     .icon:nth-child(2) {
-      margin-left: 20px;
+      margin-left: 15px;
     }
   }
   .scrollbar {
@@ -329,7 +334,7 @@ function submit()  {
   .item {
     background-color: #fff;
     border-radius: 8px;
-    padding: 12px;
+    padding: 12px 10px;
     margin-bottom: 10px;
     margin-left: 10px;
     margin-right: 10px;
@@ -364,6 +369,7 @@ function submit()  {
   }
 }
 
+
 .setting-icon {
   position: relative;
   top: 6px;
@@ -390,6 +396,11 @@ function submit()  {
   width: 100px;
   opacity: 0;
   pointer-events: none;
+}
+
+:deep(.el-pagination .el-select) {
+  width: 100px;
+  background: #FFF;
 }
 
 .add-email-turnstile {

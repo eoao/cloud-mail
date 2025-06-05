@@ -1,13 +1,35 @@
-import http from '@/axios/index.js';
+import http from '@/axios/index.js'
 
-export function loginUserInfo() {
-    return http.get('/user/loginUserInfo')
+
+export function userList(params) {
+    return http.get('/user/list', {params: {...params}})
 }
 
-export function resetPassword(password) {
-    return http.put('/user/resetPassword', {password})
+export function userSetPwd(params) {
+    return http.put('/user/setPwd', params)
 }
 
-export function userDelete() {
-    return http.delete('/user/delete')
+export function userSetStatus(params) {
+    return http.put('/user/setStatus', params)
+}
+
+export function userSetType(params) {
+    return http.put('/user/setType', params)
+}
+
+
+export function userDelete(userId) {
+    return http.delete('/user/delete', {params:{userId}})
+}
+
+export function userAdd(form) {
+    return http.post('/user/add', form)
+}
+
+export function userRestSendCount(userId) {
+    return http.put('/user/resetSendCount', {userId})
+}
+
+export function userRestore(userId,type) {
+    return http.put('/user/restore', {userId,type})
 }

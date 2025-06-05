@@ -1,6 +1,7 @@
 name = "cloud-mail-test"
 main = "src/index.js"
 compatibility_date = "2025-04-09"
+keep_vars = true
 
 [observability]
 enabled = true
@@ -22,12 +23,14 @@ bucket_name = "email-test"
 [assets]
 binding = "assets"
 directory = "./dist"
+not_found_handling = "single-page-application"
+run_worker_first = true
+
+[triggers]
+crons = ["0 16 * * *"]
 
 [vars]
+orm_log = true
 domain = ["", ""]
 admin = ""
 jwt_secret = ""
-r2_domain = ""
-site_key = ""
-secret_key = ""
-

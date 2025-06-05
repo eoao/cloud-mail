@@ -1,9 +1,9 @@
 <template>
-  <div :class=" accountShow ? 'main-box-show' : 'main-box-hide'">
-    <div :class="accountShow ? 'block-show' : 'block-hide'" @click="uiStore.accountShow = false"></div>
-    <account  :class="accountShow ? 'show' : 'hide'" />
+  <div :class="accountShow && hasPerm('account:query') ? 'main-box-show' : 'main-box-hide'">
+    <div :class="accountShow && hasPerm('account:query') ? 'block-show' : 'block-hide'" @click="uiStore.accountShow = false"></div>
+    <account  :class="accountShow && hasPerm('account:query') ? 'show' : 'hide'" />
     <router-view class="main-view" v-slot="{ Component,route }">
-      <keep-alive :include="['email','sys-setting','star']">
+      <keep-alive :include="['email','sys-email','send','sys-setting','star','user','role']">
         <component :is="Component" :key="route.name"/>
       </keep-alive>
     </router-view>
@@ -15,6 +15,7 @@ import {useUiStore} from "@/store/ui.js";
 import {useSettingStore} from "@/store/setting.js";
 import {computed, onBeforeUnmount, onMounted} from "vue";
 import { useRoute } from 'vue-router'
+import hasPerm from "@/utils/perm.js";
 
 const props = defineProps({
   openSend: Function
@@ -39,10 +40,10 @@ onBeforeUnmount(() => {
 })
 
 const handleResize = () => {
-  if (['content','email'].includes(route.meta.name)) {
+  if (['content','email','send'].includes(route.meta.name)) {
     if (innerWidth !==  window.innerWidth) {
       innerWidth = window.innerWidth;
-      uiStore.accountShow = window.innerWidth >= 768;
+      uiStore.accountShow = window.innerWidth >= 767;
     }
   }
 }
@@ -77,7 +78,7 @@ const handleResize = () => {
   @media (max-width: 767px) {
     position: fixed;
     z-index: 100;
-    width: 199px;
+    width: 250px;
   }
 }
 
@@ -86,8 +87,8 @@ const handleResize = () => {
   position: fixed;
   transform: translateX(-100%);
   opacity: 0;
-  @media (max-width: 767px) {
-    width: 199px;
+  @media (max-width: 1024px) {
+    width: 250px;
     z-index: 100;
   }
 }
@@ -96,10 +97,13 @@ const handleResize = () => {
 .main-box-show {
   display: grid;
   grid-template-columns: 250px  1fr;
+  height: calc(100% - 60px);
+  @media (max-width: 1200px) {
+    grid-template-columns: 250px  1fr;
+  }
   @media (max-width: 767px) {
     grid-template-columns: 1fr;
   }
-  height: calc(100% - 60px);
 }
 
 .main-box-hide {

@@ -6,22 +6,45 @@
         <div>{{settingStore.settings.title}}</div>
       </div>
       <el-menu :collapse="false" text-color="#fff" active-text-color="#fff" style="margin-top: 10px">
-        <el-menu-item @click="router.push('/email')" index="email"
+        <el-menu-item @click="router.push({name: 'email'})" index="email"
                       :class="route.meta.name === 'email' ? 'choose-item' : ''">
           <Icon icon="hugeicons:mailbox-01" width="20" height="20" />
           <span class="menu-name" style="margin-left: 21px">收件箱</span>
         </el-menu-item>
-        <el-menu-item @click="router.push('/star')" index="star"
+        <el-menu-item @click="router.push({name: 'send'})" index="send"
+                      :class="route.meta.name === 'send' ? 'choose-item' : ''">
+          <Icon icon="cil:send" width="20" height="20" />
+          <span class="menu-name" style="margin-left: 21px">已发送</span>
+        </el-menu-item>
+        <el-menu-item @click="router.push({name: 'star'})" index="star"
                       :class="route.meta.name === 'star' ? 'choose-item' : ''">
           <Icon icon="solar:star-line-duotone" width="20" height="20" />
           <span class="menu-name" style="margin-left: 20px">星标邮件</span>
         </el-menu-item>
-        <el-menu-item @click="router.push('/setting')" index="setting"
+        <el-menu-item @click="router.push({name: 'setting'})" index="setting"
                       :class="route.meta.name === 'setting' ? 'choose-item' : ''">
           <Icon icon="fluent:settings-48-regular" width="20" height="20" />
           <span class="menu-name" style="margin-left: 20px">个人设置</span>
         </el-menu-item>
-        <el-menu-item @click="router.push('/sys-setting')" index="sys-setting"  v-if="userStore.user.type === 0"
+        <div class="manage-title" v-perm="['user:query','role:query','setting:query']">
+          <div>管理</div>
+        </div>
+        <el-menu-item @click="router.push({name: 'user'})" index="setting" v-perm="'user:query'"
+                      :class="route.meta.name === 'user' ? 'choose-item' : ''">
+          <Icon icon="iconoir:user" width="24" height="24" />
+          <span class="menu-name" style="margin-left: 16px">用户列表</span>
+        </el-menu-item>
+        <el-menu-item @click="router.push({name: 'sys-email'})" index="sys-email" v-perm="'sys-email:query'"
+                      :class="route.meta.name === 'sys-email' ? 'choose-item' : ''">
+          <Icon icon="fluent:mail-list-28-regular" width="22" height="22" />
+          <span class="menu-name" style="margin-left: 18px">邮件列表</span>
+        </el-menu-item>
+        <el-menu-item @click="router.push({name: 'role'})" index="setting" v-perm="'role:query'"
+                      :class="route.meta.name === 'role' ? 'choose-item' : ''">
+          <Icon icon="hugeicons:key-02" width="22" height="22" />
+          <span class="menu-name" style="margin-left: 18px">权限控制</span>
+        </el-menu-item>
+        <el-menu-item @click="router.push({name: 'sys-setting'})" index="sys-setting" v-perm="'setting:query'"
                       :class="route.meta.name === 'sys-setting' ? 'choose-item' : ''">
           <Icon icon="eos-icons:system-ok-outlined" width="18" height="18" />
           <span class="menu-name" style="margin-left: 23px">系统设置</span>
@@ -29,23 +52,17 @@
       </el-menu>
     </div>
   </el-scrollbar>
-  <div class="github">
-    <a href="https://github.com/LaziestRen/cloud-mail">
-      <Icon icon="codicon:github-inverted" width="28" height="28" />
-    </a>
-  </div>
 </template>
 
 <script setup>
-import {useUserStore} from "@/store/user.js";
 import router from "@/router/index.js";
 import { useRoute } from "vue-router";
 import {Icon} from "@iconify/vue";
 import {useSettingStore} from "@/store/setting.js";
 
 const settingStore = useSettingStore();
-const userStore = useUserStore();
 const route = useRoute();
+
 </script>
 
 <style lang="scss" scoped>
@@ -53,7 +70,7 @@ const route = useRoute();
 .title {
   margin: 15px 10px;
   height: 50px;
-  border-radius: 8px;
+  border-radius: 6px;
   display: flex;
   position: relative;
   font-size: 16px;
@@ -63,7 +80,6 @@ const route = useRoute();
   gap: 5px;
   color: #ffffff;
   background: linear-gradient(135deg, #1890ff, #1c6dd0);
-  box-shadow: 0 0 12px rgba(24, 144, 255, 0.6), 0 0 20px rgba(24, 144, 255, 0.4);
   transition: all 0.3s ease;
 
   :deep(.el-icon) {
@@ -81,10 +97,15 @@ const route = useRoute();
 }
 
 
+.manage-title {
+  margin-top: 10px;
+  padding-left: 20px;
+  color: #fff;
+}
 
 .el-menu-item {
   margin: 5px 10px !important;
-  border-radius: 8px;
+  border-radius: 6px;
   height: 36px;
   padding: 10px !important;
 }
@@ -122,7 +143,7 @@ const route = useRoute();
   border-right: 0;
   width: 250px;
   @media (max-width: 1199px) {
-    width: 200px;
+    width: 250px;
   }
 }
 
@@ -132,7 +153,7 @@ const route = useRoute();
 }
 
 .scroll {
-  box-shadow: 6px 0 20px rgba(0, 21, 41, 0.35);
+
 }
 
 .github {

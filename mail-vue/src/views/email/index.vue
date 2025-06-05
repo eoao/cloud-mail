@@ -5,18 +5,33 @@
                :getEmailList="getEmailList"
                :emailDelete="emailDelete"
                :star-add="starAdd"
-               :star-cancel="starCancel"/>
+               :star-cancel="starCancel"
+               :time-sort="params.timeSort"
+               actionLeft="4px"
+               @jump="jumpContent"
+  >
+    <template #first>
+      <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-down-outline"
+            v-if="params.timeSort === 0" width="28" height="28"/>
+      <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-up-outline" v-else
+            width="28" height="28"/>
+    </template>
+
+  </emailScroll>
 </template>
 
 <script setup>
 import {useAccountStore} from "@/store/account.js";
 import {useEmailStore} from "@/store/email.js";
 import {useSettingStore} from "@/store/setting.js";
+import {useUiStore} from "@/store/ui.js";
 import emailScroll from "@/components/email-scroll/index.vue"
 import {emailList, emailDelete, emailLatest} from "@/request/email.js";
 import {starAdd, starCancel} from "@/request/star.js";
-import {defineOptions, onMounted, ref, watch} from "vue";
+import {defineOptions, onMounted, reactive, ref, watch} from "vue";
 import {sleep} from "@/utils/time-utils.js";
+import router from "@/router/index.js";
+import {Icon} from "@iconify/vue";
 
 defineOptions({
   name: 'email'
@@ -26,6 +41,9 @@ const emailStore = useEmailStore();
 const accountStore = useAccountStore();
 const settingStore = useSettingStore();
 const scroll = ref({})
+const params = reactive({
+  timeSort: 0,
+})
 
 onMounted(() => {
   emailStore.emailScroll = scroll;
@@ -37,16 +55,39 @@ watch(() => accountStore.currentAccountId, () => {
   scroll.value.refreshList();
 })
 
+function changeTimeSort() {
+  params.timeSort = params.timeSort ? 0 : 1
+  scroll.value.refreshList();
+}
+
+function jumpContent(email) {
+  emailStore.contentData.email = email
+  emailStore.contentData.delType = 'logic'
+  emailStore.contentData.showStar = true
+  router.push('/content')
+}
+
+const existIds = new Set();
+
 async function latest() {
   while (true) {
-    const latestId = scroll.value.emailList[0]?.emailId ?? 0
+    const latestId = scroll.value.latestEmail?.emailId || 0
 
     if (!scroll.value.firstLoad && settingStore.settings.autoRefreshTime) {
       try {
         const accountId = accountStore.currentAccountId
-        const list = await emailLatest(latestId,accountId)
-        if (accountId === accountStore.currentAccountId) {
-          scroll.value.emailList.unshift(...list)
+        const curTimeSort = params.timeSort
+        const list = await emailLatest(latestId, accountId)
+        if (accountId === accountStore.currentAccountId && params.timeSort === curTimeSort) {
+          if (list.length > 0) {
+
+            list.forEach(email => {
+              existIds.add(email.emailId)
+              scroll.value.addItem(email)
+            })
+
+          }
+
         }
       } catch (e) {
         console.error(e)
@@ -57,7 +98,7 @@ async function latest() {
 }
 
 function addStar(email) {
-  emailStore.starScroll?.addItemStar(email)
+  emailStore.starScroll?.addItem(email)
 }
 
 function cancelStar(email) {
@@ -65,8 +106,12 @@ function cancelStar(email) {
 }
 
 function getEmailList(emailId, size) {
-  return emailList(accountStore.currentAccountId, emailId, size)
+  return emailList(accountStore.currentAccountId, emailId, params.timeSort, size, 0)
 }
 
 </script>
-
+<style>
+.icon {
+  cursor: pointer;
+}
+</style>

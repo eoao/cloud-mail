@@ -1,6 +1,7 @@
 name = "cloud-mail-dev"
 main = "src/index.js"
 compatibility_date = "2025-04-09"
+keep_vars = true
 
 [observability]
 enabled = true
@@ -11,24 +12,27 @@ ip = "0.0.0.0"
 [[d1_databases]]
 binding = "db"
 database_name = "email"
-database_id = "a1c1a63a-6ef5-4e6d-8e8c-b6d9e8feb810"
+database_id = "a4c1a63a-6ef5-4e6d-8e8c-b6d9e8feb810"
 
 [[kv_namespaces]]
 binding = "kv"
 id = "2io01d4b299e481b9de060ece9e7785c"
 
-#[[r2_buckets]]
-#binding = ""
-#bucket_name = ""
+[[r2_buckets]]
+binding = "r2"
+bucket_name = "email"
 
 [assets]
 binding = "assets"
 directory = "./dist"
+not_found_handling = "single-page-application"
+run_worker_first = true
+
+[triggers]
+crons = ["0 16 * * *"]
 
 [vars]
+orm_log = true
 domain = ["example.com", "example2.com"]
 admin = "admin@example.com"
-jwt_secret = "K8x@r!3XqZ7#bLm$9pV&yTfC1W*sD2Nv%Q@4Zh^gRb6&UsP!m"
-r2_domain = ""
-site_key = ""
-secret_key = ""
+jwt_secret = "b7f29a1d-18e2-4d3b-941f-f6b2c97c02fd"

@@ -1,26 +1,22 @@
 <template>
-  <div id="box">
-    <div id="background-wrap">
+  <div id="login-box">
+    <div id="background-wrap" v-if="!settingStore.settings.background">
       <div class="x1 cloud"></div>
       <div class="x2 cloud"></div>
       <div class="x3 cloud"></div>
       <div class="x4 cloud"></div>
       <div class="x5 cloud"></div>
     </div>
+    <div v-else :style="background"></div>
     <div class="form-wrapper">
-      <el-form  autocomplete="off">
-        <div class="container" >
-          <span class="form-title">{{ settingStore.settings.title }}</span>
-          <div class="custom-style" v-if="settingStore.settings.register === 0">
-            <el-segmented v-model="show" :options="options" />
-          </div>
+        <div class="container">
+          <span class="form-title">{{settingStore.settings.title}}</span>
+          <span class="form-desc" v-if="show === 'login'">请输入你的账号信息以开始使用邮箱系统</span>
+          <span class="form-desc" v-else>请输入你的账号密码以开始注册邮箱系统</span>
           <div v-if="show === 'login'">
-            <el-input v-model="form.email" type="text" placeholder="邮箱" autocomplete="off">
-              <template #prefix>
-                <Icon icon="weui:email-outlined" width="22" height="22" />
-              </template>
+            <el-input class="email-input" v-model="form.email" type="text" placeholder="邮箱" autocomplete="off">
               <template #append>
-                <div  @click.stop="openSelect">
+                <div @click.stop="openSelect">
                   <el-select
                       ref="mySelect"
                       v-model="suffix"
@@ -35,28 +31,22 @@
                     />
                   </el-select>
                   <div style="color: #333">
-                    <span >{{suffix}}</span>
-                    <Icon class="setting-icon" icon="mingcute:down-small-fill" width="20" height="20" />
+                    <span>{{ suffix }}</span>
+                    <Icon class="setting-icon" icon="mingcute:down-small-fill" width="20" height="20"/>
                   </div>
                 </div>
               </template>
             </el-input>
             <el-input v-model="form.password" placeholder="密码" type="password" autocomplete="off">
-              <template #prefix>
-                <Icon icon="carbon:password" width="22" height="22" />
-              </template>
             </el-input>
-            <el-button class="btn" type="primary" @click="submit" :loading="uiStore.loginLoading"
+            <el-button class="btn" type="primary" @click="submit" :loading="loginLoading"
             >登录
             </el-button>
           </div>
           <div v-else>
-            <el-input v-model="registerForm.email" type="text" placeholder="邮箱" autocomplete="off">
-              <template #prefix>
-                <Icon icon="weui:email-outlined" width="22" height="22" />
-              </template>
+            <el-input class="email-input" v-model="registerForm.email" type="text" placeholder="邮箱" autocomplete="off">
               <template #append>
-                <div  @click.stop="openSelect">
+                <div @click.stop="openSelect">
                   <el-select
                       ref="mySelect"
                       v-model="suffix"
@@ -71,64 +61,55 @@
                     />
                   </el-select>
                   <div style="color: #333">
-                    <span>{{suffix}}</span>
-                    <Icon class="setting-icon" icon="mingcute:down-small-fill" width="20" height="20" />
+                    <span>{{ suffix }}</span>
+                    <Icon class="setting-icon" icon="mingcute:down-small-fill" width="20" height="20"/>
                   </div>
                 </div>
               </template>
             </el-input>
-            <el-input v-model="registerForm.password" placeholder="密码" type="password" autocomplete="off">
-              <template #prefix>
-                <Icon icon="carbon:password" width="22" height="22" />
-              </template>
-            </el-input>
-            <el-input v-model="registerForm.confirmPassword" placeholder="确认密码" type="password" autocomplete="off">
-              <template #prefix>
-                <Icon icon="carbon:password" width="22" height="22" />
-              </template>
-            </el-input>
+            <el-input v-model="registerForm.password" placeholder="密码" type="password" autocomplete="off" />
+            <el-input v-model="registerForm.confirmPassword" placeholder="确认密码" type="password" autocomplete="off" />
+            <div v-show="verifyShow"
+                class="register-turnstile"
+                :data-sitekey="settingStore.settings.siteKey"
+                data-callback="onTurnstileSuccess"
+            ></div>
             <el-button class="btn" type="primary" @click="submitRegister" :loading="registerLoading"
             >注册
             </el-button>
           </div>
+          <div class="switch" @click="show = 'register'" v-if="show === 'login'">还有没有账号? <span>创建账号</span></div>
+          <div class="switch" @click="show = 'login'" v-else>已有账号? <span>去登录</span></div>
         </div>
-      </el-form>
     </div>
-    <el-dialog
-        v-model="verifyShow"
-        title="验证你是不是人"
-        width="332"
-        align-center
-    >
-      <div
-          class="register-turnstile"
-          :data-sitekey="settingStore.settings.siteKey"
-          data-callback="onTurnstileSuccess"
-      ></div>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import router from "@/router";
-import {nextTick, reactive, ref} from "vue";
+import {computed, nextTick, reactive, ref} from "vue";
 import {login} from "@/request/login.js";
 import {register} from "@/request/login.js";
 import {ElMessage} from 'element-plus'
 import {isEmail} from "@/utils/verify-utils.js";
-import {useUiStore} from "@/store/ui.js";
 import {useSettingStore} from "@/store/setting.js";
+import {useAccountStore} from "@/store/account.js";
+import {useUserStore} from "@/store/user.js";
 import {Icon} from "@iconify/vue";
+import {cvtR2Url} from "@/utils/convert.js";
+import {loginUserInfo} from "@/request/my.js";
+import {permsToRouter} from "@/utils/perm.js";
 
+const accountStore = useAccountStore();
+const userStore = useUserStore();
 const settingStore = useSettingStore();
-const uiStore = useUiStore()
+const loginLoading = ref(false)
 const show = ref('login')
 const form = reactive({
   email: '',
   password: '',
 
 });
-const options = [{label: '登录', value: 'login'},{label: '注册', value: 'register'}];
 const mySelect = ref()
 const suffix = ref('')
 const registerForm = reactive({
@@ -136,19 +117,36 @@ const registerForm = reactive({
   password: '',
   confirmPassword: ''
 })
-const domainList =  settingStore.domainList;
+const domainList = settingStore.domainList;
 const registerLoading = ref(false)
 suffix.value = domainList[0]
 const verifyShow = ref(false)
 let verifyToken = ''
 let turnstileId = ''
 
+
 window.onTurnstileSuccess = (token) => {
   verifyToken = token;
   setTimeout(() => {
     verifyShow.value = false
-  },1500)
+  }, 2000)
 };
+
+
+const loginOpacity = computed(() => {
+  return `rgba(255, 255, 255, ${settingStore.settings.loginOpacity})`
+})
+
+const background = computed(() => {
+
+  return settingStore.settings.background ? {
+    'background-image': `url(${cvtR2Url(settingStore.settings.background)})`,
+    'background-repeat': 'no-repeat',
+    'background-size': 'cover',
+    'background-position': 'center'
+  } : ''
+})
+
 
 const openSelect = () => {
   mySelect.value.toggleMenu()
@@ -184,21 +182,19 @@ const submit = () => {
     return
   }
 
-  if (form.password.length < 6) {
-    ElMessage({
-      message: '密码最少六位',
-      type: 'error',
-      plain: true,
-    })
-    return
-  }
-
-  uiStore.loginLoading = true
-  login(form.email+suffix.value, form.password).then(data => {
+  loginLoading.value = true
+  login(form.email + suffix.value, form.password).then(async data => {
     localStorage.setItem('token', data.token)
-    router.replace({name: 'layout'})
-  }).catch(() => {
-    uiStore.loginLoading = false
+    const user = await loginUserInfo();
+    accountStore.currentAccountId = user.accountId;
+    userStore.user = user;
+    const routers = permsToRouter(user.permKeys);
+    routers.forEach(routerData => {
+      router.addRoute('layout', routerData);
+    });
+    await router.replace({name: 'layout'})
+  }).finally(() => {
+    loginLoading.value = false
   })
 }
 
@@ -255,7 +251,7 @@ function submitRegister() {
     verifyShow.value = true
     if (!turnstileId) {
       nextTick(() => {
-        turnstileId =  window.turnstile.render('.register-turnstile')
+        turnstileId = window.turnstile.render('.register-turnstile')
       })
     } else {
       nextTick(() => {
@@ -266,7 +262,7 @@ function submitRegister() {
   }
 
   registerLoading.value = true
-  register({email: registerForm.email + suffix.value, password: registerForm.password,token: verifyToken}).then(() => {
+  register({email: registerForm.email + suffix.value, password: registerForm.password, token: verifyToken}).then(() => {
     show.value = 'login'
     registerForm.email = ''
     registerForm.password = ''
@@ -290,53 +286,105 @@ function submitRegister() {
 
 </script>
 
+
+<style>
+.el-select-dropdown__item {
+  padding: 0 15px;
+}
+
+.no-autofill-pwd {
+  .el-input__inner {
+    -webkit-text-security: disc !important;
+  }
+}
+</style>
+
 <style lang="scss" scoped>
 
 .form-wrapper {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
+  right: 0;
   height: 100%;
-  z-index: 110;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
+  @media (max-width: 767px) {
+    width: 100%;
+  }
 }
 
 .container {
-  background: #FFFFFF;
-  padding: 20px;
-  border-radius: 8px;
+  background: v-bind(loginOpacity);
+  padding-left: 40px;
+  padding-right: 40px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
-
-  .switch {
-    padding-top: 10px;
-    font-size: 14px;
+  width: 450px;
+  height: 100%;
+  border: 1px solid #e4e7ed;
+  box-shadow: var(--el-box-shadow-light);
+  @media (max-width: 1024px) {
+    padding: 20px 18px;
+    border-radius: 6px;
+    width: 384px;
+    margin-left: 18px;
+  }
+  @media (max-width: 767px) {
+    padding: 20px 18px;
+    border-radius: 6px;
+    height: fit-content;
+    width: 100%;
+    margin-right: 18px;
+    margin-left: 18px;
+  }
+  .btn {
+    height: 36px;
+    width: 100%;
+    border-radius: 6px;
   }
 
-  .btn {
-    width: 100%;
+  .form-desc {
+    margin-top: 5px;
+    margin-bottom: 18px;
+    color: #71717a;
   }
 
   .form-title {
     font-weight: bold;
-    font-size: 18px;
-    margin-bottom: 20px;
+    font-size: 22px !important;
+  }
+
+  .switch {
+    margin-top: 20px;
+    text-align: center;
+    span {
+      color: #006be6;
+      cursor: pointer;
+    }
+  }
+
+  :deep(.el-input__wrapper) {
+    border-radius: 6px;
+  }
+
+  .email-input :deep(.el-input__wrapper){
+    border-radius: 6px 0 0 6px;
   }
 
   .el-input {
+    height: 38px;
     width: 100%;
-    margin-bottom: 15px;
+    margin-bottom: 18px;
+    :deep(.el-input__inner) {
+      height: 36px;
+    }
   }
 }
 
-form{
-  max-width: 410px;
-  padding: 0 20px;
+:deep(.el-select-dropdown__item) {
+  padding: 0 10px;
 }
 
 .setting-icon {
@@ -347,7 +395,13 @@ form{
 :deep(.el-input-group__append) {
   padding: 0 !important;
   padding-left: 8px !important;
+  padding-right: 4px !important;
   background: #FFFFFF;
+  border-radius: 0 8px 8px 0;
+}
+
+.register-turnstile {
+  margin-bottom: 18px;
 }
 
 .select {
@@ -357,15 +411,19 @@ form{
   opacity: 0;
   pointer-events: none;
 }
+
 .custom-style {
   margin-bottom: 10px;
 }
+
 .custom-style .el-segmented {
-  --el-border-radius-base: 8px;
+  --el-border-radius-base: 6px;
   width: 180px;
 }
 
-#box {
+
+
+#login-box {
   background: linear-gradient(to bottom, #2980b9, #6dd5fa, #fff);
   color: #333;
   font: 100% Arial, sans-serif;
@@ -373,7 +431,10 @@ form{
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  display: grid;
+  grid-template-columns: 1fr;
 }
+
 
 #background-wrap {
   height: 100%;

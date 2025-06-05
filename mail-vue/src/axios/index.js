@@ -12,9 +12,17 @@ http.interceptors.request.use(config => {
 })
 
 http.interceptors.response.use((res) => {
+
         return new Promise((resolve, reject) => {
+
+            const showMsg = res.config.noMsg;
             const data = res.data
-            if (data.code === 401) {
+
+            if (showMsg) {
+
+                data.code === 200 ? resolve(data.data) : reject(data)
+
+            } else if (data.code === 401) {
                 ElMessage({
                     message: data.message,
                     type: 'error',
@@ -26,7 +34,7 @@ http.interceptors.response.use((res) => {
             } else if (data.code === 403) {
                 ElMessage({
                     message: data.message,
-                    type: 'error',
+                    type: 'warning',
                     plain: true,
                 })
                 reject(data)
@@ -36,17 +44,19 @@ http.interceptors.response.use((res) => {
                     type: 'error',
                     plain: true,
                 })
-                setTimeout(() => {
-                    reject(data)
-                }, 1)
+
+                reject(data)
             }
-            setTimeout(() => {
-                resolve(data.data)
-            }, 1)
+            resolve(data.data)
         })
     },
     (error) => {
-        if (error.message.includes('Network Error')) {
+
+        const showMsg = error.config.noMsg;
+
+        if (showMsg) {
+            return Promise.reject(error)
+        } else if (error.message.includes('Network Error')) {
             ElMessage({
                 message: '网络错误,请检查网络连接',
                 type: 'error',

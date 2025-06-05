@@ -7,3 +7,11 @@ export function settingSet(setting) {
 export function settingQuery() {
     return http.get('/setting/query')
 }
+
+export function setBackground(background) {
+    return http.put('/setting/setBackground',{background})
+}
+
+export function physicsDeleteAll() {
+    return http.delete('/setting/physicsDeleteAll')
+}

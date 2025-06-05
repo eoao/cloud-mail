@@ -5,9 +5,14 @@ export const useEmailStore = defineStore('email', {
         deleteIds: 0,
         starScroll: null,
         emailScroll: null,
-        readEmail: {},
+        contentData: {
+            email: null,
+            delType: null,
+            showStar: true
+        },
+        sendScroll: null,
     }),
     persist: {
-        pick: ['readEmail'],
+        pick: ['contentData'],
     },
 })
