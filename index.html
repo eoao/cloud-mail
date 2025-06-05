@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星辰旅人服务导航</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #2a4365, #0f3460);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            background-image: url('https://wwwaaa123122.cn-nb1.rains3.com/img/Image_1748831276428.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-blend-mode: overlay;
+            color: #fff;
+            padding-bottom: 100px; /* 为底部播放器留出空间 */
+        }
+        
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            animation: fadeInDown 0.8s ease;
+        }
+        
+        header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #e0e0e0, #b0b0b0);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        header p {
+            font-size: 1.2rem;
+            max-width: 700px;
+            margin: 0 auto;
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.6;
+        }
+        
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            padding: 20px;
+        }
+        
+        .service-card {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.4s ease;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .service-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .card-header {
+            padding: 25px 25px 15px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .icon {
+            font-size: 32px;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            margin-right: 15px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .cloud-icon {
+            background: linear-gradient(135deg, #2196F3, #21CBF3);
+            color: white;
+        }
+        
+        .backup-icon {
+            background: linear-gradient(135deg, #2ecc71, #1abc9c);
+            color: white;
+        }
+        
+        .email-icon {
+            background: linear-gradient(135deg, #e74c3c, #e67e22);
+            color: white;
+        }
+        
+        .gallery-icon {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            color: white;
+        }
+        
+        .card-content {
+            padding: 25px;
+            flex-grow: 1;
+        }
+        
+        .card-content h2 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: white;
+        }
+        
+        .card-content p {
+            color: rgba(255, 255, 255, 0.75);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .service-url {
+            display: block;
+            font-size: 0.95rem;
+            color: #64b5f6;
+            margin-top: 5px;
+            word-break: break-all;
+        }
+        
+        .card-footer {
+            padding: 0 25px 25px;
+        }
+        
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(5px);
+        }
+        
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .cloud-card:hover .btn {
+            background: linear-gradient(135deg, #2196F3, #21CBF3);
+        }
+        
+        .backup-card:hover .btn {
+            background: linear-gradient(135deg, #2ecc71, #1abc9c);
+        }
+        
+        .email-card:hover .btn {
+            background: linear-gradient(135deg, #e74c3c, #e67e22);
+        }
+        
+        .gallery-card:hover .btn {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+        
+        /* 音乐播放器样式 */
+        .music-player {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(26, 42, 108, 0.8);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.3);
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            z-index: 1000;
+            transition: all 0.4s ease;
+        }
+        
+        .player-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .play-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #2196F3, #21CBF3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .play-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .music-info {
+            flex: 1;
+            margin: 0 15px;
+        }
+        
+        .song-title {
+            font-weight: 500;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .artist {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+        
+        .progress-container {
+            flex: 3;
+            position: relative;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            background: linear-gradient(to right, #2196F3, #21CBF3);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+        
+        .time-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85rem;
+        }
+        
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 120px;
+        }
+        
+        .volume-slider {
+            width: 80px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .volume-level {
+            height: 100%;
+            background: linear-gradient(to right, #2196F3, #21CBF3);
+            border-radius: 3px;
+            width: 70%;
+        }
+        
+        .player-actions {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .player-action {
+            color: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+        }
+        
+        .player-action:hover {
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        .mini-player-btn {
+            position: absolute;
+            top: -25px;
+            right: 20px;
+            background: rgba(26, 42, 108, 0.8);
+            border-radius: 50% 50% 0 0;
+            width: 40px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+        }
+        
+        .mini-player-btn:hover {
+            color: white;
+            background: rgba(33, 150, 243, 0.8);
+        }
+        
+        .mini-player {
+            height: 25px;
+            padding: 5px 15px;
+        }
+        
+        .mini-player .play-btn {
+            width: 25px;
+            height: 25px;
+            font-size: 0.8rem;
+        }
+        
+        .mini-player .music-info {
+            margin: 0 10px;
+        }
+        
+        .mini-player .song-title {
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+        
+        .mini-player .progress-container,
+        .mini-player .volume-control,
+        .mini-player .player-actions {
+            display: none;
+        }
+        
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .services-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .player-controls {
+                flex-wrap: wrap;
+            }
+            
+            .progress-container {
+                order: 3;
+                flex: 1 0 100%;
+                margin-top: 10px;
+            }
+            
+            .volume-control {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>星辰旅人服务导航</h1>
+            <p>一站式访问星辰旅人提供的所有云服务</p>
+        </header>
+        
+        <div class="services-grid">
+            <!-- 主云盘 -->
+            <div class="service-card cloud-card">
+                <div class="card-header">
+                    <div class="icon cloud-icon">
+                        <i class="fas fa-cloud"></i>
+                    </div>
+                    <div>
+                        <h2>星辰旅人云盘（主）</h2>
+                        <span class="service-url">www.mcxclr.top</span>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <p>星辰旅人云盘</p>
+                </div>
+                <div class="card-footer">
+                    <a href="https://www.mcxclr.top" class="btn" target="_blank">
+                        访问云盘 <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- 备用云盘 -->
+            <div class="service-card backup-card">
+                <div class="card-header">
+                    <div class="icon backup-icon">
+                        <i class="fas fa-cloud-download-alt"></i>
+                    </div>
+                    <div>
+                        <h2>备用云盘</h2>
+                        <span class="service-url">kc6xj6ew.cn-nb1.rainapp.top</span>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <p>基于雨云云应用的备用云存储，一周同步一次主站。</p>
+                </div>
+                <div class="card-footer">
+                    <a href="https://kc6xj6ew.cn-nb1.rainapp.top" class="btn" target="_blank">
+                        访问备用云盘 <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- 邮箱服务 -->
+            <div class="service-card email-card">
+                <div class="card-header">
+                    <div class="icon email-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div>
+                        <h2>星辰旅人邮箱</h2>
+                        <span class="service-url">mail.mcxclr.top</span>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <p>由Cloudflare提供无服务器邮箱</p>
+                </div>
+                <div class="card-footer">
+                    <a href="https://mail.mcxclr.top" class="btn" target="_blank">
+                        访问邮箱 <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- 备用邮箱 -->
+            <div class="service-card backup-card">
+                <div class="card-header">
+                    <div class="icon backup-icon">
+                        <i class="fas fa-mail-bulk"></i>
+                    </div>
+                    <div>
+                        <h2>备用邮箱服务</h2>
+                        <span class="service-url">mail.457132.xyz</span>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <p>当主邮箱服务不可用时，可通过此备用邮箱服务继续收邮件。</p>
+                </div>
+                <div class="card-footer">
+                    <a href="https://mail.457132.xyz" class="btn" target="_blank">
+                        访问备用邮箱 <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- 星辰旅人の图库 -->
+            <div class="service-card gallery-card">
+                <div class="card-header">
+                    <div class="icon gallery-icon">
+                        <i class="fas fa-images"></i>
+                    </div>
+                    <div>
+                        <h2>星辰旅人の图库</h2>
+                        <span class="service-url">alist.mcxclr.top</span>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <p>基于alist的图库，提供高速稳定的图片存储和直链服务。</p>
+                </div>
+                <div class="card-footer">
+                    <a href="https://alist.mcxclr.top" class="btn" target="_blank">
+                        访问图库 <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>© 2025 星辰旅人    有事联系：admin@mcxclr.top</p>
+        </footer>
+    </div>
+    
+    <!-- 音乐播放器 -->
+    <div class="music-player" id="musicPlayer">
+        <div class="mini-player-btn" id="miniPlayerBtn">
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        
+        <div class="player-controls">
+            <div class="play-btn" id="playBtn">
+                <i class="fas fa-pause"></i>
+            </div>
+            
+            <div class="music-info">
+                <div class="song-title" id="songTitle">未来再见</div>
+                <div class="artist" id="artist">HOYO-MiX</div>
+            </div>
+            
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress" id="progress"></div>
+                </div>
+                <div class="time-info">
+                    <span id="currentTime">0:00</span>
+                    <span id="duration">0:00</span>
+                </div>
+            </div>
+            
+            <div class="volume-control">
+                <i class="fas fa-volume-up"></i>
+                <div class="volume-slider" id="volumeSlider">
+                    <div class="volume-level" id="volumeLevel"></div>
+                </div>
+            </div>
+            
+            <div class="player-actions">
+                <div class="player-action" id="prevBtn">
+                    <i class="fas fa-step-backward"></i>
+                </div>
+                <div class="player-action" id="nextBtn">
+                    <i class="fas fa-step-forward"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <audio id="bgMusic" loop>
+        <!-- 使用指定的音乐文件 -->
+        <source src="https://wwwaaa123122.cn-nb1.rains3.com/music/HOYO-MiX-%E6%9C%AA%E6%9D%A5%E5%86%8D%E8%A7%81%20%28Instrumental%29.flac" type="audio/mpeg">
+    </audio>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const audio = document.getElementById('bgMusic');
+            const playBtn = document.getElementById('playBtn');
+            const progressBar = document.getElementById('progressBar');
+            const progress = document.getElementById('progress');
+            const currentTimeEl = document.getElementById('currentTime');
+            const durationEl = document.getElementById('duration');
+            const volumeSlider = document.getElementById('volumeSlider');
+            const volumeLevel = document.getElementById('volumeLevel');
+            const musicPlayer = document.getElementById('musicPlayer');
+            const miniPlayerBtn = document.getElementById('miniPlayerBtn');
+            const songTitle = document.getElementById('songTitle');
+            const artist = document.getElementById('artist');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            // 自动播放音乐（处理浏览器限制）
+            function startPlayback() {
+                const playPromise = audio.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        console.log('音乐开始播放');
+                    }).catch(error => {
+                        console.log('自动播放被阻止:', error);
+                        // 显示播放按钮提示
+                        playBtn.innerHTML = '<i class="fas fa-play"></i>';
+                        playBtn.style.background = 'linear-gradient(135deg, #e74c3c, #e67e22)';
+                    });
+                }
+            }
+            
+            // 格式化时间 (秒 -> mm:ss)
+            function formatTime(seconds) {
+                const min = Math.floor(seconds / 60);
+                const sec = Math.floor(seconds % 60);
+                return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+            }
+            
+            // 更新进度条
+            function updateProgress() {
+                const currentTime = audio.currentTime;
+                const duration = audio.duration;
+                
+                if (isFinite(duration)) {
+                    const progressPercent = (currentTime / duration) * 100;
+                    progress.style.width = `${progressPercent}%`;
+                    currentTimeEl.textContent = formatTime(currentTime);
+                    durationEl.textContent = formatTime(duration);
+                }
+            }
+            
+            // 设置进度
+            function setProgress(e) {
+                const width = this.clientWidth;
+                const clickX = e.offsetX;
+                const duration = audio.duration;
+                
+                if (isFinite(duration)) {
+                    audio.currentTime = (clickX / width) * duration;
+                }
+            }
+            
+            // 设置音量
+            function setVolume(e) {
+                const width = this.clientWidth;
+                const clickX = e.offsetX;
+                const volume = Math.min(1, Math.max(0, clickX / width));
+                
+                audio.volume = volume;
+                volumeLevel.style.width = `${volume * 100}%`;
+            }
+            
+            // 切换播放状态
+            function togglePlay() {
+                if (audio.paused) {
+                    audio.play();
+                    playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                    playBtn.style.background = 'linear-gradient(135deg, #2196F3, #21CBF3)';
+                } else {
+                    audio.pause();
+                    playBtn.innerHTML = '<i class="fas fa-play"></i>';
+                    playBtn.style.background = 'linear-gradient(135deg, #2ecc71, #1abc9c)';
+                }
+            }
+            
+            // 切换播放器大小
+            function togglePlayerSize() {
+                musicPlayer.classList.toggle('mini-player');
+                const icon = miniPlayerBtn.querySelector('i');
+                
+                if (musicPlayer.classList.contains('mini-player')) {
+                    icon.classList.remove('fa-chevron-down');
+                    icon.classList.add('fa-chevron-up');
+                } else {
+                    icon.classList.remove('fa-chevron-up');
+                    icon.classList.add('fa-chevron-down');
+                }
+            }
+            
+            // 事件监听
+            audio.addEventListener('timeupdate', updateProgress);
+            audio.addEventListener('ended', () => {
+                // 循环播放
+                audio.currentTime = 0;
+                audio.play();
+            });
+            
+            audio.addEventListener('loadedmetadata', () => {
+                durationEl.textContent = formatTime(audio.duration);
+            });
+            
+            playBtn.addEventListener('click', togglePlay);
+            progressBar.addEventListener('click', setProgress);
+            volumeSlider.addEventListener('click', setVolume);
+            miniPlayerBtn.addEventListener('click', togglePlayerSize);
+            
+            // 上一首/下一首按钮（示例）
+            prevBtn.addEventListener('click', () => {
+                // 在实际应用中这里会切换到上一首歌曲
+                alert('切换到上一首歌曲');
+            });
+            
+            nextBtn.addEventListener('click', () => {
+                // 在实际应用中这里会切换到下一首歌曲
+                alert('切换到下一首歌曲');
+            });
+            
+            // 初始化音量
+            audio.volume = 0.7;
+            volumeLevel.style.width = '70%';
+            
+            // 开始播放
+            startPlayback();
+        });
+    </script>
+</body>
+</html>
