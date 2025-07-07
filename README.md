@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="demo/logo.png" width="10%" />
+  <img src="doc/demo/logo.png" width="10%" />
 </p>
 
 <div align="center">
@@ -22,11 +22,11 @@
 
 [**👉 小白保姆教程-界面部署**](https://doc.skymail.ink)
 
-| ![](demo/demo1.png) | ![](demo/demo2.png) |
-|---------------------|---------------------|
-| ![](demo/demo3.png) | ![](demo/demo4.png) |
-| ![](demo/demo5.png) | ![](demo/demo6.png) |
-| ![](demo/demo7.png) | ![](demo/demo8.png) |
+| ![](/doc/demo/demo1.png) | ![](/doc/demo/demo2.png) |
+|--------------------------|---------------------|
+| ![](/doc/demo/demo3.png)      | ![](/doc/demo/demo4.png) |
+| ![](/doc/demo/demo5.png)      | ![](/doc/demo/demo6.png) |
+| ![](/doc/demo/demo7.png)      | ![](/doc/demo/demo8.png) |
 
 
 
@@ -153,16 +153,8 @@ jwt_secret = ""			#登录身份令牌的密钥,随便填一串字符串
 
 6. 部署完成登录网站，使用管理员账号可以在设置页面添加配置 R2域名 Turnstile密钥 等
 
-**邮件发送**
 
-1. 在 resend 官网注册后，点击左侧 Domains 添加并验证你的域名，等待验证完成
-2. 点击左侧 Api Keys 创建立api key， 复制token回到项目网站设置页面添加 resend token
-
-3. 点击左侧 Webhooks 添加回调地址  https://你的项目域名/api/webhooks 
-
-   勾选✅ (email.bounced email.complained email.delivered email.delivery_delayed)
-
-
+[👉 使用 Github Action 部署](/doc/github-action.md)
 
 **本地运行**
 
@@ -175,6 +167,14 @@ jwt_secret = ""			#登录身份令牌的密钥,随便填一串字符串
 
 3. 本地运行项目设置页面r2域名可设置为  http://127.0.0.1:8787/api/file
 
+**邮件发送**
+
+1. 在 resend 官网注册后，点击左侧 Domains 添加并验证你的域名，等待验证完成
+2. 点击左侧 Api Keys 创建立api key， 复制token回到项目网站设置页面添加 resend token
+
+3. 点击左侧 Webhooks 添加回调地址  https://你的项目域名/api/webhooks 
+
+   勾选✅ (email.bounced email.complained email.delivered email.delivery_delayed)
 
 ## 目录结构
 
