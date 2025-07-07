@@ -22,7 +22,6 @@ jobs:
       DOMAIN: ${{ secrets.DOMAIN }}
       ADMIN: ${{ secrets.ADMIN }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      ENCRYPTION_SECRET: ${{ secrets.ENCRYPTION_SECRET }}
       INIT_URL: ${{ secrets.INIT_URL }}
     
     steps:
@@ -41,19 +40,22 @@ jobs:
         working-directory: ./mail-worker
 
       - name: 📡 Disable wrangler telemetry
-        run: npx wrangler telemetry disable -c wrangler-action.toml
         working-directory: ./mail-worker
+        # 使用 -c 指定配置文件
+        run: npx wrangler telemetry disable -c wrangler-action.toml
 
       - name: 🤫 Set Worker secrets (ignore if already exists)
         working-directory: ./mail-worker
         run: |
           WORKER_NAME="cloud-mail"
-          echo "🔒 Attempting to create/update secrets. Existing secrets will be ignored."
-          for VAR in DOMAIN ADMIN JWT_SECRET ENCRYPTION_SECRET; do
+          CONFIG_FILE="wrangler-action.toml"
+          echo "🔒 Attempting to create/update secrets using '$CONFIG_FILE'."
+
+          for VAR in DOMAIN ADMIN JWT_SECRET; do
             if [ -n "${!VAR}" ]; then
               VAR_LOWER=$(echo "$VAR" | tr '[:upper:]' '[:lower:]')
               echo ">> Processing secret: '$VAR_LOWER'"
-              (echo "${!VAR}" | npx wrangler secret put "$VAR_LOWER" --name "$WORKER_NAME") || true
+              (echo "${!VAR}" | npx wrangler secret put "$VAR_LOWER" --name "$WORKER_NAME" -c "$CONFIG_FILE") || true
             else
               echo "⚠️ Warning: GitHub Secret '$VAR' is not set. Skipping."
             fi
@@ -64,12 +66,16 @@ jobs:
       - name: 🛠️ Prepare Config and Deploy
         working-directory: ./mail-worker
         run: |
-          echo "⚙️ Dynamically updating wrangler.toml with binding IDs..."
-          sed -i "s|\${D1_DATABASE_ID}|${D1_DATABASE_ID}|g" wrangler.toml
-          sed -i "s|\${KV_NAMESPACE_ID}|${KV_NAMESPACE_ID}|g" wrangler.toml
-          sed -i "s|\${R2_BUCKET_NAME}|${R2_BUCKET_NAME}|g" wrangler.toml
+          CONFIG_FILE="wrangler-action.toml"
+          echo "⚙️ Dynamically updating '$CONFIG_FILE' with binding IDs..."
+
+          # 确保 sed 命令作用于 wrangler-action.toml 文件
+          sed -i "s|\${D1_DATABASE_ID}|${D1_DATABASE_ID}|g" "$CONFIG_FILE"
+          sed -i "s|\${KV_NAMESPACE_ID}|${KV_NAMESPACE_ID}|g" "$CONFIG_FILE"
+          sed -i "s|\${R2_BUCKET_NAME}|${R2_BUCKET_NAME}|g" "$CONFIG_FILE"
+
           echo "🚀 Configuration updated. Starting deployment..."
-          npx wrangler deploy | grep -v "https://.*\.workers\.dev" || true
+          npx wrangler deploy -c "$CONFIG_FILE" | grep -v "https://.*\.workers\.dev" || true
           echo "✅ Deployment command executed."
 
       - name: 🗄️ Initialize Database (if INIT_URL is set)
@@ -79,7 +85,7 @@ jobs:
             exit 0
           fi
           
-          echo "⏳ Waiting 10 seconds before checking initialization status..."
+          echo "⏳ Waiting 10 秒之前 before checking initialization status..."
           sleep 10
           
           HTTP_CODE=$(curl -s -w "%{http_code}" -o response.txt "$INIT_URL")
@@ -103,7 +109,7 @@ jobs:
           else
             echo "❌❌❌ Oh no! The deployment failed. Please check the logs above for errors. ❌❌❌"
           fi
-          
+
       - name: Delete workflow runs
         uses: GitRML/delete-workflow-runs@main
         with:
