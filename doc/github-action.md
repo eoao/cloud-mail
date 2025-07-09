@@ -17,7 +17,7 @@
 | `DOMAIN`                |  ✅  | 您要用于邮件服务的域名（例如 `["xx.xx"]，多域名用,分隔`）        |
 | `ADMIN`                 |  ✅  | 您的管理员邮箱地址（例如 `admin@example.com`）      |
 | `JWT_SECRET`            |  ✅  | 用于生成和验证 JWT 的随机长字符串                     |
-| `INIT_URL`              |  ❌  | （可选）部署后用于初始化数据库的 Worker URL           |
+| `INIT_URL`              |  ❌  | （可选）部署后用于初始化数据库的 Worker URL（格式参考下述手动初始化）           |
 
 ---
 
@@ -34,5 +34,5 @@
 2. 复制到 GitHub Secrets 中的 `CLOUDFLARE_ACCOUNT_ID`
 
 **运行工作流**
-1. 然后在Action页面手手动运行工作流，后续同步上游后会自动部署到 Cloudflare Workers。如未配置 `INIT_URL`，则需要手动访问 `https://你的项目域名/api/init/你的jwt_secret` 进行数据库初始化。
+1. 然后在Action页面手动运行工作流，后续同步上游后会自动部署到 Cloudflare Workers。如未配置 `INIT_URL`，则需要手动访问 `https://你的项目域名/api/init/你的jwt_secret` 进行数据库初始化。
 2. 自动同步上游可使用bot或者手动点击Sync Upstream按钮。
