@@ -24,6 +24,9 @@ jobs:
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       INIT_URL: ${{ secrets.INIT_URL }}
     
+    outputs:
+      deployment_skipped: ${{ steps.deploy.outputs.deployment_skipped }}
+
     steps:
       - name: ➡️ Checkout repository
         uses: actions/checkout@v4
@@ -41,7 +44,6 @@ jobs:
 
       - name: 📡 Disable wrangler telemetry
         working-directory: ./mail-worker
-        # 使用 -c 指定配置文件
         run: npx wrangler telemetry disable -c wrangler-action.toml
 
       - name: 🤫 Set Worker secrets (ignore if already exists)
@@ -64,12 +66,20 @@ jobs:
           echo "✨ Secret processing complete."
 
       - name: 🛠️ Prepare Config and Deploy
+        id: deploy
         working-directory: ./mail-worker
         run: |
+          if [ -z "$D1_DATABASE_ID" ] || [ -z "$KV_NAMESPACE_ID" ] || [ -z "$R2_BUCKET_NAME" ]; then
+            echo "⚠️ Required secrets (D1_DATABASE_ID, KV_NAMESPACE_ID, or R2_BUCKET_NAME) are not set."
+            echo "🟡 Skipping deployment."
+            echo "deployment_skipped=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "deployment_skipped=false" >> $GITHUB_OUTPUT
           CONFIG_FILE="wrangler-action.toml"
           echo "⚙️ Dynamically updating '$CONFIG_FILE' with binding IDs..."
 
-          # 确保 sed 命令作用于 wrangler-action.toml 文件
           sed -i "s|\${D1_DATABASE_ID}|${D1_DATABASE_ID}|g" "$CONFIG_FILE"
           sed -i "s|\${KV_NAMESPACE_ID}|${KV_NAMESPACE_ID}|g" "$CONFIG_FILE"
           sed -i "s|\${R2_BUCKET_NAME}|${R2_BUCKET_NAME}|g" "$CONFIG_FILE"
@@ -79,6 +89,7 @@ jobs:
           echo "✅ Deployment command executed."
 
       - name: 🗄️ Initialize Database (if INIT_URL is set)
+        if: steps.deploy.outputs.deployment_skipped == 'false'
         run: |
           if [ -z "$INIT_URL" ]; then
             echo "✅ Deployment successful. INIT_URL not set, skipping initialization."
@@ -105,7 +116,11 @@ jobs:
         if: always()
         run: |
           if [ "${{ job.status }}" == "success" ]; then
-            echo "🎉🎉🎉 Hooray! Deployment completed successfully! 🎉🎉🎉"
+            if [ "${{ steps.deploy.outputs.deployment_skipped }}" == "true" ]; then
+              echo "🟡 Deployment was skipped due to missing configuration."
+            else
+              echo "🎉🎉🎉 Hooray! Deployment completed successfully! 🎉🎉🎉"
+            fi
           else
             echo "❌❌❌ Oh no! The deployment failed. Please check the logs above for errors. ❌❌❌"
           fi
