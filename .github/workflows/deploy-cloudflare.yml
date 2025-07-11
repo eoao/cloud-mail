@@ -53,7 +53,7 @@ jobs:
           CONFIG_FILE="wrangler-action.toml"
           echo "🔒 Attempting to create/update secrets using '$CONFIG_FILE'."
 
-          for VAR in DOMAIN ADMIN JWT_SECRET; do
+          for VAR in ADMIN JWT_SECRET; do
             if [ -n "${!VAR}" ]; then
               VAR_LOWER=$(echo "$VAR" | tr '[:upper:]' '[:lower:]')
               echo ">> Processing secret: '$VAR_LOWER'"
@@ -83,6 +83,17 @@ jobs:
           sed -i "s|\${D1_DATABASE_ID}|${D1_DATABASE_ID}|g" "$CONFIG_FILE"
           sed -i "s|\${KV_NAMESPACE_ID}|${KV_NAMESPACE_ID}|g" "$CONFIG_FILE"
           sed -i "s|\${R2_BUCKET_NAME}|${R2_BUCKET_NAME}|g" "$CONFIG_FILE"
+          
+          if [ -n "$DOMAIN" ]; then
+            if echo "$DOMAIN" | jq . > /dev/null 2>&1; then
+              ESCAPED_DOMAIN=$(echo "$DOMAIN" | sed 's/"/\\"/g' | tr -d '\n')
+              sed -i "s|\${DOMAIN}|${ESCAPED_DOMAIN}|g" "$CONFIG_FILE"
+            else
+              sed -i "s|\${DOMAIN}|${DOMAIN}|g" "$CONFIG_FILE"
+            fi
+          else
+            sed -i "s|\${DOMAIN}||g" "$CONFIG_FILE"
+          fi
 
           echo "🚀 Configuration updated. Starting deployment..."
           npx wrangler deploy -c "$CONFIG_FILE" | grep -v "https://.*\.workers\.dev" || true
