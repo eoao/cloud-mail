@@ -15,7 +15,7 @@
         </div>
       </div>
       <div class="container">
-        <el-input-tag @add-tag="addTagChange" tag-type="primary" size="default" v-model="form.receiveEmail" placeholder="多邮个箱用, 分开 example1.com,example2.com" >
+        <el-input-tag @add-tag="addTagChange" tag-type="primary" size="default" v-model="form.receiveEmail" placeholder="多个邮箱用, 分开 example1.com,example2.com" >
           <template #prefix>
             <div class="item-title">收件人 </div>
           </template>

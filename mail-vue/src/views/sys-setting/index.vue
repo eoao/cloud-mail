@@ -368,7 +368,7 @@
           </div>
         </template>
         <div class="forward-set-body">
-          <el-input-tag tag-type="warning" placeholder="多邮个箱用, 分开 example1.com,example2.com" v-model="forwardEmail" @add-tag="emailAddTag"></el-input-tag>
+          <el-input-tag tag-type="warning" placeholder="多个邮箱用, 分开 example1.com,example2.com" v-model="forwardEmail" @add-tag="emailAddTag"></el-input-tag>
         </div>
         <template #footer>
           <div class="dialog-footer">
@@ -392,7 +392,7 @@
             </div>
         </template>
         <div class="forward-set-body">
-          <el-input-tag placeholder="多邮个箱用, 分开 example1.com,example2.com" tag-type="success" v-model="ruleEmail" @add-tag="ruleEmailAddTag" />
+          <el-input-tag placeholder="多个邮箱用, 分开 example1.com,example2.com" tag-type="success" v-model="ruleEmail" @add-tag="ruleEmailAddTag" />
         </div>
         <template #footer>
           <div class="dialog-footer">
