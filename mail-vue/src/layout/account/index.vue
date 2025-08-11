@@ -124,6 +124,7 @@ import {Icon} from "@iconify/vue";
 import {nextTick, reactive, ref, watch} from "vue";
 import {accountList, accountAdd, accountDelete, accountSetName} from "@/request/account.js";
 import {isEmail} from "@/utils/verify-utils.js";
+import {copyText} from "@/utils/clipboard-utils.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useAccountStore} from "@/store/account.js";
 import {useUserStore} from "@/store/user.js";
@@ -286,7 +287,7 @@ function add() {
 
 async function copyAccount(account) {
   try {
-    await navigator.clipboard.writeText(account);
+    await copyText(account);
     ElMessage({
       message: t('copySuccessMsg'),
       type: 'success',

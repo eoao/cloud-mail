@@ -105,6 +105,7 @@ import { getTextWidth } from "@/utils/text.js";
 import dayjs from "dayjs";
 import {tzDayjs} from "@/utils/day.js";
 import {useI18n} from "vue-i18n";
+import {copyText} from "@/utils/clipboard-utils.js";
 
 defineOptions({
   name: 'reg-key'
@@ -254,7 +255,7 @@ function getList(showLoading = false) {
 
 async function copyCode(code) {
   try {
-    await navigator.clipboard.writeText(code);
+    await copyText(code);
     ElMessage({
       message: t('copySuccessMsg'),
       type: 'success',

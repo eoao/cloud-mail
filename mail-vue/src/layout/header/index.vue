@@ -86,6 +86,7 @@ import {computed, ref} from "vue";
 import {useSettingStore} from "@/store/setting.js";
 import { hasPerm } from "@/perm/perm.js"
 import {useI18n} from "vue-i18n";
+import {copyText} from "@/utils/clipboard-utils.js";
 
 const { t } = useI18n();
 const route = useRoute();
@@ -149,7 +150,7 @@ const sendCount = computed(() => {
 
 async function copyEmail(email) {
   try {
-    await navigator.clipboard.writeText(email);
+    await copyText(email);
     ElMessage({
       message: t('copySuccessMsg'),
       type: 'success',
