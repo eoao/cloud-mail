@@ -24,7 +24,11 @@ const settingService = {
 		const setting = await c.env.kv.get(KvConst.SETTING, { type: 'json' });
 		let domainList = c.env.domain;
 		if (typeof domainList === 'string') {
-			throw new BizError(t('notJsonDomain'));
+			try {
+				domainList = JSON.parse(domainList)
+			} catch (error) {
+				throw new BizError(t('notJsonDomain'));
+			}
 		}
 		domainList = domainList.map(item => '@' + item);
 		setting.domainList = domainList;
@@ -136,7 +140,7 @@ const settingService = {
 			siteKey: settingRow.siteKey,
 			background: settingRow.background,
 			loginOpacity: settingRow.loginOpacity,
-			domainList:settingRow.domainList,
+			domainList: settingRow.domainList,
 			regKey: settingRow.regKey,
 			regVerifyOpen: settingRow.regVerifyOpen,
 			addVerifyOpen: settingRow.addVerifyOpen,
