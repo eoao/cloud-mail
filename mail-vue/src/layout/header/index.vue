@@ -17,6 +17,7 @@
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item @click="changeLang('zh')">简体中文</el-dropdown-item>
+            <el-dropdown-item @click="changeLang('zhTw')">繁體中文</el-dropdown-item>
             <el-dropdown-item @click="changeLang('en')">English</el-dropdown-item>
           </el-dropdown-menu>
         </template>
