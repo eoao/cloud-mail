@@ -25,9 +25,17 @@ const init = {
 		return c.text(t('initSuccess'));
 	},
 
-	async v1_7DB(c) {
-		 await c.env.db.prepare(`ALTER TABLE setting ADD COLUMN login_domain INTEGER NOT NULL DEFAULT 0;`).run();
-	},
+async v1_7DB(c) {
+	// 添加一个检查，查询 setting 表的所有列信息
+	const columnCheck = await c.env.db.prepare(`PRAGMA table_info(setting);`).all();
+	// 检查返回结果中是否已包含名为 'login_domain' 的列
+	const columnExists = columnCheck.results.some(col => col.name === 'login_domain');
+
+	// 如果列不存在，则执行 ALTER TABLE 来添加它
+	if (!columnExists) {
+		await c.env.db.prepare(`ALTER TABLE setting ADD COLUMN login_domain INTEGER NOT NULL DEFAULT 0;`).run();
+	}
+},
 
 	async v1_6DB(c) {
 
