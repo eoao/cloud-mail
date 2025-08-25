@@ -1,15 +1,18 @@
 <template>
   <div class="editor-box" :class="showLoading ? 'editor-box-loading' : ''">
-    <loading class="loading" v-if="showLoading" />
+    <loading class="loading" v-if="showLoading"/>
     <textarea v-else style="outline: none" :id="editorId" ref="editorRef"></textarea>
   </div>
 </template>
 
 <script setup>
-import {ref, onMounted, onBeforeUnmount, watch, nextTick, shallowRef, defineEmits} from 'vue';
+import {ref, onMounted, onBeforeUnmount, watch, nextTick, shallowRef, defineEmits, computed} from 'vue';
 import loading from "@/components/loading/index.vue";
 import {compressImage} from "@/utils/file-utils.js";
-import { useI18n } from 'vue-i18n'
+import {useI18n} from 'vue-i18n'
+import {useUiStore} from '@/store/ui.js'
+import {useSettingStore} from '@/store/setting.js'
+
 defineExpose({
   clearEditor,
   focus,
@@ -28,12 +31,14 @@ const props = defineProps({
 });
 
 
-const { locale } = useI18n()
+const {locale} = useI18n()
 const emit = defineEmits(['change']);
 const editor = shallowRef(null);
 const isInitialized = ref(false);
 const editorRef = ref(null);
 const showLoading = ref(false);
+const uiStore = useUiStore();
+const settingStore = useSettingStore();
 
 onMounted(() => {
   initTinyMCE();
@@ -48,6 +53,23 @@ watch(() => props.defValue, (newValue) => {
     editor.value.setContent(newValue);
   }
 });
+
+watch(() => [uiStore.dark, settingStore.lang], () => {
+  destroyEditor();
+  initEditor();
+});
+
+const language = computed(() => {
+  if (locale.value === 'zh') {
+    return 'zh_CN'
+  }
+
+  if (locale.value === 'zhTW') {
+    return 'zh_TW'
+  }
+
+  return 'en'
+})
 
 function clearEditor() {
   if (editor.value) {
@@ -75,6 +97,12 @@ function initEditor() {
     height: "100%",
     auto_focus: true,
     forced_root_block: 'div',
+    skin: `${uiStore.dark ? 'oxide-dark' : 'oxide'}`,
+    content_css: `/tinymce/css/index.css,${uiStore.dark ? 'dark' : 'default'}`,
+    content_style: `:root {
+         --scrollbar-track-color: ${uiStore.dark ? '#141414' : '#FFFFFF'};
+         --scrollbar-thumb-color: ${uiStore.dark ? '#8D9095' : '#A8ABB2'};
+    }`,
     plugins: 'link image advlist lists  emoticons fullscreen  table preview code',
     toolbar: 'bold emoticons forecolor backcolor italic fontsize | alignleft aligncenter alignright alignjustify | outdent indent |  bullist numlist | link image  | table code preview fullscreen',
     toolbar_mode: 'scrolling',
@@ -83,37 +111,11 @@ function initEditor() {
     },
     font_size_formats: '8px 10px 12px 14px 16px 18px 24px 36px',
     emoticons_search: false,
-    language: locale.value === 'zh' ? 'zh_CN' : 'en',
-    language_url: '/tinymce/langs/zh_CN.js',
+    language: language.value,
+    language_load: true,
     menubar: false,
     license_key: 'gpl',
     noneditable_class: 'mceNonEditable',
-    content_style: ` .tox-dialog__body-content  { margin: 0 !important; }
-    img { max-width: 100% !important; height: auto !important; }
-    body {margin: 10px 8px 0 5px !important; font-family: 'HarmonyOS'; font-size: 14px;}
-    @media (pointer: fine) and (hover: hover) {
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-
-
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-
-
-        ::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
-            cursor: pointer;
-        }
-    }
-    .mce-item-table:not([border]), .mce-item-table:not([border]) caption, .mce-item-table:not([border]) td, .mce-item-table:not([border]) th, .mce-item-table[border="0"], .mce-item-table[border="0"] caption, .mce-item-table[border="0"] td, .mce-item-table[border="0"] th, table[style*="border-width: 0px"], table[style*="border-width: 0px"] caption, table[style*="border-width: 0px"] td, table[style*="border-width: 0px"] th {
-        border: none;
-    }
-    `,
     setup: (ed) => {
       editor.value = ed;
       ed.on('init', () => {
@@ -122,7 +124,7 @@ function initEditor() {
       });
       ed.on('input change', () => {
         const content = ed.getContent();
-        const text = ed.getContent({ format: 'text' });
+        const text = ed.getContent({format: 'text'});
         emit('change', content, text);
       });
     },
@@ -133,7 +135,7 @@ function initEditor() {
     image_description: false,
     link_title: false,
     dialog_type: 'none',
-    file_picker_callback:  (callback, value, meta) => {
+    file_picker_callback: (callback, value, meta) => {
       const input = document.createElement('input');
       input.setAttribute('type', 'file');
       input.setAttribute('accept', 'image/*');
@@ -144,12 +146,12 @@ function initEditor() {
         const reader = new FileReader();
         reader.onload = () => {
           const id = 'blobid' + (new Date()).getTime();
-          const blobCache =  tinymce.activeEditor.editorUpload.blobCache;
+          const blobCache = tinymce.activeEditor.editorUpload.blobCache;
           const base64 = reader.result.split(',')[1];
           const blobInfo = blobCache.create(id, file, base64);
           blobCache.add(blobInfo);
 
-          callback(blobInfo.blobUri(), { title: file.name });
+          callback(blobInfo.blobUri(), {title: file.name});
         }
         reader.readAsDataURL(file);
       });
@@ -202,7 +204,7 @@ function destroyEditor() {
   padding-right: 15px;
   padding-left: 15px;
   padding-bottom: 15px;
-  background: #FFFFFF;
+  background: var(--el-bg-color);
   @media (max-width: 767px) {
     padding-right: 10px;
     padding-left: 10px;

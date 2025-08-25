@@ -32,7 +32,7 @@
     </div>
     <div class="del-email" v-perm="'my:delete'">
       <div class="title">{{$t('deleteUser')}}</div>
-      <div style="color: #585d69;">
+      <div style="color: var(--regular-text-color);">
         {{$t('delAccountMsg')}}
       </div>
       <div>

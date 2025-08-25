@@ -144,7 +144,7 @@
               </div>
             </div>
           </div>
-          <div class="loading" :class="loading ? 'loading-show' : 'loading-hide'">
+          <div class="loading" :class="loading ? 'loading-show' : 'loading-hide'" :style="firstLoad ? 'background: transparent' : ''">
             <Loading/>
           </div>
           <div class="follow-loading" v-if="followLoading">
@@ -535,12 +535,11 @@ function loadData() {
 <style lang="scss" scoped>
 
 .email-container {
-  border-radius: 8px;
   display: grid;
   grid-template-rows: auto 1fr;
   padding: 0;
   font-size: 14px;
-  color: #2e2e2e;
+  color: var(--el-text-color-primary);
   overflow: hidden;
   height: 100%;
 }
@@ -582,7 +581,7 @@ function loadData() {
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: rgba(255, 255, 255, 0.8);
+    background: var(--loadding-background);
     height: 100%;
     width: 100%;
     position: absolute;
@@ -607,7 +606,7 @@ function loadData() {
   display: flex;
   padding: 8px 0;
   justify-content: space-between;
-  box-shadow: inset 0 -1px 0 0 rgba(100, 121, 143, 0.12);
+  box-shadow: var(--header-actions-border);
   cursor: pointer;
   align-items: center;
   position: relative;
@@ -621,7 +620,7 @@ function loadData() {
     column-gap: 10px;
     margin-top: 5px;
     margin-bottom: 5px;
-    color: rgba(25, 41, 59, 0.4);
+    color: var(--email-scroll-content-color);
 
     .user, .account {
       overflow: hidden;
@@ -684,7 +683,7 @@ function loadData() {
 
     .email-sender {
       font-weight: bold;;
-      color: #1a1a1a;
+      color: var(--el-text-color-primary);
       display: grid;
       grid-template-columns: auto 1fr auto;
 
@@ -714,7 +713,6 @@ function loadData() {
       .phone-time {
         font-weight: normal;
         font-size: 12px;
-        color: #333 !important;
         @media (min-width: 1200px) {
           display: none;
         }
@@ -722,7 +720,6 @@ function loadData() {
     }
 
     .email-text {
-      color: #333;
       display: grid;
       grid-template-columns: auto 1fr;
       @media (max-width: 1199px) {
@@ -743,7 +740,7 @@ function loadData() {
         white-space: nowrap;
         text-overflow: ellipsis;
         padding-left: 10px;
-        color: rgba(25, 41, 59, 0.4);
+        color: var(--email-scroll-content-color);
         @media (max-width: 1199px) {
           padding-left: 0;
           margin-top: 0;
@@ -760,14 +757,13 @@ function loadData() {
     display: flex;
     padding-left: 15px;
     align-items: center;
-    color: #333;
     @media (max-width: 1199px) {
       display: none;
     }
   }
 
   &:hover {
-    background-color: #F2F6FC;
+    background-color: var(--email-hover-background);
     z-index: 0;
   }
 
@@ -815,9 +811,7 @@ function loadData() {
   align-items: center;
   gap: 15px;
   padding: 3px 15px;
-  box-shadow: inset 0 -1px 0 0 rgba(100, 121, 143, 0.12);
-
-
+  box-shadow: var(--header-actions-border);
   .header-left {
     display: flex;
     flex-wrap: wrap;
@@ -825,6 +819,7 @@ function loadData() {
     column-gap: 18px;
     row-gap: 8px;
     padding-left: 2px;
+    color: var(--el-text-color-primary);;
   }
 
   .header-right {
@@ -832,7 +827,7 @@ function loadData() {
     grid-template-columns: auto auto;
     align-items: start;
     height: 100%;
-
+    color: var(--el-text-color-primary);;
     .email-count {
       white-space: nowrap;
       margin-top: 6px;

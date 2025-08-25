@@ -1,0 +1,46 @@
+.tox-dialog__body-content {
+    margin: 0 !important;
+}
+
+img {
+    max-width: 100% !important;
+    height: auto !important;
+}
+
+body {
+    margin: 10px 8px 0 5px !important;
+    font-size: 14px;
+}
+
+:root {
+    --scrollbar-thumb-color: #FFFFFF;
+    --scrollbar-track-color: #A8ABB2;
+}
+
+.mceNonEditable {
+    color: #303133;
+    background: #FFFFFF;
+}
+
+@media (pointer: fine) and (hover: hover) {
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+
+    ::-webkit-scrollbar-track {
+        background: var(--scrollbar-track-color);
+    }
+
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb-color);
+        border-radius: 10px;
+        cursor: pointer;
+    }
+}
+
+.mce-item-table:not([border]), .mce-item-table:not([border]) caption, .mce-item-table:not([border]) td, .mce-item-table:not([border]) th, .mce-item-table[border="0"], .mce-item-table[border="0"] caption, .mce-item-table[border="0"] td, .mce-item-table[border="0"] th, table[style*="border-width: 0px"], table[style*="border-width: 0px"] caption, table[style*="border-width: 0px"] td, table[style*="border-width: 0px"] th {
+    border: none;
+}

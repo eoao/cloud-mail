@@ -15,40 +15,40 @@
       <Icon class="icon" icon="fluent:broom-sparkle-16-regular" width="22" height="22" @click="clearNotUse"/>
     </div>
 
-    <el-scrollbar  class="scrollbar" :style="`background: ${regKeyData.length > 0  ? '#FAFCFF;' : '#FFF'}`">
-      <div class="loading" :class="regKeyLoading ? 'loading-show' : 'loading-hide'">
-        <loading />
+    <el-scrollbar class="scrollbar">
+      <div  class="loading" :class="regKeyLoading ? 'loading-show' : 'loading-hide'" :style="regKeyFirst ? 'background: transparent' : ''">
+        <loading/>
       </div>
       <div class="code-box">
         <div class="code-item" v-for="item in regKeyData">
           <div class="code-info">
             <div class="info-left">
               <div class="info-left-item">
-                <span class="code" @click="copyCode(item.code)">{{item.code}}</span>
+                <span class="code" @click="copyCode(item.code)">{{ item.code }}</span>
               </div>
               <div class="info-left-item">
-                <div>{{$t('remainingUses')}}：</div>
-                <div v-if="item.count">{{item.count}}</div>
-                <el-tag v-else type="danger">{{$t('exhausted')}}</el-tag>
+                <div>{{ $t('remainingUses') }}：</div>
+                <div v-if="item.count">{{ item.count }}</div>
+                <el-tag v-else type="danger">{{ $t('exhausted') }}</el-tag>
               </div>
               <div class="info-left-item">
-                <div>{{$t('roleDesc')}}：</div>
-                <el-tag>{{item.roleName}}</el-tag>
+                <div>{{ $t('roleDesc') }}：</div>
+                <el-tag>{{ item.roleName }}</el-tag>
               </div>
               <div class="info-left-item">
-                <div>{{$t('validUntil')}}：</div>
-                <div v-if="item.expireTime">{{ formatExpireTime(item.expireTime)}}</div>
-                <el-tag v-else type="danger">{{$t('expired')}}</el-tag>
+                <div>{{ $t('validUntil') }}：</div>
+                <div v-if="item.expireTime">{{ formatExpireTime(item.expireTime) }}</div>
+                <el-tag v-else type="danger">{{ $t('expired') }}</el-tag>
               </div>
             </div>
             <div class="info-right">
               <el-dropdown class="setting">
-                <Icon icon="fluent:settings-24-filled" width="21" height="21" color="#909399" />
-                <template #dropdown >
+                <Icon icon="fluent:settings-24-filled" width="21" height="21" color="#909399"/>
+                <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item @click="copyCode(item.code)">{{$t('copy')}}</el-dropdown-item>
-                    <el-dropdown-item @click="openHistory(item)">{{$t('history')}}</el-dropdown-item>
-                    <el-dropdown-item @click="deleteRegKey(item)">{{$t('delete')}}</el-dropdown-item>
+                    <el-dropdown-item @click="copyCode(item.code)">{{ $t('copy') }}</el-dropdown-item>
+                    <el-dropdown-item @click="openHistory(item)">{{ $t('history') }}</el-dropdown-item>
+                    <el-dropdown-item @click="deleteRegKey(item)">{{ $t('delete') }}</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
@@ -64,7 +64,7 @@
       <div class="container">
         <el-input v-model="addForm.code" :placeholder="$t('regKey')">
           <template #suffix>
-            <Icon @click.stop="genCode" class="gen-code" icon="bitcoin-icons:refresh-filled" width="24" height="24" />
+            <Icon @click.stop="genCode" class="gen-code" icon="bitcoin-icons:refresh-filled" width="24" height="24"/>
           </template>
         </el-input>
         <el-select v-model="addForm.roleId" :placeholder="$t('roleDesc')">
@@ -77,31 +77,33 @@
         />
         <el-input-number v-model="addForm.count" :min="1" :max="99999"/>
         <el-button class="btn" type="primary" @click="submit" :loading="addLoading"
-        >{{$t('add')}}
+        >{{ $t('add') }}
         </el-button>
       </div>
     </el-dialog>
     <el-dialog class="history-list" v-model="showRegKeyHistory" :title="$t('useHistory')">
       <div class="loading" :class="historyLoading ? 'loading-show' : 'loading-hide'">
-        <loading />
+        <loading/>
       </div>
-      <el-table v-if="!historyLoading" :data="historyList" :fit="true" style="height: 100%" >
-        <el-table-column :min-width="emailColumnWidth" property="email" :label="$t('user')" :show-overflow-tooltip="true" />
-        <el-table-column :width="createTimeColumnWidth" :formatter="formatUserCreateTime" property="createTime" :label="$t('date')" fixed="right" :show-overflow-tooltip="true" />
+      <el-table v-if="!historyLoading" :data="historyList" :fit="true" style="height: 100%">
+        <el-table-column :min-width="emailColumnWidth" property="email" :label="$t('user')"
+                         :show-overflow-tooltip="true"/>
+        <el-table-column :width="createTimeColumnWidth" :formatter="formatUserCreateTime" property="createTime"
+                         :label="$t('date')" fixed="right" :show-overflow-tooltip="true"/>
       </el-table>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import {defineOptions, reactive, ref, watch} from "vue"
+import {defineOptions, nextTick, reactive, ref, watch} from "vue"
 import {Icon} from "@iconify/vue";
 import loading from "@/components/loading/index.vue";
 import {useSettingStore} from "@/store/setting.js";
 import {roleSelectUse} from "@/request/role.js";
 import {useRoleStore} from "@/store/role.js";
 import {regKeyAdd, regKeyList, regKeyClearNotUse, regKeyDelete, regKeyHistory} from "@/request/reg-key.js";
-import { getTextWidth } from "@/utils/text.js";
+import {getTextWidth} from "@/utils/text.js";
 import dayjs from "dayjs";
 import {tzDayjs} from "@/utils/day.js";
 import {useI18n} from "vue-i18n";
@@ -117,7 +119,7 @@ const params = reactive({
   code: '',
 })
 
-const { t } = useI18n()
+const {t} = useI18n()
 const roleList = reactive([])
 const addLoading = ref(false)
 const showAdd = ref(false)
@@ -194,21 +196,21 @@ function formatUserCreateTime(regKey) {
   const currentYear = dayjs().year();
   const expireYear = createTime.year();
 
-  if(settingStore.lang === 'en') {
+  if (settingStore.lang === 'en') {
 
-      if (expireYear === currentYear) {
-          return createTime.format('MMM D, HH:mm');
-      } else {
-          return createTime.format('MMM D, YYYY HH:mm');
-      }
+    if (expireYear === currentYear) {
+      return createTime.format('MMM D, HH:mm');
+    } else {
+      return createTime.format('MMM D, YYYY HH:mm');
+    }
 
   } else {
 
-      if (expireYear === currentYear) {
-          return createTime.format('M月D日 HH:mm');
-      } else {
-          return createTime.format('YYYY年M月D日 HH:mm');
-      }
+    if (expireYear === currentYear) {
+      return createTime.format('M月D日 HH:mm');
+    } else {
+      return createTime.format('YYYY年M月D日 HH:mm');
+    }
 
   }
 
@@ -221,15 +223,15 @@ function formatExpireTime(expireTime) {
 
   if (settingStore.lang === 'en') {
 
-      return expireYear === currentYear
-          ? expireDate.format('MMM D')
-          : expireDate.format('MMM D, YYYY');
+    return expireYear === currentYear
+        ? expireDate.format('MMM D')
+        : expireDate.format('MMM D, YYYY');
 
   } else {
 
-      return expireYear === currentYear
-          ? expireDate.format('M月D日')
-          : expireDate.format('YYYY年M月D日');
+    return expireYear === currentYear
+        ? expireDate.format('M月D日')
+        : expireDate.format('YYYY年M月D日');
 
   }
 }
@@ -251,7 +253,9 @@ function getList(showLoading = false) {
     regKeyData.length = 0
     regKeyData.push(...list)
     regKeyLoading.value = false
-    regKeyFirst.value = false
+    setTimeout(() => {
+      regKeyFirst.value = false
+    },200)
   })
 }
 
@@ -356,8 +360,8 @@ function submit() {
   })
 }
 
-function deleteRegKey(regKey){
-  ElMessageBox.confirm(t('delConfirm',{msg: regKey.code}), {
+function deleteRegKey(regKey) {
+  ElMessageBox.confirm(t('delConfirm', {msg: regKey.code}), {
     confirmButtonText: t('confirm'),
     cancelButtonText: t('cancel'),
     type: 'warning'
@@ -373,7 +377,7 @@ function deleteRegKey(regKey){
   });
 }
 
-function resetForm(){
+function resetForm() {
   addForm.code = ''
 }
 
@@ -393,28 +397,35 @@ function openAdd() {
 .scrollbar {
   height: calc(100% - 48px);
   position: relative;
+  background: var(--extra-light-fill);
   @media (max-width: 372px) {
     height: calc(100% - 85px);
   }
+
   .code-box {
     padding: 15px 15px 25px 15px;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 15px;
+
     .code-item {
-      background-color: #fff;
+      background: var(--el-bg-color);
       border-radius: 8px;
       border: 1px solid var(--el-border-color);
-      transition: all 300ms;
+      transition: all 200ms;
       padding: 15px;
+
       .code-info {
         display: flex;
+
         .info-left {
           flex: 1;
           min-width: 0;
+
           .info-left-item {
             display: flex;
             padding-top: 5px;
+
             .code {
               font-weight: bold;;
               font-size: 16px;
@@ -482,7 +493,7 @@ function openAdd() {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: rgba(255, 255, 255, 0.8);
+  background: var(--loadding-background);
   z-index: 2;
 }
 
@@ -532,6 +543,7 @@ function openAdd() {
   @media (max-width: 767px) {
     gap: 15px;
   }
+
   .search-input {
     width: min(200px, calc(100vw - 140px));
   }
@@ -552,7 +564,7 @@ function openAdd() {
 }
 
 :deep(.el-table__inner-wrapper:before) {
-  background: #fff;
+  background: var(--el-bg-color);
 }
 
 </style>

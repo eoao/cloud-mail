@@ -40,7 +40,7 @@
           <el-skeleton v-for="i in 3" :key="i" animated>
             <template #template>
               <el-card class="item">
-                <el-skeleton-item variant="p" style="width: 70%; height: 20px; margin-bottom: 20px"/>
+                <el-skeleton-item variant="p" style="width: 70%; height: 20px; margin-bottom: 25px"/>
                 <div style="display: flex; justify-content: space-between">
                   <el-skeleton-item variant="text" style="width: 20px"/>
                   <el-skeleton-item variant="text" style="width: 20px"/>
@@ -92,7 +92,7 @@
                     :value="item"
                 />
               </el-select>
-              <div style="color: #333">
+              <div>
                 <span>{{ addForm.suffix }}</span>
                 <Icon class="setting-icon" icon="mingcute:down-small-fill" width="20" height="20"/>
               </div>
@@ -429,7 +429,7 @@ path[fill="#ffdda1"] {
 .account-box {
 
   border-right: 1px solid var(--el-border-color) !important;
-  background-color: #FFF;
+  background-color: var(--el-bg-color);
   height: 100%;
   overflow: hidden;
 
@@ -437,7 +437,7 @@ path[fill="#ffdda1"] {
     display: flex;
     align-items: center;
     height: 38px;
-    box-shadow: inset 0 -1px 0 0 rgba(100, 121, 143, 0.12);
+    box-shadow: var(--header-actions-border);
     padding-left: 10px;
     padding-right: 10px;
 
@@ -488,7 +488,7 @@ path[fill="#ffdda1"] {
   }
 
   .item {
-    background-color: #fff;
+    background-color: var(--el-bg-color);
     border-radius: 8px;
     padding: 12px 10px;
     margin-bottom: 10px;
@@ -532,7 +532,7 @@ path[fill="#ffdda1"] {
   }
 
   .item-choose {
-    background: var(--el-color-primary-light-8);
+    background: var(--choose-account-background);
   }
 }
 
@@ -545,7 +545,7 @@ path[fill="#ffdda1"] {
 :deep(.el-input-group__append) {
   padding: 0 !important;
   padding-left: 8px !important;
-  background: #FFFFFF;
+  background: var(--el-bg-color);
 }
 
 :deep(.el-dialog) {
@@ -567,7 +567,7 @@ path[fill="#ffdda1"] {
 
 :deep(.el-pagination .el-select) {
   width: 100px;
-  background: #FFF;
+  background: var(--el-bg-color);
 }
 
 .add-email-turnstile {

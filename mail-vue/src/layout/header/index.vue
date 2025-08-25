@@ -5,14 +5,14 @@
       <span class="breadcrumb-item">{{ $t(route.meta.title) }}</span>
     </div>
     <div v-perm="'email:send'" class="writer-box" @click="openSend">
-      <div class="writer" >
-        <Icon icon="material-symbols:edit-outline-sharp" width="22" height="22" />
+      <div class="writer">
+        <Icon icon="material-symbols:edit-outline-sharp" width="22" height="22"/>
       </div>
     </div>
     <div class="toolbar">
       <el-dropdown>
         <div class="translate icon-item">
-          <Icon icon="carbon:ibm-watson-language-translator" />
+          <Icon icon="carbon:ibm-watson-language-translator"/>
         </div>
         <template #dropdown>
           <el-dropdown-menu>
@@ -22,15 +22,21 @@
           </el-dropdown-menu>
         </template>
       </el-dropdown>
-      <div class="notice icon-item" @click="openNotice">
-        <Icon icon="streamline-plump:announcement-megaphone" />
+      <div v-if="uiStore.dark" class="sun-icon icon-item" @click="openDark($event)">
+        <Icon icon="mingcute:sun-fill"/>
       </div>
-      <el-dropdown :teleported="false" popper-class="detail-dropdown" >
+      <div v-else class="dark-icon icon-item" @click="openDark($event)">
+        <Icon icon="solar:moon-linear"/>
+      </div>
+      <div class="notice icon-item" @click="openNotice">
+        <Icon icon="streamline-plump:announcement-megaphone"/>
+      </div>
+      <el-dropdown :teleported="false" popper-class="detail-dropdown">
         <div class="avatar">
           <div class="avatar-text">
             <div>{{ formatName(userStore.user.email) }}</div>
           </div>
-          <Icon class="setting-icon" icon="mingcute:down-small-fill" width="24" height="24" />
+          <Icon class="setting-icon" icon="mingcute:down-small-fill" width="24" height="24"/>
         </div>
         <template #dropdown>
           <div class="user-details">
@@ -38,35 +44,38 @@
               {{ formatName(userStore.user.email) }}
             </div>
             <div class="user-name">
-              {{userStore.user.name}}
+              {{ userStore.user.name }}
             </div>
             <div class="detail-email" @click="copyEmail(userStore.user.email)">
               {{ userStore.user.email }}
             </div>
             <div class="detail-user-type">
-              <el-tag >{{$t(userStore.user.role.name)}}</el-tag>
+              <el-tag>{{ $t(userStore.user.role.name) }}</el-tag>
             </div>
             <div class="action-info">
               <div>
-                <span style="margin-right: 10px">{{$t('sendCount')}}</span>
-                <span style="margin-right: 10px">{{$t('accountCount')}}</span>
+                <span style="margin-right: 10px">{{ $t('sendCount') }}</span>
+                <span style="margin-right: 10px">{{ $t('accountCount') }}</span>
               </div>
               <div>
                 <div>
-                  <span v-if="sendCount" style="margin-right: 5px" >{{  sendCount }}</span>
-                  <el-tag v-if="!hasPerm('email:send')" >{{sendType}}</el-tag>
-                  <el-tag v-else >{{sendType}}</el-tag>
+                  <span v-if="sendCount" style="margin-right: 5px">{{ sendCount }}</span>
+                  <el-tag v-if="!hasPerm('email:send')">{{ sendType }}</el-tag>
+                  <el-tag v-else>{{ sendType }}</el-tag>
                 </div>
                 <div>
-                  <el-tag v-if="settingStore.settings.manyEmail || settingStore.settings.addEmail" >{{$t('disabled')}}</el-tag>
-                  <span v-else-if="accountCount && hasPerm('account:add')" style="margin-right: 5px">{{ $t('totalUserAccount',{msg: accountCount}) }}</span>
-                  <el-tag v-else-if="!accountCount && hasPerm('account:add')" >{{$t('unlimited')}}</el-tag>
-                  <el-tag v-else-if="!hasPerm('account:add')" >{{$t('unauthorized')}}</el-tag>
+                  <el-tag v-if="settingStore.settings.manyEmail || settingStore.settings.addEmail">
+                    {{ $t('disabled') }}
+                  </el-tag>
+                  <span v-else-if="accountCount && hasPerm('account:add')"
+                        style="margin-right: 5px">{{ $t('totalUserAccount', {msg: accountCount}) }}</span>
+                  <el-tag v-else-if="!accountCount && hasPerm('account:add')">{{ $t('unlimited') }}</el-tag>
+                  <el-tag v-else-if="!hasPerm('account:add')">{{ $t('unauthorized') }}</el-tag>
                 </div>
               </div>
             </div>
             <div class="logout">
-              <el-button type="primary" :loading="logoutLoading" @click="clickLogout">{{$t('logOut')}}</el-button>
+              <el-button type="primary" :loading="logoutLoading" @click="clickLogout">{{ $t('logOut') }}</el-button>
             </div>
           </div>
         </template>
@@ -78,19 +87,19 @@
 <script setup>
 import router from "@/router";
 import hanburger from '@/components/hamburger/index.vue'
-import { logout} from "@/request/login.js";
+import {logout} from "@/request/login.js";
 import {Icon} from "@iconify/vue";
 import {useUiStore} from "@/store/ui.js";
 import {useUserStore} from "@/store/user.js";
-import { useRoute } from "vue-router";
+import {useRoute} from "vue-router";
 import {computed, ref} from "vue";
 import {useSettingStore} from "@/store/setting.js";
-import { hasPerm } from "@/perm/perm.js"
+import {hasPerm} from "@/perm/perm.js"
 import {useI18n} from "vue-i18n";
 import {copyText} from "@/utils/clipboard-utils.js";
-import { setExtend } from "@/utils/day.js"
+import {setExtend} from "@/utils/day.js"
 
-const { t } = useI18n();
+const {t} = useI18n();
 const route = useRoute();
 const settingStore = useSettingStore();
 const userStore = useUserStore();
@@ -177,6 +186,44 @@ function openNotice() {
   uiStore.showNotice()
 }
 
+function openDark(e) {
+
+  const nextIsDark = !uiStore.dark
+  const root = document.documentElement
+
+  if (!document.startViewTransition) {
+    switchDark(nextIsDark, root);
+    return
+  }
+
+  const x = e.clientX
+  const y = e.clientY
+
+  const maxX = Math.max(x, window.innerWidth - x)
+  const maxY = Math.max(y, window.innerHeight - y)
+  const endRadius = Math.hypot(maxX, maxY)
+
+  // 标记切换目标，供 CSS 选择器使用
+  root.setAttribute('data-theme-to', nextIsDark ? 'dark' : 'light')
+  root.style.setProperty('--vt-x', `${x}px`)
+  root.style.setProperty('--vt-y', `${y}px`)
+  root.style.setProperty('--vt-end-radius', `${endRadius + 10}px`)
+
+  const transition = document.startViewTransition(() => {
+    switchDark(nextIsDark, root);
+  })
+
+  transition.finished.finally(() => {
+    // 清理标记
+    root.removeAttribute('data-theme-to')
+  })
+}
+
+function switchDark(nextIsDark, root) {
+  root.setAttribute('class', nextIsDark ? 'dark' : '')
+  uiStore.dark = nextIsDark
+}
+
 function openSend() {
   uiStore.writerRef.open()
 }
@@ -200,15 +247,12 @@ function formatName(email) {
 }
 
 </script>
-
-<style lang="scss" scoped>
-
-.breadcrumb-item {
-  font-weight: bold;
-  font-size: 14px;
-  color: var(--el-text-color-primary);
-  white-space: nowrap;
+<style>
+.detail-dropdown {
+  color: var(--el-text-color-primary) !important;
 }
+</style>
+<style lang="scss" scoped>
 
 :deep(.el-popper.is-pure) {
   border-radius: 6px;
@@ -217,10 +261,10 @@ function formatName(email) {
 .user-details {
   width: 250px;
   font-size: 14px;
-  color: #333;
   display: grid;
   grid-template-columns: 1fr;
   justify-items: center;
+
   .user-name {
     font-weight: bold;
     margin-top: 10px;
@@ -232,6 +276,7 @@ function formatName(email) {
     text-overflow: ellipsis;
     text-align: center;
   }
+
   .detail-user-type {
     margin-top: 10px;
   }
@@ -241,16 +286,19 @@ function formatName(email) {
     display: grid;
     grid-template-columns: auto auto;
     margin-top: 10px;
-    >div:first-child {
+
+    > div:first-child {
       display: grid;
       align-items: center;
       gap: 10px;
     }
-    >div:last-child {
+
+    > div:last-child {
       display: grid;
       gap: 10px;
       text-align: center;
-      >div {
+
+      > div {
         display: flex;
         align-items: center;
       }
@@ -265,26 +313,31 @@ function formatName(email) {
     white-space: nowrap;
     text-overflow: ellipsis;
     text-align: center;
-    color: #5c5958;
+    color: var(--regular-text-color);
     cursor: pointer;
   }
+
   .logout {
     margin-top: 20px;
     width: 100%;
     padding-left: 10px;
     padding-right: 10px;
     padding-bottom: 10px;
+
     .el-button {
       border-radius: 6px;
       height: 28px;
       width: 100%;
     }
   }
+
   .details-avatar {
     margin-top: 20px;
     height: 40px;
     width: 40px;
-    border: 1px solid #ccc;
+    background: var(--el-bg-color);
+    color: var(--el-text-color-primary);
+    border: 1px solid var(--dark-border);
     font-size: 18px;
     display: flex;
     align-items: center;
@@ -292,7 +345,6 @@ function formatName(email) {
     border-radius: 10px;
   }
 }
-
 
 
 .header {
@@ -314,8 +366,9 @@ function formatName(email) {
   align-items: center;
   justify-content: center;
   margin-left: 5px;
+
   .writer {
-    width:  34px;
+    width: 34px;
     height: 34px;
     border-radius: 50%;
     color: #ffffff;
@@ -324,6 +377,7 @@ function formatName(email) {
     display: flex;
     align-items: center;
     justify-content: center;
+
     .writer-text {
       margin-left: 15px;
       font-size: 14px;
@@ -336,9 +390,17 @@ function formatName(email) {
   display: inline-flex;
   align-items: center;
   height: 100%;
+  min-width: 0;
 }
 
-
+.breadcrumb-item {
+  font-weight: bold;
+  font-size: 14px;
+  color: var(--el-text-color-primary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 
 .toolbar {
   display: flex;
@@ -347,6 +409,7 @@ function formatName(email) {
   @media (max-width: 767px) {
     gap: 10px;
   }
+
   .icon-item {
     align-self: center;
     width: 30px;
@@ -359,12 +422,20 @@ function formatName(email) {
   }
 
   .icon-item:hover {
-    background: #F0F2F5;
+    background: var(--base-fill);
   }
 
   .notice {
     font-size: 22px;
     margin-right: 4px;
+  }
+
+  .dark-icon {
+    font-size: 20px;
+  }
+
+  .sun-icon {
+    font-size: 24px;
   }
 
   .translate {
@@ -376,14 +447,17 @@ function formatName(email) {
     display: flex;
     align-items: center;
     cursor: pointer;
+
     .avatar-text {
+      background: var(--el-bg-color);
+      color: var(--el-text-color-primary);
       height: 30px;
       width: 30px;
       display: flex;
       justify-content: center;
       align-items: center;
       border-radius: 8px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--dark-border);
     }
 
     .setting-icon {
@@ -395,6 +469,7 @@ function formatName(email) {
   }
 
 }
+
 .el-tooltip__trigger:first-child:focus-visible {
   outline: unset;
 }

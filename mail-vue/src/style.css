@@ -27,8 +27,11 @@ body {
     font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
     line-height: 1.5;
     color: var(--el-text-color-primary);
-    background-color: #fff;
     font-size: 14px;
+}
+
+html, body {
+    background: var(--el-bg-color);
 }
 
 * {
@@ -57,6 +60,27 @@ button, input, select, textarea {
     outline: none;
 }
 
+.el-message {
+    white-space: nowrap !important;
+}
+
+.message-bottom {
+    top: auto !important;
+    bottom: 20px !important;
+
+    .el-icon {
+        display: none !important;
+    }
+}
+
+.el-input-group__append, .el-input-group__prepend {
+    color: var(--el-text-color-primary) !important;
+}
+
+.tox .tox-dialog__iframe.tox-dialog__iframe--opaque {
+    background-color: var(--el-bg-color) !important;
+}
+
 .tox .tox-dialog--width-lg {
     height: 850px !important;
     @media (max-width: 1024px) {
@@ -82,10 +106,6 @@ button, input, select, textarea {
     max-height: 220px !important;
 }
 
-.el-message {
-    white-space: nowrap !important;
-}
-
 :root {
     --el-color-primary: #1890ff;
     --el-color-primary-dark-2: #1064c0;
@@ -93,17 +113,64 @@ button, input, select, textarea {
     --el-color-primary-light-5: #69c0ff;
     --el-color-primary-light-7: #91d5ff;
     --el-color-primary-light-9: #e6f7ff;
-    --el-text-color-regular: #333;
+
+    --extra-light-fill: #FAFCFF;
+    --light-ill: #F5F7FA;
+    --light-border: #E4E7ED;
+    --header-actions-border: inset 0 -1px 0 0 var(--el-border-color-lighter);
+    --aside-backgound: #001529;
+    --loadding-background: rgba(255, 255, 255, 0.8);
+    --dark-border: #CDD0D6;
+    --base-fill: #F0F2F5;
+    --regular-text-color: #585d69;
+    --light-border-color: #e7e9ec;
+    --aside-right-border: 3px 0 5px rgba(0, 21, 41, .35);
+    --choose-account-background: var(--el-color-primary-light-8);
+    --el-text-color-regular: var(--el-text-color-primary);
+    --email-scroll-content-color: rgba(25, 41, 59, 0.4);
+    --email-hover-background: #F2F6FC;
+    --login-border: none;
+    --form-desc-color: #71717a;
+    --login-switch-color: #006be6;
+    --scrollbar-track-color: #A8ABB2;
+    --base-border-color: #DCDFE6;
+    --secondary-text-color: #909399;
+    --message-block-color: rgba(0, 0, 0, 0);
+    --vt-x: 50%;
+    --vt-y: 50%;
+    --vt-duration: 520ms;
+    --vt-easing: ease-out;
 }
 
-.message-bottom {
-    top: auto !important;
-    bottom: 20px !important;
-
-    .el-icon {
-        display: none !important;
-    }
+.dark {
+    --extra-light-fill: #191919;
+    --light-ill: #262727;
+    --light-border: #414243;
+    --aside-backgound: #141414;
+    --header-actions-border: inset 0 -1px 0 0 var(--el-border-color-lighter);
+    --loadding-background: rgba(0, 0, 0, 0.3);
+    --dark-border: #636466;
+    --base-fill: #303030;
+    --regular-text-color: #bfbdbc;
+    --light-border-color: #414243;
+    --aside-right-border: 3px 0 5px #0A0A0A;
+    --choose-account-background: #39393A;
+    --email-scroll-content-color: rgba(255, 255, 255, 0.3);
+    --email-hover-background: #1D1E1F;
+    --login-border: none;
+    --form-desc-color: #8D9095;
+    --login-switch-color: rgb(102, 177, 255);
+    --scrollbar-track-color: #8D9095;
+    --base-border-color: #4C4D4F;
+    --secondary-text-color: #A3A6AD;
+    --message-block-color: rgba(30, 30, 30, 0.2);
+    --el-border-color: #414243 !important;
 }
+
+.el-input {
+    --el-input-text-color: var(--el-text-color-primary) !important;
+}
+
 
 @media (pointer: fine) and (hover: hover) {
     /* 整个滚动条 */
@@ -114,14 +181,54 @@ button, input, select, textarea {
 
     /* 滚动条轨道 */
     ::-webkit-scrollbar-track {
-        background: #f1f1f1;
+        background: var(--el-bg-color);
         border-radius: 10px;
     }
 
     /* 滚动条滑块 */
     ::-webkit-scrollbar-thumb {
-        background: #888;
+        background: var(--scrollbar-track-color);
         border-radius: 10px;
         cursor: pointer;
     }
+}
+
+/* 视图过渡，基于径向剪裁 */
+html.dark,
+html:not(.dark) {
+    view-transition-name: root;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+}
+
+/* 层级控制，确保对应方向动画在上层可见 */
+html[data-theme-to="dark"]::view-transition-new(root) { z-index: 2; }
+html[data-theme-to="dark"]::view-transition-old(root) { z-index: 1; }
+html[data-theme-to="light"]::view-transition-old(root) { z-index: 2; }
+html[data-theme-to="light"]::view-transition-new(root) { z-index: 1; }
+
+/* 切到暗色：新视图从点击点向外扩散 */
+html[data-theme-to="dark"]::view-transition-new(root) {
+    clip-path: circle(0px at var(--vt-x) var(--vt-y));
+    animation: vt-radial-in var(--vt-duration) var(--vt-easing) forwards;
+}
+
+/* 切到浅色：旧视图向点击点收缩 */
+html[data-theme-to="light"]::view-transition-old(root) {
+    clip-path: circle(var(--vt-end-radius, 0px) at var(--vt-x) var(--vt-y));
+    animation: vt-radial-out var(--vt-duration) var(--vt-easing) forwards;
+}
+
+@keyframes vt-radial-in {
+    from { clip-path: circle(0px at var(--vt-x) var(--vt-y)); }
+    to   { clip-path: circle(var(--vt-end-radius, 0px) at var(--vt-x) var(--vt-y)); }
+}
+
+@keyframes vt-radial-out {
+    from { clip-path: circle(var(--vt-end-radius, 0px) at var(--vt-x) var(--vt-y)); }
+    to   { clip-path: circle(0px at var(--vt-x) var(--vt-y)); }
 }

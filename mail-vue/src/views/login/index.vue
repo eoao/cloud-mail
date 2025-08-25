@@ -32,7 +32,7 @@
                       :value="item"
                   />
                 </el-select>
-                <div style="color: #333">
+                <div style="color: var(--el-text-color-primary)">
                   <span>{{ suffix }}</span>
                   <Icon class="setting-icon" icon="mingcute:down-small-fill" width="20" height="20"/>
                 </div>
@@ -64,7 +64,7 @@
                       :value="item"
                   />
                 </el-select>
-                <div style="color: #333">
+                <div>
                   <span>{{ suffix }}</span>
                   <Icon class="setting-icon" icon="mingcute:down-small-fill" width="20" height="20"/>
                 </div>
@@ -178,7 +178,8 @@ window.loadBefore = (e) => {
 }
 
 const loginOpacity = computed(() => {
-  return `rgba(255, 255, 255, ${settingStore.settings.loginOpacity})`
+  const opacity = settingStore.settings.loginOpacity
+  return uiStore.dark ? `rgba(0, 0, 0, ${opacity})` : `rgba(255, 255, 255, ${opacity})`
 })
 
 const background = computed(() => {
@@ -415,7 +416,7 @@ function submitRegister() {
   justify-content: center;
   width: 450px;
   height: 100%;
-  border: 1px solid #e4e7ed;
+  border-left: 1px solid var(--login-border);
   box-shadow: var(--el-box-shadow-light);
   @media (max-width: 1024px) {
     padding: 20px 18px;
@@ -423,6 +424,7 @@ function submitRegister() {
     margin-left: 18px;
   }
   @media (max-width: 767px) {
+    border: 1px solid var(--login-border);
     padding: 20px 18px;
     border-radius: 6px;
     height: fit-content;
@@ -440,7 +442,7 @@ function submitRegister() {
   .form-desc {
     margin-top: 5px;
     margin-bottom: 18px;
-    color: #71717a;
+    color: var(--form-desc-color);
   }
 
   .form-title {
@@ -453,17 +455,19 @@ function submitRegister() {
     text-align: center;
 
     span {
-      color: #006be6;
+      color: var(--login-switch-color);
       cursor: pointer;
     }
   }
 
   :deep(.el-input__wrapper) {
     border-radius: 6px;
+    background: var(--el-bg-color);
   }
 
   .email-input :deep(.el-input__wrapper) {
     border-radius: 6px 0 0 6px;
+    background: var(--el-bg-color);
   }
 
   .el-input {
@@ -490,7 +494,7 @@ function submitRegister() {
   padding: 0 !important;
   padding-left: 8px !important;
   padding-right: 4px !important;
-  background: #FFFFFF;
+  background: var(--el-bg-color);
   border-radius: 0 8px 8px 0;
 }
 
@@ -518,7 +522,6 @@ function submitRegister() {
 
 #login-box {
   background: linear-gradient(to bottom, #2980b9, #6dd5fa, #fff);
-  color: #333;
   font: 100% Arial, sans-serif;
   height: 100%;
   margin: 0;

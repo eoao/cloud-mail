@@ -26,8 +26,6 @@ export async function init() {
         }
     }
 
-
-
     i18n.global.locale.value = settingStore.lang
 
     let setting = null;

@@ -164,7 +164,7 @@ const handleResize = () => {
 
 
 .main-view {
-  background: #FFFFFF;
+  background: var(--el-bg-color);
 }
 
 
@@ -176,7 +176,7 @@ const handleResize = () => {
   align-items: center;
   width: 100%;
   .tag {
-    background: #FFFFFF;
+    background: var(--el-bg-color);
     margin-left: 5px;
   }
 }

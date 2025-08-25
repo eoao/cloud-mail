@@ -49,6 +49,7 @@ function updateContent() {
       }
 
       .shadow-content {
+        background: #FFFFFF;
         width: fit-content;
         height: fit-content;
         min-width: 100%;

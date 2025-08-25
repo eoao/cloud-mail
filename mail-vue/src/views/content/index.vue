@@ -34,7 +34,7 @@
             <el-alert v-if="email.status === 5" :closable="false" :title="$t('delayed')" class="email-msg" type="warning" show-icon />
           </div>
           <el-scrollbar class="htm-scrollbar" :class="email.attList.length === 0 ? 'bottom-distance' : ''">
-            <ShadowHtml :html="formatImage(email.content)" v-if="email.content" />
+            <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
             <pre v-else class="email-text" >{{email.text}}</pre>
           </el-scrollbar>
           <div class="att" v-if="email.attList.length > 0">
@@ -51,7 +51,7 @@
                 <div class="att-name" @click="showImage(att.key)">
                   {{ att.filename }}
                 </div>
-                <div style="color: rgba(24, 36, 48, 0.6);">{{ formatBytes(att.size) }}</div>
+                <div class="att-size">{{ formatBytes(att.size) }}</div>
                 <div class="opt-icon att-icon">
                   <Icon v-if="isImage(att.filename)" icon="hugeicons:view" width="22" height="22" @click="showImage(att.key)"/>
                   <a :href="cvtR2Url(att.key)" download>
@@ -208,7 +208,7 @@ const handleDelete = () => {
   display: flex;
   align-items: center;
   gap: 20px;
-  box-shadow: inset 0 -1px 0 0 rgba(100, 121, 143, 0.12);
+  box-shadow: var(--header-actions-border);
   font-size: 18px;
   .star {
     display: flex;
@@ -281,13 +281,17 @@ const handleDelete = () => {
         padding: 5px 8px;
         border-radius: 4px;
         align-self: start;
-        border: 1px solid #e7e9ec;
+        border: 1px solid var(--base-border-color);
         display: grid;
         grid-template-columns: auto 1fr auto auto;
         gap: 10px;
 
         .att-icon {
           display: grid;
+        }
+
+        .att-size {
+          color: var(--secondary-text-color);
         }
 
         .att-name {
@@ -305,13 +309,13 @@ const handleDelete = () => {
         }
 
         .opt-icon {
-          color: rgba(24, 36, 48, 0.6);
+          color: var(--secondary-text-color);
           align-items: center;
           display: flex;
           gap: 8px;
           cursor: pointer;
           a {
-            color: rgba(24, 36, 48, 0.6);
+            color: var(--secondary-text-color);
             align-items: center;
             display: flex;
           }
@@ -321,14 +325,14 @@ const handleDelete = () => {
 
     .email-info {
 
-      border-bottom: 1px solid #e7e9ec;
+      border-bottom: 1px solid var(--light-border-color);
       margin-bottom: 20px;
       padding-bottom: 8px;
       @media (max-width: 1024px) {
         margin-bottom: 15px;
       }
       .date {
-        color: #585d69;
+        color: var(--regular-text-color);
         margin-bottom: 6px;
       }
 
@@ -343,7 +347,7 @@ const handleDelete = () => {
         margin-bottom: 6px;
 
         .send-name {
-          color: #585d69;
+          color: var(--regular-text-color);
           display: flex;
           flex-wrap: wrap;
         }
@@ -361,7 +365,7 @@ const handleDelete = () => {
           word-break: break-word;
         }
         span:nth-child(2) {
-          color: #585d69;
+          color: var(--regular-text-color);
         }
       }
 
@@ -378,6 +382,17 @@ const handleDelete = () => {
       }
     }
   }
+}
+
+.shadow-html::after  {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--message-block-color); /* 半透明黑色蒙层 */
+  pointer-events: none; /* 不影响点击 */
 }
 
 .email-text {

@@ -121,7 +121,7 @@
 <script setup>
 import {Icon} from "@iconify/vue";
 import {useTransition} from "@vueuse/core";
-import {defineOptions, onActivated, onDeactivated, onMounted, reactive, ref, watch} from "vue";
+import {defineOptions, onActivated, onDeactivated, onMounted, reactive, ref, watch, computed} from "vue";
 import echarts from "@/echarts/index.js";
 import dayjs from "dayjs";
 import {analysisEcharts} from "@/request/analysis.js";
@@ -185,6 +185,17 @@ const emailColumnData = {
   daysData: []
 }
 
+const topic = computed(() => ({
+  color: uiStore.dark ? '#E5EAF3' : '#303133',
+  background: uiStore.dark ? '#141414' : '#FFFFFF',
+  borderColor: uiStore.dark ? '#141414' : '#FFFFFF',
+  scaleLineColor: uiStore.dark ? '#636466' : '#CDD0D6',
+  crossColor: uiStore.dark ? '#8D9095' : '#A8ABB2',
+  axisColor: uiStore.dark ? '#A3A6AD' : '#909399',
+  splitLineColor: uiStore.dark ? '#58585B' : '#D4D7DE',
+  gaugeSplitLine: uiStore.dark ? '#CFD3DC' : '#606266',
+  containerBackground: uiStore.dark ? '#6C6E72' : '#E6EBF8'
+}))
 let daySendTotal = 0
 let leaveWidth = 0
 let senderPie = null
@@ -194,6 +205,7 @@ let sendGauge = null
 let first = true
 let boxKey = ref(0)
 let senderPieLeft = window.innerWidth < 500 ? `${window.innerWidth - 110}` : '72%'
+let analysisDark = uiStore.dark
 
 onMounted(() => {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -232,17 +244,6 @@ onMounted(() => {
 
 })
 
-function initPicture() {
-  if (route.name !== 'analysis') return
-  boxKey.value++
-  setTimeout(() => {
-    createSenderPie()
-    createIncreaseLine()
-    createEmailColumnChart();
-    createSendGauge();
-  })
-}
-
 const widthChange = debounce(initPicture, 500, {
   leading: false,
   trailing: true
@@ -261,6 +262,9 @@ onActivated(() => {
     widthChange()
   } else if (!senderPie) {
     widthChange()
+  } else if (analysisDark !== uiStore.dark) {
+    initPicture()
+    analysisDark = uiStore.dark
   }
 })
 
@@ -271,6 +275,23 @@ onDeactivated(() => {
 window.onresize = () => {
   setStyle()
   widthChange()
+}
+
+watch(() => uiStore.dark, () => {
+  if (route.name !== 'analysis') return
+  analysisDark = uiStore.dark
+  initPicture()
+})
+
+function initPicture() {
+  if (route.name !== 'analysis') return
+  boxKey.value++
+  setTimeout(() => {
+    createSenderPie()
+    createIncreaseLine()
+    createEmailColumnChart();
+    createSendGauge();
+  })
 }
 
 function setStyle() {
@@ -301,11 +322,14 @@ function createSenderPie() {
   if (senderPie) {
     senderPie.dispose()
   }
-
   senderPie = echarts.init(document.querySelector(".sender-pie"))
   let option = {
     tooltip: {
       trigger: 'item',
+      textStyle: {
+        color: topic.value.color
+      },
+      backgroundColor: topic.value.background,
       formatter: params => {
         return `${params.marker} ${params.name}： ${params.value} (${params.percent}%)`;
       }
@@ -315,6 +339,9 @@ function createSenderPie() {
       orient: 'vertical',
       left: '10',
       top: '20',
+      textStyle: {
+        color: topic.value.color
+      },
       formatter: function (name) {
         return truncateTextByWidth(name)
       }
@@ -329,7 +356,7 @@ function createSenderPie() {
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 4,
-          borderColor: '#fff',
+          borderColor: topic.value.borderColor,
           borderWidth: 2
         },
         label: {
@@ -370,7 +397,10 @@ function createIncreaseLine() {
       axisPointer: {
         type: 'cross', // 指示器的类型为交叉型，适用于折线图等
         crossStyle: {
-          color: '#999'  // 设置指示器线的颜色
+          color: topic.value.crossColor// 设置指示器线的颜色
+        },
+        lineStyle: {
+          color: topic.value.crossColor         // ← 竖线颜色
         },
         axis: 'x',
       },
@@ -381,12 +411,12 @@ function createIncreaseLine() {
         });
         return result;
       },
-      backgroundColor: '#fff',  // 设置背景颜色
-      borderColor: '#ccc',      // 设置边框颜色
+      backgroundColor: topic.value.background,  // 设置背景颜色
+      borderColor: topic.value.splitLineColor,      // 设置边框颜色
       borderWidth: 1,           // 设置边框宽度
       padding: 10,              // 设置内边距
       textStyle: {
-        color: '#333',          // 设置文字颜色
+        color: topic.value.color,          // 设置文字颜色
       }
     },
     grid: {
@@ -402,7 +432,7 @@ function createIncreaseLine() {
         show: false,
         alignWithLabel: false,  // 刻度线与标签对齐,
         lineStyle: {
-          color: 'red',
+          color: topic.value.axisColor,
         }
       },
       axisPointer: {
@@ -412,7 +442,7 @@ function createIncreaseLine() {
       },
       axisLine: {
         lineStyle: {
-          color: '#909399',
+          color: topic.value.axisColor,
           width: 1,
           type: 'solid'
         }
@@ -427,6 +457,7 @@ function createIncreaseLine() {
           }
           return value;
         },
+
       },
       boundaryGap: false,
     },
@@ -444,7 +475,7 @@ function createIncreaseLine() {
       axisLine: {
         show: true,
         lineStyle: {
-          color: '#909399',
+          color: topic.value.axisColor,
           width: 1,
         }
       },
@@ -460,7 +491,7 @@ function createIncreaseLine() {
         show: true, // 显示网格线
         lineStyle: {
           type: 'dashed', // 设置网格线为虚线
-          color: '#ccc'   // 设置虚线的颜色
+          color: topic.value.scaleLineColor   // 设置虚线的颜色
         }
       }
     },
@@ -519,6 +550,10 @@ function createEmailColumnChart() {
 
   const option = {
     tooltip: {
+      textStyle: {
+        color: topic.value.color
+      },
+      backgroundColor: topic.value.background,
       formatter: function (params) {
         params.marker
         return `${params.marker} ${params.seriesName}: ${params.value}`
@@ -526,7 +561,10 @@ function createEmailColumnChart() {
     },
     legend: {
       data: [t('emailReceived'), t('emailSent')],
-      top: '0'
+      top: '0',
+      textStyle: {
+        color: topic.value.color,  // 图例文字颜色
+      }
     },
     grid: {
       left: '18',
@@ -539,12 +577,12 @@ function createEmailColumnChart() {
       type: 'category',
       data: emailColumnData.daysData,
       axisTick: {
-        show: false
+        show: false,
       },
       axisLine: {
         show: true,
         lineStyle: {
-          color: '#909399',
+          color: topic.value.axisColor,
           width: 1,
         }
       },
@@ -553,6 +591,21 @@ function createEmailColumnChart() {
       max: (params) => {
         if (params.max < 8) {
           return 10
+        }
+      },
+      splitLine: {
+        show: true,
+        lineStyle: {
+          color: topic.value.splitLineColor,  // ← 横线颜色
+          type: 'solid',    // dashed=虚线，solid=实线
+          width: 1
+        }
+      },
+      axisLine: {
+        show: true,
+        lineStyle: {
+          color: topic.value.axisColor,
+          width: 0,
         }
       },
       type: 'value',
@@ -603,7 +656,12 @@ function createSendGauge() {
   }
   sendGauge = echarts.init(document.querySelector(".send-count"));
   let option = {
-    tooltip: {},
+    tooltip: {
+      textStyle: {
+        color: topic.value.color
+      },
+      backgroundColor: topic.value.background
+    },
     series: [{
       name: t('sentToday'),
       type: 'gauge',
@@ -622,31 +680,39 @@ function createSendGauge() {
           color: '#3CB2FF'
         }
       },
+      axisLabel: {
+        color: topic.value.gaugeSplitLine,
+      },
       // 轴线背景色（新增）
       axisLine: {
         roundCap: true,
         lineStyle: {
-          color: [[1, '#E6EBF8']]
+          color: [[1, topic.value.containerBackground]]
+        }
+      },
+      splitLine: {
+        lineStyle: {
+          color: topic.value.gaugeSplitLine, // 大刻度线颜色
         }
       },
       // 刻度颜色（新增）
       axisTick: {
         lineStyle: {
-          color: '#999'
+          color: topic.value.axisColor
         }
       },
       // 中心文字颜色（新增）
       detail: {
         valueAnimation: true,
         formatter: '{value}',
-        color: '#333' // 黑色文字
+        color: topic.value.color // 黑色文字
       },
       data: [{
         value: daySendTotal,
         name: t('total'),
         // 名称标签颜色（新增）
         title: {
-          color: '#333' // 灰色标签
+          color: topic.value.color  // 灰色标签
         }
       }]
     }],
@@ -683,7 +749,7 @@ function createSendGauge() {
   height: 100%;
   padding: 20px 20px 30px;
   gap: 20px;
-  background: #FAFCFF;
+  background: var(--extra-light-fill);
   display: grid;
   grid-auto-rows: min-content;
   @media (max-width: 1024px) {
@@ -766,6 +832,7 @@ function createSendGauge() {
         gap: 20px;
         padding-top: 5px;
         font-size: 14px;
+
         .normal {
           width: fit-content;
           color: var(--el-color-success);
@@ -796,7 +863,7 @@ function createSendGauge() {
     }
 
     .picture-item {
-      background: #fff;
+      background: var(--el-bg-color);
       border-radius: 8px;
       border: 1px solid var(--el-border-color);
 
@@ -836,7 +903,7 @@ function createSendGauge() {
     }
 
     .picture-cs-item {
-      background: #fff;
+      background: var(--el-bg-color);
       border-radius: 8px;
       border: 1px solid var(--el-border-color);
 

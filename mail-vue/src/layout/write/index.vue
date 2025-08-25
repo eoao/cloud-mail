@@ -436,7 +436,7 @@ function close() {
   justify-content: center;
 
   .write-box {
-    background: #FFFFFF;
+    background: var(--el-bg-color);
     width: min(1200px,calc(100% - 80px));
     box-shadow: var(--el-box-shadow-light);
     border: 1px solid var(--el-border-color-light);

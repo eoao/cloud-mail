@@ -60,8 +60,8 @@ onBeforeUnmount(() => {
 }
 
 .aside-show {
-  -webkit-box-shadow: 3px 0 5px rgba(0, 21, 41, .35);
-  box-shadow: 3px 0 5px rgba(0, 21, 41, 0.35);
+  -webkit-box-shadow: var(--aside-right-border);
+  box-shadow: var(--aside-right-border);
   transform: translateX(0);
   transition: all 100ms ease;
   z-index: 101;
@@ -71,7 +71,7 @@ onBeforeUnmount(() => {
     left: 0;
     z-index: 101;
     height: 100%;
-    background: #fff;
+    background: var(--el-bg-color);
   }
 }
 
@@ -91,7 +91,7 @@ onBeforeUnmount(() => {
 
 .main-container {
   min-height: 100%;
-  background: #FFFFFF;
+  background: var(--el-bg-color);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -101,8 +101,8 @@ onBeforeUnmount(() => {
 }
 
 .el-header {
-  background: #FFFFFF;
-  border-bottom: solid 1px var(--el-menu-border-color);
+  background: var(--el-bg-color);
+  border-bottom: solid 1px var(--el-border-color);
   padding: 0 0 0 0;
 }
 
