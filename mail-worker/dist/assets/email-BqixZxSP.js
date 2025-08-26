@@ -1,0 +1,1 @@
+import{aH as l}from"./index-DpP8vbvu.js";const t=l("email",{state:()=>({deleteIds:0,starScroll:null,emailScroll:null,cancelStarEmailId:0,addStarEmailId:0,contentData:{email:null,delType:null,showStar:!0,showReply:!0},sendScroll:null}),persist:{pick:["contentData"]}});export{t as u};

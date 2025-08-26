@@ -1,6 +1,8 @@
 import {createRouter, createWebHistory} from 'vue-router'
 import NProgress from 'nprogress';
 import {useUiStore} from "@/store/ui.js";
+import {useSettingStore} from "@/store/setting.js";
+import {cvtR2Url} from "@/utils/convert.js";
 
 const routes = [
     {
@@ -83,7 +85,7 @@ NProgress.configure({
 
 let timer
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach((to, from, next) => {
 
     if (timer) {
         clearTimeout(timer)
@@ -97,14 +99,12 @@ router.beforeEach(async (to, from, next) => {
     const token = localStorage.getItem('token')
 
     if (!token && to.name !== 'login') {
-
-        return next({
-            name: 'login',
-        })
+        return next({name: 'login'})
     }
 
     if (!token && to.name === 'login') {
-        return next()
+        loadBackground(next)
+        return
     }
 
     if (token && to.name === 'login') {
@@ -114,6 +114,24 @@ router.beforeEach(async (to, from, next) => {
     next()
 
 })
+
+function loadBackground(next) {
+    console.log(131231)
+    const settingStore = useSettingStore();
+    const src = cvtR2Url(settingStore.settings.background);
+
+    const img = new Image();
+    img.src = src;
+
+    img.onload = () => {
+        next()
+    };
+
+    img.onerror = () => {
+        console.warn("背景图片加载失败:", img.src);
+        next()
+    };
+}
 
 router.afterEach((to) => {
 

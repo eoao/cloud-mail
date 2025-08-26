@@ -32,6 +32,14 @@ export default defineConfig(({mode}) => {
       outDir: '../mail-worker/dist',
       emptyOutDir: true,
       assetsInclude: ['**/*.json'],
+        rollupOptions: {
+            output: {
+                // 保证 chunk 文件名可预测
+                chunkFileNames: 'assets/[name]-[hash].js',
+                entryFileNames: 'assets/[name]-[hash].js',
+                assetFileNames: 'assets/[name]-[hash].[ext]'
+            }
+        }
     }
   }
 })

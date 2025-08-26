@@ -71,10 +71,8 @@ export async function init() {
     };
 
     img.onerror = () => {
-
         console.warn('背景图片加载失败:', img.src);
         removeLoading();
-
     };
 }
 
