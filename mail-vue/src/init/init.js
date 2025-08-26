@@ -59,21 +59,7 @@ export async function init() {
         document.title = setting.title;
     }
 
-    if (!setting.background) {
-        removeLoading();
-        return;
-    }
-
-    const img = new Image();
-    img.src = cvtR2Url(setting.background);
-    img.onload = () => {
-        removeLoading();
-    };
-
-    img.onerror = () => {
-        console.warn('背景图片加载失败:', img.src);
-        removeLoading();
-    };
+    removeLoading();
 }
 
 function removeLoading() {

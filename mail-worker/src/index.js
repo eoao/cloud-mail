@@ -13,6 +13,7 @@ export default {
 			return app.fetch(req, env, ctx);
 		}
 
+
 		return env.assets.fetch(req);
 	},
 	email: email,

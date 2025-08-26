@@ -1,1 +1,0 @@
-import{aB as a}from"./index-DpP8vbvu.js";function n(t){return a.post("/star/add",{emailId:t})}function e(t){return a.delete("/star/cancel",{params:{emailId:t}})}function o(t,r){return a.get("/star/list",{params:{emailId:t,size:r}})}export{n as a,o as b,e as s};
