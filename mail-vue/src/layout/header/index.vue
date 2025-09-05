@@ -233,7 +233,7 @@ function switchDark(nextIsDark, root) {
   root.setAttribute('class', nextIsDark ? 'dark' : '')
   const metaTag = document.getElementById('theme-color-meta');
   const isMobile =  !window.matchMedia("(pointer: fine) and (hover: hover)").matches;
-  metaTag.setAttribute('content', nextIsDark ? (isMobile ? '#141414' : '#000000') : (isMobile ? '#FFFFFF' : '#D3E3FD'));
+  metaTag.setAttribute('content', nextIsDark ? (isMobile ? '#141414' : '#000000') : (isMobile ? '#FFFFFF' : '#F1F1F1'));
   uiStore.dark = nextIsDark
 }
 

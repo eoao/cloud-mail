@@ -17,8 +17,7 @@ export default defineConfig(({mode}) => {
         base: env.VITE_STATIC_URL || '/',
         plugins: [vue(),
             VitePWA({
-                registerType: 'autoUpdate',  // 配置 service worker 的注册方式
-                includeAssets: ['favicon.svg', 'robots.txt'],  // 指定需要包含的静态资源
+                injectRegister: 'script-defer',
                 manifest: {
                     name: env.VITE_PWA_NAME,
                     short_name: env.VITE_PWA_NAME,
@@ -26,19 +25,13 @@ export default defineConfig(({mode}) => {
                     theme_color: '#FFFFFF',
                     icons: [
                         {
-                            src: 'mail-pwa.png',//像素尺寸一定要对应
+                            src: 'mail-pwa.png',
                             sizes: '192x192',
                             type: 'image/png',
                         }
                     ],
                 },
-                workbox: {
-                    disableDevLogs: true,
-                    globPatterns: [],
-                    runtimeCaching: [],
-                    navigateFallback: null,
-                    cleanupOutdatedCaches: true,
-                }
+                workbox: false
             }),
             AutoImport({
                 resolvers: [ElementPlusResolver()],
