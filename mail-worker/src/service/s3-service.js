@@ -60,7 +60,7 @@ const s3Service = {
 			credentials: {
 				accessKeyId: s3AccessKey,
 				secretAccessKey: s3SecretKey,
-			},
+			}
 		});
 	}
 }

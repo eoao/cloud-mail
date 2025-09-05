@@ -14,7 +14,7 @@
 		"wrangler": "^4.7.0"
 	},
 	"dependencies": {
-		"@aws-sdk/client-s3": "^3.879.0",
+		"@aws-sdk/client-s3": "^3.882.0",
 		"@cloudflare/vite-plugin": "1.6.0",
 		"dayjs": "^1.11.13",
 		"drizzle-orm": "^0.42.0",
