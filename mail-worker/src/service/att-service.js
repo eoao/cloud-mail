@@ -7,6 +7,7 @@ import fileUtils from '../utils/file-utils';
 import { attConst } from '../const/entity-const';
 import { parseHTML } from 'linkedom';
 import domainUtils from '../utils/domain-uitls';
+import BizError from '../error/biz-error';
 
 const attService = {
 
@@ -19,13 +20,14 @@ const attService = {
 			}
 
 			if (!attachment.contentId) {
-				metadate.contentDisposition = `attachment; filename="${attachment.filename}"`
+				metadate.contentDisposition = `attachment;filename=${attachment.filename}`
 			} else {
-				metadate.contentDisposition = `inline; filename="${attachment.filename}"`
+				metadate.contentDisposition = `inline;filename=${attachment.filename}`
 				metadate.cacheControl = `max-age=259200`
 			}
 
 			await r2Service.putObj(c, attachment.key, attachment.content, metadate);
+
 		}
 
 		await orm(c).insert(att).values(attachments).run();
@@ -104,7 +106,7 @@ const attService = {
 		for (let att of attList) {
 			await r2Service.putObj(c, att.key, att.buff, {
 				contentType: att.type,
-				contentDisposition: `attachment; filename="${att.filename}"`
+				contentDisposition: `attachment;filename=${att.filename}`
 			});
 		}
 
@@ -120,7 +122,7 @@ const attService = {
 			await r2Service.putObj(c, attData.key, attData.buff, {
 				contentType: attData.mimeType,
 				cacheControl: `max-age=259200`,
-				contentDisposition: `inline; filename="${attData.filename}"`
+				contentDisposition: `inline;filename=${attData.filename}`
 			});
 		}
 
@@ -147,26 +149,36 @@ const attService = {
 
 	async removeAttByField(c, fieldName, fieldValues) {
 
-		const queryAttSql = fieldValues.map(value =>
-			c.env.db.prepare(`SELECT a.key, a.att_id
+		const sqlList = [];
+
+		fieldValues.forEach(value => {
+
+			sqlList.push(
+
+				c.env.db.prepare(
+					`SELECT a.key, a.att_id
 						FROM attachments a
 							   JOIN (SELECT key
 									 FROM attachments
 									 GROUP BY key
 									 HAVING COUNT (*) = 1) t
 									ON a.key = t.key
-						WHERE a.${fieldName} = ?;`).bind(value));
+						WHERE a.${fieldName} = ?;`
+					).bind(value)
+			)
 
-		const attListResult = await c.env.db.batch(queryAttSql);
+			sqlList.push(c.env.db.prepare(`DELETE FROM attachments WHERE ${fieldName} = ?`).bind(value))
 
-		const delKeyList = attListResult.flatMap(r => r.results.map(row => row.key));
+		});
+
+		const attListResult = await c.env.db.batch(sqlList);
+
+		const delKeyList = attListResult.flatMap(r => r.results ? r.results.map(row => row.key) : []);
 
 		if (delKeyList.length > 0) {
 			await this.batchDelete(c, delKeyList);
 		}
 
-		const delAttSql = fieldValues.map(value => c.env.db.prepare(`DELETE FROM attachments WHERE ${fieldName} = ?`).bind(value));
-		await c.env.db.batch(delAttSql);
 	},
 
 	async batchDelete(c, keys) {
