@@ -49,14 +49,18 @@ const settingService = {
 		return setting;
 	},
 
-	async get(c) {
+	async get(c, showSiteKey = false) {
 
 		const [settingRow, recordList] = await Promise.all([
 			await this.query(c),
 			verifyRecordService.selectListByIP(c)
 		]);
 
-		settingRow.siteKey = settingRow.siteKey ? `${settingRow.siteKey.slice(0, 12)}******` : null;
+
+		if (!showSiteKey) {
+			settingRow.siteKey = settingRow.siteKey ? `${settingRow.siteKey.slice(0, 12)}******` : null;
+		}
+
 		settingRow.secretKey = settingRow.secretKey ? `${settingRow.secretKey.slice(0, 12)}******` : null;
 
 		Object.keys(settingRow.resendTokens).forEach(key => {
@@ -141,7 +145,7 @@ const settingService = {
 
 	async websiteConfig(c) {
 
-		const settingRow = await this.get(c)
+		const settingRow = await this.get(c, true)
 
 		return {
 			register: settingRow.register,
