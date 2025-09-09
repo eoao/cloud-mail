@@ -18,7 +18,7 @@
 		"@cloudflare/vite-plugin": "1.6.0",
 		"dayjs": "^1.11.13",
 		"drizzle-orm": "^0.42.0",
-		"hono": "^4.7.5",
+		"hono": "^4.9.6",
 		"i18next": "^25.3.2",
 		"linkedom": "^0.18.10",
 		"postal-mime": "^2.4.3",
