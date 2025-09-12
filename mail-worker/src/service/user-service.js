@@ -87,20 +87,6 @@ const userService = {
 		await c.env.kv.delete(kvConst.AUTH_INFO + userId)
 	},
 
-
-	async physicsDeleteAll(c) {
-		const userIdsRow = await orm(c).select().from(user).where(eq(user.isDel, isDel.DELETE)).limit(99);
-		if (userIdsRow.length === 0) {
-			return;
-		}
-		const userIds = userIdsRow.map(item => item.userId);
-		await accountService.physicsDeleteByUserIds(c, userIds);
-		await orm(c).delete(user).where(inArray(user.userId, userIds)).run();
-		if (userIdsRow.length === 99) {
-			await this.physicsDeleteAll(c);
-		}
-	},
-
 	async physicsDelete(c, params) {
 		const { userId } = params
 		await accountService.physicsDeleteByUserIds(c, [userId])

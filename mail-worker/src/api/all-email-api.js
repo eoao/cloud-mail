@@ -11,3 +11,8 @@ app.delete('/allEmail/delete',async (c) => {
 	const list = await emailService.physicsDelete(c, c.req.query());
 	return c.json(result.ok(list));
 })
+
+app.delete('/allEmail/batchDelete',async (c) => {
+	await emailService.batchDelete(c, c.req.query());
+	return c.json(result.ok());
+})

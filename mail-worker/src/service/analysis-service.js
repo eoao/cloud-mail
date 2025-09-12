@@ -38,7 +38,7 @@ const analysisService = {
 			orm(c)
 				.select({ name: email.name, total: count() })
 				.from(email)
-				.where(and(eq(email.type, emailConst.type.RECEIVE), isNotNull(email.name), ne(email.name,'')))
+				.where(and(eq(email.type, emailConst.type.RECEIVE), isNotNull(email.name),ne(email.name,'noreply'), ne(email.name,'')))
 				.groupBy(email.name)
 				.orderBy(desc(count()))
 				.limit(6),

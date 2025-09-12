@@ -4,28 +4,30 @@
       <div class="title">
         <div class="title-left">
           <span class="title-text">
-            <Icon icon="hugeicons:quill-write-01" width="28" height="28" />
+            <Icon icon="hugeicons:quill-write-01" width="28" height="28"/>
           </span>
-          <span class="sender">{{$t('sender')}}:</span>
-          <span class="sender-name">{{form.name}}</span>
-          <span class="send-email"><{{form.sendEmail}}></span>
+          <span class="sender">{{ $t('sender') }}:</span>
+          <span class="sender-name">{{ form.name }}</span>
+          <span class="send-email"><{{ form.sendEmail }}></span>
         </div>
         <div @click="close" style="cursor: pointer;">
           <Icon icon="material-symbols-light:close-rounded" width="22" height="22"/>
         </div>
       </div>
       <div class="container">
-        <el-input-tag @add-tag="addTagChange" tag-type="primary" size="default" v-model="form.receiveEmail" :placeholder="$t('ruleEmailsInputDesc')" >
+        <el-input-tag @add-tag="addTagChange" tag-type="primary" size="default" v-model="form.receiveEmail"
+                      :placeholder="$t('ruleEmailsInputDesc')">
           <template #prefix>
-            <div class="item-title">{{$t('recipient')}} </div>
+            <div class="item-title">{{ $t('recipient') }}</div>
           </template>
           <template #suffix>
-            <span class="distribute" :class="form.manyType ? 'checked' : ''" @click.stop="checkDistribute" >{{$t('sendSeparately')}}</span>
+            <span class="distribute" :class="form.manyType ? 'checked' : ''"
+                  @click.stop="checkDistribute">{{ $t('sendSeparately') }}</span>
           </template>
         </el-input-tag>
         <el-input v-model="form.subject" :placeholder="$t('subjectInputDesc')">
           <template #prefix>
-            <div class="item-title">{{$t('subject')}} </div>
+            <div class="item-title">{{ $t('subject') }}</div>
           </template>
         </el-input>
         <tinyEditor :def-value="defValue" ref="editor" @change="change"/>
@@ -38,7 +40,7 @@
           </div>
           <div class="att-list">
             <div class="att-item" v-for="(item,index) in form.attachments" :key="index">
-              <Icon :icon="getIconByName(item.filename)" width="20" height="20"/>
+              <Icon v-bind="getIconByName(item.filename)"/>
               <span class="att-filename">{{ item.filename }}</span>
               <span class="att-size">{{ formatBytes(item.size) }}</span>
               <Icon style="cursor: pointer;" icon="material-symbols-light:close-rounded" @click="delAtt(index)"
@@ -46,8 +48,8 @@
             </div>
           </div>
           <div>
-            <el-button type="primary" @click="sendEmail" v-if="form.sendType === 'reply'">{{$t('reply')}}</el-button>
-            <el-button type="primary" @click="sendEmail" v-else >{{$t('send')}}</el-button>
+            <el-button type="primary" @click="sendEmail" v-if="form.sendType === 'reply'">{{ $t('reply') }}</el-button>
+            <el-button type="primary" @click="sendEmail" v-else>{{ $t('send') }}</el-button>
           </div>
         </div>
       </div>
@@ -66,6 +68,7 @@ import {useEmailStore} from "@/store/email.js";
 import {fileToBase64, formatBytes} from "@/utils/file-utils.js";
 import {getIconByName} from "@/utils/icon-utils.js";
 import sendPercent from "@/components/send-percent/index.vue"
+import {toOssDomain} from "@/utils/convert.js";
 import {formatDetailDate} from "@/utils/day.js";
 import {useSettingStore} from "@/store/setting.js";
 import {userDraftStore} from "@/store/draft.js";
@@ -79,7 +82,7 @@ defineExpose({
   openDraft
 })
 
-const { t } = useI18n()
+const {t} = useI18n()
 const draftStore = userDraftStore()
 const settingStore = useSettingStore()
 const emailStore = useEmailStore();
@@ -219,8 +222,8 @@ async function sendEmail() {
     return
   }
 
-  percentMessage =  ElMessage({
-    message: () => h(sendPercent, { value: percent.value,desc: t('sending') }),
+  percentMessage = ElMessage({
+    message: () => h(sendPercent, {value: percent.value, desc: t('sending')}),
     dangerouslyUseHTMLString: true,
     plain: true,
     duration: 0,
@@ -242,7 +245,7 @@ async function sendEmail() {
     ElNotification({
       title: t('sendSuccessMsg'),
       type: "success",
-      message: h('span', { style: 'color: teal' }, email.subject),
+      message: h('span', {style: 'color: teal'}, email.subject),
       position: 'bottom-right'
     })
 
@@ -261,7 +264,7 @@ async function sendEmail() {
     ElNotification({
       title: t('sendFailMsg'),
       type: e.code === 403 ? 'warning' : 'error',
-      message: h('span', { style: 'color: teal' }, e.message),
+      message: h('span', {style: 'color: teal'}, e.message),
       position: 'bottom-right'
     })
     show.value = true
@@ -312,7 +315,7 @@ function openReply(email) {
     <div></div>
     <div>
     <br>
-        ${ formatDetailDate(email.createTime) } ${email.name} &lt${email.sendEmail}&gt ${t('wrote')}:
+        ${formatDetailDate(email.createTime)} ${email.name} &lt${email.sendEmail}&gt ${t('wrote')}:
     </div>
     <blockquote class="mceNonEditable" style="margin: 0 0 0 0.8ex;border-left: 1px solid rgb(204,204,204);padding-left: 1ex;">
       <articl>
@@ -334,7 +337,7 @@ function openReply(email) {
 function formatImage(content) {
   content = content || '';
   const domain = settingStore.settings.r2Domain;
-  return  content.replace(/{{domain}}/g, domain + '/');
+  return content.replace(/{{domain}}/g, toOssDomain(domain) + '/');
 }
 
 function open() {
@@ -352,7 +355,7 @@ function open() {
 }
 
 function openDraft(draft) {
-  Object.assign(form,{...draft})
+  Object.assign(form, {...draft})
   defValue.value = ''
   setTimeout(() => defValue.value = form.content)
   show.value = true;
@@ -404,15 +407,16 @@ function close() {
     cancelButtonText: t('cancel'),
     type: 'warning',
     distinguishCancelAndClose: true
-  }).then( async () => {
+  }).then(async () => {
     const formData = {...toRaw(form)}
     delete formData.draftId
     delete formData.attachments
     formData.createTime = dayjs().utc().format('YYYY-MM-DD HH:mm:ss');
     const draftId = await db.value.draft.add({...formData})
-    db.value.att.add({draftId,attachments: toRaw(form.attachments)})
-    draftStore.refreshList ++
+    db.value.att.add({draftId, attachments: toRaw(form.attachments)})
+    draftStore.refreshList++
     show.value = false
+    resetForm()
   }).catch((action) => {
     if (action === 'cancel') {
       show.value = false
@@ -437,7 +441,7 @@ function close() {
 
   .write-box {
     background: var(--el-bg-color);
-    width: min(1200px,calc(100% - 80px));
+    width: min(1367px, calc(100% - 80px));
     box-shadow: var(--el-box-shadow-light);
     border: 1px solid var(--el-border-color-light);
     transition: var(--el-transition-duration);
@@ -450,6 +454,7 @@ function close() {
       width: 100%;
       height: 100%;
       border-radius: 0;
+      border: 0;
       padding-top: 10px;
     }
 
@@ -461,11 +466,13 @@ function close() {
       display: flex;
       justify-content: space-between;
       margin-bottom: 10px;
+
       .title-left {
         align-items: center;
         display: grid;
         grid-template-columns: auto auto auto 1fr;
       }
+
       .title-text {
       }
 
@@ -498,6 +505,7 @@ function close() {
       display: grid;
       grid-template-rows: auto auto 1fr auto;
       gap: 15px;
+
       .distribute {
         color: var(--el-color-info);
         background: var(--el-color-info-light-9);
@@ -554,10 +562,9 @@ function close() {
             gap: 5px;
             height: 32px;
             font-size: 14px;
-            border: 1px solid var(--el-border-color-light);
-            padding: 5px 5px;
+            padding: 4px 5px;
+            background: var(--light-ill);
             border-radius: 4px;
-
             .att-filename {
               white-space: nowrap;
               text-overflow: ellipsis;

@@ -1,9 +1,9 @@
 <template>
   <div class="settings-container">
-    <div v-if="firstLoading" class="loading">
+    <div class="loading" :class="firstLoading ? 'loading-show' : 'loading-hide'">
       <loading/>
     </div>
-    <el-scrollbar class="scroll" v-else>
+    <el-scrollbar class="scroll" v-if="!firstLoading">
       <div class="scroll-body">
         <div class="card-grid">
           <!-- Website Settings Card -->
@@ -61,20 +61,7 @@
                              v-model="setting.manyEmail"/>
                 </div>
               </div>
-              <div class="setting-item">
-                <div>
-                  <span>{{ $t('physicallyWipeData') }}</span>
-                  <el-tooltip effect="dark" :content="$t('physicallyWipeDataDesc')">
-                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
-                  </el-tooltip>
-                </div>
-                <div>
-                  <el-button class="opt-button" style="margin-top: 0" @click="physicsDeleteAllData" size="small"
-                             type="primary">
-                    <Icon icon="material-symbols:delete-outline-rounded" width="16" height="16"/>
-                  </el-button>
-                </div>
-              </div>
+
             </div>
           </div>
 
@@ -196,16 +183,24 @@
             </div>
           </div>
 
-          <!-- R2 Object Storage Card -->
+          <!-- Object Storage Card -->
           <div class="settings-card">
-            <div class="card-title">{{ $t('R2OS') }}</div>
+            <div class="card-title">{{ $t('oss') }}</div>
             <div class="card-content">
-              <div class="setting-item">
+              <div class="r2domain-item">
                 <div><span>{{ $t('osDomain') }}</span></div>
                 <div class="r2domain">
                   <span>{{ setting.r2Domain || '' }}</span>
                   <el-button class="opt-button" size="small" type="primary" @click="r2DomainShow = true">
                     <Icon icon="lsicon:edit-outline" width="16" height="16"/>
+                  </el-button>
+                </div>
+              </div>
+              <div class="setting-item">
+                <div><span>{{ $t('s3Configuration') }}</span></div>
+                <div class="r2domain">
+                  <el-button class="opt-button" size="small" type="primary" @click="addS3Show = true">
+                    <Icon icon="fluent:settings-48-regular" width="16" height="16"/>
                   </el-button>
                 </div>
               </div>
@@ -347,20 +342,20 @@
               </div>
               <div class="concerning-item">
                 <span>{{ $t('community') }} : </span>
-                  <div class="community">
-                      <el-button @click="jump('https://github.com/eoao/cloud-mail')">
-                          Github
-                          <template #icon>
-                              <Icon icon="codicon:github-inverted" width="22" height="22"/>
-                          </template>
-                      </el-button>
-                      <el-button @click="jump('https://t.me/cloud_mail_tg')">
-                          Telegram
-                          <template #icon>
-                              <Icon icon="logos:telegram" width="30" height="30"/>
-                          </template>
-                      </el-button>
-                  </div>
+                <div class="community">
+                  <el-button @click="jump('https://github.com/eoao/cloud-mail')">
+                    Github
+                    <template #icon>
+                      <Icon icon="codicon:github-inverted" width="22" height="22"/>
+                    </template>
+                  </el-button>
+                  <el-button @click="jump('https://t.me/cloud_mail_tg')">
+                    Telegram
+                    <template #icon>
+                      <Icon icon="logos:telegram" width="30" height="30"/>
+                    </template>
+                  </el-button>
+                </div>
               </div>
               <div class="concerning-item">
                 <span>{{ $t('support') }} : </span>
@@ -634,6 +629,20 @@
           </div>
         </template>
       </el-dialog>
+      <el-dialog v-model="addS3Show" :title="t('s3Configuration')" width="340" @closed="resetAddS3Form">
+        <form>
+          <el-input class="dialog-input" type="text" placeholder="Bucket" v-model="s3.bucket"/>
+          <el-input class="dialog-input" type="text" placeholder="Endpoint" v-model="s3.endpoint"/>
+          <el-input class="dialog-input" type="text" placeholder="Region" v-model="s3.region"/>
+          <el-input class="dialog-input" type="text" :placeholder="setting.s3AccessKey || 'Access Key'"
+                    v-model="s3.s3AccessKey"/>
+          <el-input type="text" :placeholder="setting.s3SecretKey || 'Secret Key'" v-model="s3.s3SecretKey"/>
+          <div class="s3-button">
+            <el-button :loading="clearS3Loading" @click="clearS3">{{ t('clear') }}</el-button>
+            <el-button type="primary" :loading="settingLoading && !clearS3Loading" @click="saveS3">{{ t('save') }}</el-button>
+          </div>
+        </form>
+      </el-dialog>
     </el-scrollbar>
   </div>
 </template>
@@ -660,7 +669,7 @@ defineOptions({
   name: 'sys-setting'
 })
 
-const currentVersion = 'v1.7.0'
+const currentVersion = 'v2.0.0'
 const hasUpdate = ref(false)
 let getUpdateErrorCount = 1;
 const {t, locale} = useI18n();
@@ -683,6 +692,7 @@ const uiStore = useUiStore();
 const {settings: setting} = storeToRefs(settingStore);
 const editTitle = ref('')
 const settingLoading = ref(false)
+const clearS3Loading = ref(false)
 const r2DomainInput = ref('')
 const loginOpacity = ref(0)
 const backgroundUrl = ref('')
@@ -691,6 +701,7 @@ const showSetBackground = ref(false)
 let regVerifyCount = ref(1)
 let addVerifyCount = ref(1)
 let backup = '{}'
+const addS3Show = ref(false)
 const addVerifyCountShow = ref(false)
 const regVerifyCountShow = ref(false)
 const resendTokenForm = reactive({
@@ -700,6 +711,14 @@ const resendTokenForm = reactive({
 const turnstileForm = reactive({
   siteKey: '',
   secretKey: ''
+})
+
+const s3 = reactive({
+  bucket: '',
+  endpoint: '',
+  region: '',
+  s3AccessKey: '',
+  s3SecretKey: ''
 })
 
 const noticeForm = reactive({
@@ -754,14 +773,8 @@ function getSettings() {
     r2DomainInput.value = setting.value.r2Domain
     addVerifyCount.value = setting.value.addVerifyCount
     regVerifyCount.value = setting.value.regVerifyCount
-    noticeForm.notice = setting.value.notice
-    noticeForm.noticeContent = setting.value.noticeContent
-    noticeForm.noticeDuration = setting.value.noticeDuration
-    noticeForm.noticeTitle = setting.value.noticeTitle
-    noticeForm.noticePosition = setting.value.noticePosition
-    noticeForm.noticeType = setting.value.noticeType
-    noticeForm.noticeOffset = setting.value.noticeOffset
-    noticeForm.noticeWidth = setting.value.noticeWidth
+    resetNoticeForm()
+    resetAddS3Form()
   })
 }
 
@@ -778,6 +791,14 @@ function openAddVerifyCount() {
 function openRegVerifyCount() {
   if (settingLoading.value) return
   regVerifyCountShow.value = true
+}
+
+function resetAddS3Form() {
+  s3.bucket = setting.value.bucket
+  s3.endpoint = setting.value.endpoint
+  s3.region = setting.value.region
+  s3.s3AccessKey = ''
+  s3.s3SecretKey = ''
 }
 
 const resendList = computed(() => {
@@ -949,6 +970,33 @@ function addChatTag(val) {
   })
 }
 
+function clearS3() {
+
+  const form = {
+    bucket: '',
+    endpoint: '',
+    region: '',
+    s3AccessKey: '',
+    s3SecretKey: ''
+  }
+  clearS3Loading.value = true
+  editSetting(form)
+}
+
+function saveS3() {
+
+  const form = {
+    bucket: s3.bucket,
+    endpoint: s3.endpoint,
+    region: s3.region
+  }
+
+  if (s3.s3AccessKey) form.s3AccessKey = s3.s3AccessKey
+  if (s3.s3SecretKey) form.s3SecretKey = s3.s3SecretKey
+
+  editSetting(form)
+}
+
 function tgBotSave() {
   const form = {
     tgBotToken: tgBotToken.value,
@@ -1116,6 +1164,8 @@ function change(e) {
   const settingForm = {...setting.value}
   delete settingForm.siteKey
   delete settingForm.secretKey
+  delete settingForm.s3AccessKey
+  delete settingForm.s3SecretKey
   delete settingForm.resendTokens
   editSetting(settingForm, false)
 }
@@ -1158,11 +1208,13 @@ function editSetting(settingForm, refreshStatus = true) {
     addVerifyCountShow.value = false
     regVerifyCountShow.value = false
     noticePopupShow.value = false
+    addS3Show.value = false
   }).catch((e) => {
     loginOpacity.value = setting.value.loginOpacity
     setting.value = {...setting.value, ...JSON.parse(backup)}
   }).finally(() => {
     settingLoading.value = false
+    clearS3Loading.value = false
   })
 }
 </script>
@@ -1172,12 +1224,29 @@ function editSetting(settingForm, refreshStatus = true) {
   height: 100%;
   overflow: hidden;
   background: var(--extra-light-fill) !important;
+  position: relative;
 
   .loading {
     display: flex;
     align-items: center;
     justify-content: center;
     height: 100%;
+    z-index: 2;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  .loading-show {
+    transition: all 200ms ease 200ms;
+    opacity: 1;
+  }
+
+  .loading-hide {
+    transition: var(--loading-hide-transition);
+    pointer-events: none;
+    opacity: 0;
   }
 }
 
@@ -1213,8 +1282,8 @@ function editSetting(settingForm, refreshStatus = true) {
 }
 
 .background {
-  width: 250px;
-  height: 140px;
+  width: 230px;
+  height: 120px;
   border-radius: 4px;
   border: 1px solid var(--light-border);
   @media (max-width: 500px) {
@@ -1273,6 +1342,21 @@ function editSetting(settingForm, refreshStatus = true) {
     grid-template-columns: 1fr auto;
     justify-items: flex-end;
     font-weight: normal;
+  }
+}
+
+.r2domain-item {
+  display: flex;
+  gap: 10px;
+  > div:first-child {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  > div:last-child {
+    flex: 1;
+    text-align: right;
   }
 }
 
@@ -1466,6 +1550,16 @@ function editSetting(settingForm, refreshStatus = true) {
   width: fit-content !important;
 }
 
+.s3-button {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 15px;
+
+  .el-button {
+    margin-left: 0;
+  }
+}
+
 .r2domain {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -1497,6 +1591,10 @@ function editSetting(settingForm, refreshStatus = true) {
   }
 }
 
+.dialog-input {
+  margin-bottom: 15px;
+}
+
 .concerning-item {
   display: flex;
   align-items: center;
@@ -1506,9 +1604,11 @@ function editSetting(settingForm, refreshStatus = true) {
     row-gap: 10px;
     flex-wrap: wrap;
   }
+
   :deep(.el-button) {
     padding: 0 10px;
     font-weight: normal;
+
     i {
       font-size: 22px;
     }

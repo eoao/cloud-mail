@@ -1,36 +1,40 @@
-name = "cloud-mail-test"
+name = "test-mail"
 main = "src/index.js"
 compatibility_date = "2025-06-04"
 keep_vars = true
 
 [observability]
 enabled = true
-head_sampling_rate = 1
 
 [[d1_databases]]
-binding = "db"
-database_name = "email-test"
-database_id = ""
+binding = "db"			#d1数据库绑定名默认不可修改
+database_name = "test-email"		#d1数据库名字
+database_id = "e65f099d-796d-4eaa-8dff-529b368b20db"		#d1数据库id
 
 [[kv_namespaces]]
-binding = "kv"
-id = ""
+binding = "kv"			#kv绑定名默认不可修改
+id = "9be10cd058e04c55b526f8c0c116f50c"					#kv数据库id
 
-[[r2_buckets]]
-binding = "r2"
-bucket_name = "email-test"
+#(可选)
+#[[r2_buckets]]
+#binding = "r2"			#r2对象存储绑定名默认不可修改
+#bucket_name = "email"		#r2对象存储桶的名字
 
 [assets]
-binding = "assets"
-directory = "./dist"
+binding = "assets"		#静态资源绑定名默认不可修改
+directory = "./dist"	#前端vue项目打包的静态资源存放位置,默认dist
 not_found_handling = "single-page-application"
 run_worker_first = true
 
 [triggers]
-crons = ["0 16 * * *"]
+crons = ["0 16 * * *"]	#定时任务每天晚上12点执行
+
 
 [vars]
-orm_log = true
-domain = ["", ""]
-admin = ""
-jwt_secret = ""
+orm_log = false
+domain = ["mornglow.top"]				#邮件域名可可配置多个 示例: ["example1.com","example2.com"]
+admin = "admin@mornglow.top"				#管理员的邮箱	示例: admin@example.com
+jwt_secret = "asdfsadfasgasdgagda"			#jwt令牌的密钥,随便填一串字符串
+
+[build]
+command = "pnpm --prefix ../mail-vue install && pnpm --prefix ../mail-vue run build"

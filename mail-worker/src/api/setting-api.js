@@ -21,8 +21,3 @@ app.put('/setting/setBackground', async (c) => {
 	const key = await settingService.setBackground(c, await c.req.json());
 	return c.json(result.ok(key));
 });
-
-app.delete('/setting/physicsDeleteAll', async (c) => {
-	await settingService.physicsDeleteAll(c);
-	return c.json(result.ok());
-});

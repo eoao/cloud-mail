@@ -21,8 +21,24 @@ const init = {
 		await this.v1_5DB(c);
 		await this.v1_6DB(c);
 		await this.v1_7DB(c);
+		await this.v2DB(c);
 		await settingService.refresh(c);
 		return c.text(t('initSuccess'));
+	},
+
+	async v2DB(c) {
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN bucket TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN region TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN endpoint TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN s3_access_key TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN s3_secret_key TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`DELETE FROM perm WHERE perm_key = 'setting:clean'`)
+			]);
+		} catch (e) {
+			console.error(e.message)
+		}
 	},
 
 	async v1_7DB(c) {
@@ -248,7 +264,7 @@ const init = {
 			`ALTER TABLE setting ADD COLUMN site_key TEXT;`,
 			`ALTER TABLE setting ADD COLUMN secret_key TEXT;`,
 			`ALTER TABLE setting ADD COLUMN background TEXT;`,
-			`ALTER TABLE setting ADD COLUMN login_opacity INTEGER NOT NULL DEFAULT 0.80;`,
+			`ALTER TABLE setting ADD COLUMN login_opacity INTEGER NOT NULL DEFAULT 0.88;`,
 
 			`ALTER TABLE user ADD COLUMN create_ip TEXT;`,
 			`ALTER TABLE user ADD COLUMN active_ip TEXT;`,
@@ -308,7 +324,6 @@ const init = {
         (17, '系统设置', '', 0, 1, 6),
         (18, '设置查看', 'setting:query', 17, 2, 0),
         (19, '设置修改', 'setting:set', 17, 2, 1),
-        (20, '物理清空', 'setting:clean', 17, 2, 2),
         (21, '邮箱侧栏', '', 0, 0, 1),
         (22, '邮箱查看', 'account:query', 21, 2, 0),
         (23, '邮箱添加', 'account:add', 21, 2, 1),

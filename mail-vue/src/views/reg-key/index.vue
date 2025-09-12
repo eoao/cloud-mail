@@ -504,7 +504,7 @@ function openAdd() {
 
 .loading-hide {
   pointer-events: none;
-  transition: all 200ms;
+  transition: var(--loading-hide-transition);
   opacity: 0;
 }
 

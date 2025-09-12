@@ -136,8 +136,6 @@ const zh = {
     loginDomain: '登录框域名',
     multipleEmail: '多号模式',
     multipleEmailDesc: '开启后账号栏出现一个用户可以添加多个邮箱',
-    physicallyWipeData: '物理清空数据',
-    physicallyWipeDataDesc: '该操作会物理清空所有已被删除的数据',
     customization: '个性化设置',
     websiteTitle: '网站标题',
     loginBoxOpacity: '登录透明',
@@ -148,7 +146,7 @@ const zh = {
     autoRefreshDesc: '轮询请求服务器获取最新邮件',
     sendEmail: '邮件发送',
     resendToken: 'Resend Token',
-    R2OS: 'R2 对象存储',
+    oss: '对象存储',
     osDomain: '访问域名',
     emailPush: '邮件推送',
     tgBot: 'Telegram 机器人',
@@ -281,7 +279,17 @@ const zh = {
     noRecipientDesc: '即使没有注册的邮箱也能收到邮件',
     preview: '预览',
     help: '帮助',
-    document: '项目文档'
+    document: '项目文档',
+    clearEmail: '邮件清除',
+    sendEmailAddress: '发件人邮箱',
+    toEmail: '收件人邮箱',
+    equal: '等值',
+    leading: '左匹配',
+    to: '至',
+    clear: '清除',
+    include: '包含',
+    delAllEmailConfirm: '确定要删除吗？',
+    s3Configuration: 'S3 配置'
 
 }
 export default zh

@@ -1,5 +1,8 @@
 import {createRouter, createWebHistory} from 'vue-router'
+import NProgress from 'nprogress';
 import {useUiStore} from "@/store/ui.js";
+import {useSettingStore} from "@/store/setting.js";
+import {cvtR2Url} from "@/utils/convert.js";
 
 const routes = [
     {
@@ -74,19 +77,34 @@ const router = createRouter({
     routes
 })
 
-router.beforeEach(async (to, from, next) => {
+NProgress.configure({
+    showSpinner: false,   // 不显示旋转图标
+    trickleSpeed: 50,    // 自动递增速度
+    minimum: 0.1          // 最小百分比
+});
+
+let timer
+let first = true
+
+router.beforeEach((to, from, next) => {
+
+    if (timer) {
+        clearTimeout(timer)
+    }
+
+    timer = setTimeout(() => {
+        NProgress.start()
+    }, first ? 200 : 100)
 
     const token = localStorage.getItem('token')
 
     if (!token && to.name !== 'login') {
-
-        return next({
-            name: 'login',
-        })
+        return next({name: 'login'})
     }
 
     if (!token && to.name === 'login') {
-        return next()
+        loadBackground(next)
+        return
     }
 
     if (token && to.name === 'login') {
@@ -97,7 +115,37 @@ router.beforeEach(async (to, from, next) => {
 
 })
 
+function loadBackground(next) {
+
+    const settingStore = useSettingStore();
+
+    if (settingStore.settings.background) {
+
+        const src = cvtR2Url(settingStore.settings.background);
+
+        const img = new Image();
+        img.src = src;
+
+        img.onload = () => {
+            next()
+        };
+
+        img.onerror = () => {
+            console.warn("背景图片加载失败:", img.src);
+            next()
+        };
+
+    } else {
+        next()
+    }
+
+
+}
+
 router.afterEach((to) => {
+
+    clearTimeout(timer)
+    NProgress.done();
 
     const uiStore = useUiStore()
     if (to.meta.menu) {
@@ -111,6 +159,8 @@ router.afterEach((to) => {
     if (window.innerWidth < 1025) {
         uiStore.asideShow = false
     }
+
+    first = false
 })
 
 export default router

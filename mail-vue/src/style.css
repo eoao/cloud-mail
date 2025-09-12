@@ -136,6 +136,7 @@ button, input, select, textarea {
     --base-border-color: #DCDFE6;
     --secondary-text-color: #909399;
     --message-block-color: rgba(0, 0, 0, 0);
+    --loading-hide-transition: all 200ms;
     --vt-x: 50%;
     --vt-y: 50%;
     --vt-duration: 520ms;

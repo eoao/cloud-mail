@@ -230,7 +230,7 @@ function banEmailAddTag(val) {
   form.banEmail.splice(form.banEmail.length - 1, 1)
 
   emails.forEach(email => {
-    if ((isEmail(email) || isDomain(email)) && !form.banEmail.includes(email)) {
+    if ((isEmail(email) || isDomain(email) || email === '*') && !form.banEmail.includes(email)) {
       form.banEmail.push(email)
     }
   })
@@ -500,7 +500,7 @@ window.onresize = () => {
 
 .loading-hide {
   pointer-events: none;
-  transition: all 200ms;
+  transition: var(--loading-hide-transition);
   opacity: 0;
 }
 

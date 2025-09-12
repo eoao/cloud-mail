@@ -4,7 +4,7 @@
       <Icon v-perm="'account:add'" class="icon add" icon="ion:add-outline" width="23" height="23" @click="add"/>
       <Icon class="icon refresh" icon="ion:reload" width="18" height="18" @click="refresh"/>
     </div>
-    <el-scrollbar class="scrollbar">
+    <el-scrollbar class="scrollbar" ref="scrollbarRef">
       <div v-infinite-scroll="getAccountList" :infinite-scroll-distance="600" :infinite-scroll-immediate="false">
         <el-card class="item" :class="itemBg(item.accountId)" v-for="item in accounts" :key="item.accountId"
                  @click="changeAccount(item)">
@@ -37,7 +37,7 @@
 
         <!-- Initial Loading Skeleton -->
         <template v-if="loading">
-          <el-skeleton v-for="i in 3" :key="i" animated>
+          <el-skeleton v-for="i in skeletonRows" :key="i" animated>
             <template #template>
               <el-card class="item">
                 <el-skeleton-item variant="p" style="width: 70%; height: 20px; margin-bottom: 25px"/>
@@ -128,6 +128,7 @@
 import {Icon} from "@iconify/vue";
 import {nextTick, reactive, ref, watch} from "vue";
 import {accountList, accountAdd, accountDelete, accountSetName} from "@/request/account.js";
+import {sleep} from "@/utils/time-utils.js"
 import {isEmail} from "@/utils/verify-utils.js";
 import {copyText} from "@/utils/clipboard-utils.js";
 import {useSettingStore} from "@/store/setting.js";
@@ -152,15 +153,18 @@ const setNameShow = ref(false)
 const setNameLoading = ref(false)
 const accountName = ref(null)
 const addRef = ref({})
+const scrollbarRef = ref({})
 let account = null
 let turnstileId = null
 const botJsError = ref(false)
 let verifyToken = ''
 let verifyErrorCount = 0
+let first = true
 const addForm = reactive({
   email: '',
   suffix: settingStore.domainList[0]
 })
+let skeletonRows = 10
 const queryParams = {
   accountId: 0,
   size: 20
@@ -201,6 +205,12 @@ window.onTurnstileError = (e) => {
 window.onTurnstileSuccess = (token) => {
   verifyToken = token;
 };
+
+function getSkeletonRows() {
+  if (accounts.length > 20) return skeletonRows = 20
+  if (accounts.length === 0) return skeletonRows = 1
+  skeletonRows = accounts.length
+}
 
 function setName() {
 
@@ -282,6 +292,8 @@ function refresh() {
   followLoading.value = false
   noLoading.value = false
   queryParams.accountId = 0
+  getSkeletonRows();
+  scrollbarRef.value.setScrollTop(0)
   accounts.splice(0, accounts.length)
   getAccountList()
 }
@@ -326,7 +338,17 @@ function getAccountList() {
     followLoading.value = true
   }
 
-  accountList(queryParams.accountId, queryParams.size).then(list => {
+  let start = Date.now();
+
+  accountList(queryParams.accountId, queryParams.size).then(async list => {
+
+    let end = Date.now();
+    let duration = end - start;
+    if (duration < 500) {
+      await sleep(500 - duration)
+
+    }
+
     if (list.length < queryParams.size) {
       noLoading.value = true
     }
@@ -338,6 +360,7 @@ function getAccountList() {
 
     loading.value = false
     followLoading.value = false
+    first = false
   }).catch(() => {
     loading.value = false
     followLoading.value = false
@@ -364,6 +387,7 @@ function submit() {
     })
     return
   }
+
   if (!verifyToken && (settingStore.settings.addEmailVerify === 0 || (settingStore.settings.addEmailVerify === 2 && settingStore.settings.addVerifyOpen))) {
     if (!verifyShow.value) {
       verifyShow.value = true
@@ -478,7 +502,7 @@ path[fill="#ffdda1"] {
       justify-content: center;
       align-items: center;
       padding: 10px 0;
-      color: gray;
+      color: var(--secondary-text-color);
     }
   }
 

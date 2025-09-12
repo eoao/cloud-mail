@@ -23,7 +23,7 @@ const roleService = {
 
 		let roleRow = await orm(c).select().from(role).where(eq(role.name, name)).get();
 
-		const notEmailIndex = banEmail.findIndex(item => (!verifyUtils.isEmail(item) && !verifyUtils.isDomain(item)))
+		const notEmailIndex = banEmail.findIndex(item => (!verifyUtils.isEmail(item) && !verifyUtils.isDomain(item)) && item !== "*");
 
 		if (notEmailIndex > -1) {
 			throw new BizError(t('notEmail'));
@@ -72,7 +72,7 @@ const roleService = {
 
 		delete params.isDefault
 
-		const notEmailIndex = banEmail.findIndex(item => (!verifyUtils.isEmail(item) && !verifyUtils.isDomain(item)))
+		const notEmailIndex = banEmail.findIndex(item => (!verifyUtils.isEmail(item) && !verifyUtils.isDomain(item)) && item !== "*")
 
 		if (notEmailIndex > -1) {
 			throw new BizError(t('notEmail'));

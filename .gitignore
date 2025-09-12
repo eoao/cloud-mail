@@ -9,6 +9,7 @@ lerna-debug.log*
 node_modules
 dist-ssr
 *.local
+dist
 
 .vscode/*
 !.vscode/extensions.json

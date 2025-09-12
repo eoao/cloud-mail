@@ -22,3 +22,20 @@ export function cvtR2Url(key) {
     }
     return domain + '/' + key
 }
+
+export function toOssDomain(domain) {
+
+    if (!domain) {
+        return null
+    }
+
+    if (!domain.startsWith('http')) {
+        return 'https://' + domain
+    }
+
+    if (domain.endsWith("/")) {
+        domain = domain.slice(0, -1);
+    }
+
+    return domain
+}

@@ -156,10 +156,7 @@ const route = useRoute();
 
 .el-menu {
   border-right: 0;
-  width: 250px;
-  @media (max-width: 1199px) {
-    width: 250px;
-  }
+  width: 260px;
 }
 
 :deep(.el-divider__text) {

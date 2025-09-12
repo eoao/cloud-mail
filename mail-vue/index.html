@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#F1F1F1" id="theme-color-meta">
   <title></title>
-  <link rel="icon" href="./src/assets/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="./public/mail.png" type="image/png">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <script>
@@ -12,13 +13,20 @@
     if (uiStoreStr) {
       const uiStore =  JSON.parse(uiStoreStr)
       const root = document.documentElement
-      root.style.background = uiStore.dark ? '#141414' : '#FFFFFF'
       root.setAttribute('class', uiStore.dark ? 'dark' : '');
+      const metaTag = document.getElementById('theme-color-meta');
+      const isMobile =  !window.matchMedia("(pointer: fine) and (hover: hover)").matches;
+      metaTag.setAttribute('content', uiStore.dark ? (isMobile ? '#141414' : '#000000') : (isMobile ? '#FFFFFF' : '#F1F1F1'));
     }
   </script>
 </head>
 <style>
-
+  html {
+    background: #FFFFFF;
+  }
+  .dark {
+    background: #141414;
+  }
   #loading-first {
     position: fixed;
     left: 0;
@@ -30,6 +38,12 @@
     align-items: center;
     z-index: 500;
     background: var(--el-bg-color);
+  }
+
+  .loading-hide {
+    pointer-events: none;
+    transition: all 200ms;
+    opacity: 0;
   }
 
   .loading-icon {
@@ -89,7 +103,7 @@
   }
 </style>
 <body>
-<div id="loading-first">
+<div id="loading-first" >
   <div class="loading-icon">
     <svg class="circular" viewBox="0 0 20 20">
       <g class="loading-path">

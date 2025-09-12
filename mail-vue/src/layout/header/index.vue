@@ -31,8 +31,8 @@
       <div class="notice icon-item" @click="openNotice">
         <Icon icon="streamline-plump:announcement-megaphone"/>
       </div>
-      <el-dropdown :teleported="false" popper-class="detail-dropdown">
-        <div class="avatar">
+      <el-dropdown ref="userinfoRef" @visible-change="e => userInfoShow = e" :teleported="false" popper-class="detail-dropdown">
+        <div class="avatar" @click="userInfoHide" >
           <div class="avatar-text">
             <div>{{ formatName(userStore.user.email) }}</div>
           </div>
@@ -105,6 +105,8 @@ const settingStore = useSettingStore();
 const userStore = useUserStore();
 const uiStore = useUiStore();
 const logoutLoading = ref(false)
+const userInfoShow = ref(false)
+const userinfoRef = ref({})
 
 const accountCount = computed(() => {
   return userStore.user.role.accountCount
@@ -158,6 +160,14 @@ const sendCount = computed(() => {
 
   return userStore.user.sendCount + '/' + userStore.user.role.sendCount
 })
+
+function userInfoHide(e) {
+    if (userInfoShow.value) {
+        userinfoRef.value.handleClose()
+    } else {
+        userinfoRef.value.handleOpen()
+    }
+}
 
 async function copyEmail(email) {
   try {
@@ -221,6 +231,9 @@ function openDark(e) {
 
 function switchDark(nextIsDark, root) {
   root.setAttribute('class', nextIsDark ? 'dark' : '')
+  const metaTag = document.getElementById('theme-color-meta');
+  const isMobile =  !window.matchMedia("(pointer: fine) and (hover: hover)").matches;
+  metaTag.setAttribute('content', nextIsDark ? (isMobile ? '#141414' : '#000000') : (isMobile ? '#FFFFFF' : '#F1F1F1'));
   uiStore.dark = nextIsDark
 }
 

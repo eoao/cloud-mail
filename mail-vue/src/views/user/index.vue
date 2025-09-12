@@ -775,7 +775,7 @@ adjustWidth()
 function adjustWidth() {
   const width = window.innerWidth
   statusShow.value = width > 1090
-  createTimeShow.value = width > 1200
+  createTimeShow.value = width > 1367
   accountNumShow.value = width > 650
   sendNumShow.value = width > 685
   typeShow.value = width > 767
@@ -957,7 +957,7 @@ function adjustWidth() {
 
 .loading-hide {
   pointer-events: none;
-  transition: all 200ms;
+  transition: var(--loading-hide-transition);
   opacity: 0;
 }
 

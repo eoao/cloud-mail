@@ -34,6 +34,11 @@ export const setting = sqliteTable('setting', {
 	noticeWidth: integer('notice_width').default(400).notNull(),
 	notice: integer('notice').default(0).notNull(),
 	noRecipient: integer('no_recipient').default(1).notNull(),
-	loginDomain: integer('login_domain').default(0).notNull()
+	loginDomain: integer('login_domain').default(0).notNull(),
+	bucket: text('bucket').default('').notNull(),
+	region: text('region').default('').notNull(),
+	endpoint: text('endpoint').default('').notNull(),
+	s3AccessKey: text('s3_access_key').default('').notNull(),
+	s3SecretKey: text('s3_secret_key').default('').notNull()
 });
 export default setting

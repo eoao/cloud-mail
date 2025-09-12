@@ -136,8 +136,6 @@ const zhTW = {
     loginDomain: '登入框網域',
     multipleEmail: '多帳戶',
     multipleEmailDesc: '啟用此功能可讓使用者新增多個帳戶。',
-    physicallyWipeData: '永久清除資料',
-    physicallyWipeDataDesc: '此操作將永久刪除所有已刪除的資料。',
     customization: '自訂',
     websiteTitle: '標題',
     loginBoxOpacity: '登入框透明度',
@@ -148,7 +146,7 @@ const zhTW = {
     autoRefreshDesc: '自動從伺服器抓取最新郵件。',
     sendEmail: '寄送郵件',
     resendToken: 'Resend Token',
-    R2OS: 'R2 物件儲存',
+    oss: '物件儲存',
     osDomain: '網域',
     emailPush: '郵件推播',
     tgBot: 'Telegram 機器人',
@@ -281,6 +279,16 @@ const zhTW = {
     noRecipientDesc: '即使未註冊郵件地址也可接收郵件。',
     preview: '預覽',
     help: '說明',
-    document: '文件'
+    document: '文件',
+    clearEmail: '郵件清除',
+    sendEmailAddress: '寄件人電子郵件',
+    toEmail: '收件人電子郵件',
+    equal: '等值',
+    leading: '左匹配',
+    to: '至',
+    clear: '清除',
+    include: '包含',
+    delAllEmailConfirm: '您確定要刪除嗎？',
+    s3Configuration: 'S3 設定'
 }
 export default zhTW
