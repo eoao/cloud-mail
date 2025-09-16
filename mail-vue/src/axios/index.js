@@ -66,12 +66,15 @@ http.interceptors.response.use((res) => {
                 })
                 reject(data)
             }
-            setTimeout(() => {
-                resolve(data.data)
-            },300)
+            resolve(data.data)
         })
     },
     (error) => {
+
+        if (error.status === 403) {
+            location.reload();
+            return;
+        }
 
         const showMsg = error.config.noMsg;
 
