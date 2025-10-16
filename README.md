@@ -62,6 +62,19 @@
 - **📜 更多功能**：正在开发中...
 
 
+## GitHub OAuth 配置
+
+若要开启使用 GitHub 登录，请按照以下步骤配置 Cloudflare Workers 环境变量：
+
+1. 前往 [GitHub Developer settings](https://github.com/settings/developers) 创建 **OAuth Apps**，`Authorization callback URL` 建议填写 `https://<你的域名>/oauth/github/callback`。
+2. 记录生成的 **Client ID** 与 **Client Secret**。
+3. 在 `wrangler.toml`、`wrangler-dev.toml` 等配置文件的 `[vars]` 部分或 Cloudflare Dashboard 中新增以下变量：
+   - `githubClientId`
+   - `githubClientSecret`
+   - `githubRedirectUri`（与步骤 1 中的回调地址一致）
+4. 重新部署 Worker 后，登录页会自动显示 GitHub 登录按钮。
+
+
 
 ## 技术栈
 

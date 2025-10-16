@@ -54,6 +54,18 @@
 
 - **📜 More Features**: Under development...
 
+## GitHub OAuth Configuration
+
+To enable GitHub sign-in, configure the following Cloudflare Workers variables:
+
+1. Visit [GitHub Developer settings](https://github.com/settings/developers) and create a new **OAuth App**. Set the `Authorization callback URL` to `https://<your-domain>/oauth/github/callback` (replace with your domain).
+2. Copy the generated **Client ID** and **Client Secret**.
+3. Add these variables to the `[vars]` section of `wrangler.toml`, `wrangler-dev.toml`, or via the Cloudflare Dashboard:
+   - `githubClientId`
+   - `githubClientSecret`
+   - `githubRedirectUri` (must match the callback URL from step 1)
+4. Redeploy the Worker and the login page will show the GitHub button automatically.
+
 ## Tech Stack
 
 - **Framework**: [Vue3](https://vuejs.org/) + [Element Plus](https://element-plus.org/)
