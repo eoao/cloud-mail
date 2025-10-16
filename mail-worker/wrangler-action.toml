@@ -33,6 +33,9 @@ crons = ["0 16 * * *"]	#定时任务每天晚上12点执行
 #orm_log = false
 domain = "${DOMAIN}"				#邮件域名可可配置多个 示例: ["example1.com","example2.com"]
 admin = "${ADMIN}"				#管理员的邮箱	示例: admin@example.com
+githubClientId = "${GITHUB_CLIENT_ID}"          # GitHub OAuth 应用的 Client ID
+githubClientSecret = "${GITHUB_CLIENT_SECRET}"  # GitHub OAuth 应用的 Client Secret
+githubRedirectUri = "${GITHUB_REDIRECT_URI}"    # GitHub OAuth 回调地址，例如 https://example.com/oauth/github/callback
 jwt_secret = "${JWT_SECRET}"			#jwt令牌的密钥,随便填一串字符串
 
 [build]

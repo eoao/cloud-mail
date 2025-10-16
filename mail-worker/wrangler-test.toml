@@ -35,6 +35,9 @@ orm_log = false
 domain = ["mornglow.top"]				#邮件域名可可配置多个 示例: ["example1.com","example2.com"]
 admin = "admin@mornglow.top"				#管理员的邮箱	示例: admin@example.com
 jwt_secret = "asdfsadfasgasdgagda"			#jwt令牌的密钥,随便填一串字符串
+githubClientId = ""                                     #GitHub OAuth 应用的 Client ID
+githubClientSecret = ""                                 #GitHub OAuth 应用的 Client Secret
+githubRedirectUri = "https://example.com/oauth/github/callback" #GitHub OAuth 回调地址
 
 [build]
 command = "pnpm --prefix ../mail-vue install && pnpm --prefix ../mail-vue run build"
