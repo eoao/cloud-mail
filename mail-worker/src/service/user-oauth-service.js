@@ -4,26 +4,63 @@ import { and, eq } from 'drizzle-orm';
 import BizError from '../error/biz-error';
 import { t } from '../i18n/i18n';
 
+let schemaEnsured = false;
+
 const userOAuthService = {
 
-        listByUserId(c, userId) {
-                return orm(c)
+        async ensureSchema(c) {
+                if (schemaEnsured) {
+                        return;
+                }
+
+                try {
+                        await c.env.db.prepare(`CREATE TABLE IF NOT EXISTS user_oauth (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                user_id INTEGER NOT NULL,
+                                provider TEXT NOT NULL,
+                                external_id TEXT NOT NULL,
+                                email TEXT NOT NULL DEFAULT '',
+                                name TEXT NOT NULL DEFAULT '',
+                                username TEXT NOT NULL DEFAULT '',
+                                avatar TEXT NOT NULL DEFAULT '',
+                                create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+                        );`).run();
+                        await c.env.db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_oauth_provider_external ON user_oauth(provider, external_id);`).run();
+                        await c.env.db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_oauth_user_provider ON user_oauth(user_id, provider);`).run();
+                } catch (e) {
+                        // Ignore errors that indicate the table already exists in older schemas
+                        if (!e.message?.includes('already exists')) {
+                                throw e;
+                        }
+                }
+
+                schemaEnsured = true;
+        },
+
+        async listByUserId(c, userId) {
+                await this.ensureSchema(c);
+
+                return await orm(c)
                         .select()
                         .from(userOAuth)
                         .where(eq(userOAuth.userId, userId))
                         .all();
         },
 
-        selectByUserIdAndProvider(c, userId, provider) {
-                return orm(c)
+        async selectByUserIdAndProvider(c, userId, provider) {
+                await this.ensureSchema(c);
+
+                return await orm(c)
                         .select()
                         .from(userOAuth)
                         .where(and(eq(userOAuth.userId, userId), eq(userOAuth.provider, provider)))
                         .get();
         },
 
-        selectByProviderAndExternalId(c, provider, externalId) {
-                return orm(c)
+        async selectByProviderAndExternalId(c, provider, externalId) {
+                await this.ensureSchema(c);
+
+                return await orm(c)
                         .select()
                         .from(userOAuth)
                         .where(and(eq(userOAuth.provider, provider), eq(userOAuth.externalId, externalId)))
@@ -31,6 +68,8 @@ const userOAuthService = {
         },
 
         async bind(c, userId, provider, payload) {
+                await this.ensureSchema(c);
+
                 const { externalId, email = '', name = '', username = '', avatar = '' } = payload;
 
                 if (!externalId) {
@@ -65,6 +104,8 @@ const userOAuthService = {
         },
 
         async unbind(c, userId, provider) {
+                await this.ensureSchema(c);
+
                 await orm(c)
                         .delete(userOAuth)
                         .where(and(eq(userOAuth.userId, userId), eq(userOAuth.provider, provider)))
