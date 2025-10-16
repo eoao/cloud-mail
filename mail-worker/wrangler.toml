@@ -31,7 +31,7 @@ crons = ["0 16 * * *"]	#定时任务每天晚上12点执行
 
 [vars]
 orm_log = false
-domain = ["mail.20090408.xyz"]                        # 邮件域名可配置多个 示例: ["example1.com","example2.com"]
+domain = ["20090408.xyz"]                        # 邮件域名可配置多个 示例: ["example1.com","example2.com"]
 admin = "admin@20090408.xyz"                         # 管理员的邮箱 示例: admin@example.com
 jwt_secret = "Pq8o02mV@L2bC$r9X&N1t"                    # jwt令牌的密钥,随便填一串字符串
 githubClientId = "Ov23likV5kdiSdvCtI1i"                # GitHub OAuth 应用的 Client ID
