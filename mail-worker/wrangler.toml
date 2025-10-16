@@ -6,18 +6,18 @@ keep_vars = true
 [observability]
 enabled = true
 
-#[[d1_databases]]
-#binding = "db"			#d1数据库绑定名默认不可修改
-#database_name = ""		#d1数据库名字
-#database_id = ""		#d1数据库id
+[[d1_databases]]
+binding = "db"			#d1数据库绑定名默认不可修改
+database_name = "cloud_mail"		#d1数据库名字
+database_id = "9ef79abb-810c-466c-a04b-11b444c1b324"		#d1数据库id
 
-#[[kv_namespaces]]
-#binding = "kv"			#kv绑定名默认不可修改
-#id = ""					#kv数据库id
+[[kv_namespaces]]
+binding = "kv"			#kv绑定名默认不可修改
+id = "80fb1439acd0418bbced646489b26fdb"					#kv数据库id
 
-#[[r2_buckets]]
-#binding = "r2"			#r2对象存储绑定名默认不可修改
-#bucket_name = ""		#r2对象存储桶的名字
+[[r2_buckets]]
+binding = "r2"			#r2对象存储绑定名默认不可修改
+bucket_name = "cloud-mail"		#r2对象存储桶的名字
 
 [assets]
 binding = "assets"		#静态资源绑定名默认不可修改
@@ -29,14 +29,14 @@ run_worker_first = true
 crons = ["0 16 * * *"]	#定时任务每天晚上12点执行
 
 
-# [vars]
-# orm_log = false
-# domain = []                        # 邮件域名可配置多个 示例: ["example1.com","example2.com"]
-# admin = ""                         # 管理员的邮箱 示例: admin@example.com
-# jwt_secret = ""                    # jwt令牌的密钥,随便填一串字符串
-# githubClientId = ""                # GitHub OAuth 应用的 Client ID
-# githubClientSecret = ""            # GitHub OAuth 应用的 Client Secret
-# githubRedirectUri = ""             # GitHub OAuth 回调地址，例如 https://example.com/oauth/github/callback
+[vars]
+orm_log = false
+domain = ["mail.20090408.xyz"]                        # 邮件域名可配置多个 示例: ["example1.com","example2.com"]
+admin = "admin@20090408.xyz"                         # 管理员的邮箱 示例: admin@example.com
+jwt_secret = "Pq8o02mV@L2bC$r9X&N1t"                    # jwt令牌的密钥,随便填一串字符串
+githubClientId = "Ov23likV5kdiSdvCtI1i"                # GitHub OAuth 应用的 Client ID
+githubClientSecret = "2fdcc2347c6fd8ff285b65d9469f5589b91419d2"            # GitHub OAuth 应用的 Client Secret
+githubRedirectUri = "https://mail.20080408.xyz/oauth/github/callback"             # GitHub OAuth 回调地址，例如 https://example.com/oauth/github/callback
 
 [build]
 command = "pnpm --prefix ../mail-vue install && pnpm --prefix ../mail-vue run build"
