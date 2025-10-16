@@ -29,6 +29,22 @@
           <el-button type="primary" @click="pwdShow = true">{{$t('changePwdBtn')}}</el-button>
         </div>
       </div>
+      <div class="item">
+        <div>{{$t('githubAccount')}}</div>
+        <div class="oauth-bind">
+          <template v-if="githubBinding">
+            <div class="oauth-info">
+              <span class="oauth-name">{{ githubBinding.username || githubBinding.name || githubBinding.email }}</span>
+              <span v-if="githubBinding.email" class="oauth-sub">{{ githubBinding.email }}</span>
+            </div>
+            <el-button size="small" :loading="unbindLoading" @click="unbindGitHub">{{$t('unbind')}}</el-button>
+          </template>
+          <template v-else>
+            <span>{{ $t('githubUnbound') }}</span>
+            <el-button size="small" type="primary" :loading="bindLoading" @click="bindGitHub">{{$t('bind')}}</el-button>
+          </template>
+        </div>
+      </div>
     </div>
     <div class="del-email" v-perm="'my:delete'">
       <div class="title">{{$t('deleteUser')}}</div>
@@ -49,8 +65,8 @@
   </div>
 </template>
 <script setup>
-import {reactive, ref, defineOptions} from 'vue'
-import {resetPassword, userDelete} from "@/request/my.js";
+import {reactive, ref, defineOptions, computed} from 'vue'
+import {resetPassword, userDelete, myOAuthAuthorize, myOAuthUnbind} from "@/request/my.js";
 import {useUserStore} from "@/store/user.js";
 import router from "@/router/index.js";
 import {accountSetName} from "@/request/account.js";
@@ -63,6 +79,13 @@ const userStore = useUserStore();
 const setPwdLoading = ref(false)
 const setNameShow = ref(false)
 const accountName = ref(null)
+const bindLoading = ref(false)
+const unbindLoading = ref(false)
+
+const githubBinding = computed(() => {
+  const bindings = userStore.user?.oauthBindings || []
+  return bindings.find(item => item.provider === 'github') || null
+})
 
 defineOptions({
   name: 'setting'
@@ -105,6 +128,45 @@ function setName() {
   }).catch(() => {
     userStore.user.name = name
   })
+}
+
+async function bindGitHub() {
+
+  if (bindLoading.value) {
+    return
+  }
+
+  bindLoading.value = true
+  try {
+    const { url } = await myOAuthAuthorize('github')
+    sessionStorage.setItem('oauth_bind_provider', 'github')
+    sessionStorage.setItem('oauth_bind_return', router.currentRoute.value.fullPath || '/settings')
+    window.location.href = url
+  } finally {
+    bindLoading.value = false
+  }
+}
+
+async function unbindGitHub() {
+
+  if (unbindLoading.value) {
+    return
+  }
+
+  unbindLoading.value = true
+
+  try {
+    await myOAuthUnbind('github')
+    const bindings = userStore.user?.oauthBindings || []
+    userStore.user.oauthBindings = bindings.filter(item => item.provider !== 'github')
+    ElMessage({
+      message: t('githubUnbindSuccess'),
+      type: 'success',
+      plain: true,
+    })
+  } finally {
+    unbindLoading.value = false
+  }
 }
 
 const pwdShow = ref(false)
@@ -231,6 +293,29 @@ function submitPwd() {
         color: #4dabff;
         padding-left: 10px;
         cursor: pointer;
+      }
+
+      .oauth-bind {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        justify-content: space-between;
+
+        .oauth-info {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .oauth-name {
+          font-weight: 500;
+        }
+
+        .oauth-sub {
+          font-size: 12px;
+          color: var(--regular-text-color);
+        }
       }
 
       @media (max-width: 767px) {
