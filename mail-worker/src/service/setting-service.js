@@ -143,13 +143,19 @@ const settingService = {
 		return background;
 	},
 
-	async websiteConfig(c) {
+        async websiteConfig(c) {
 
-		const settingRow = await this.get(c, true)
+                const settingRow = await this.get(c, true)
 
-		return {
-			register: settingRow.register,
-			title: settingRow.title,
+                const oauthProviders = [];
+
+                if (c.env.githubClientId && c.env.githubClientSecret && c.env.githubRedirectUri) {
+                        oauthProviders.push({ provider: 'github', name: 'GitHub' });
+                }
+
+                return {
+                        register: settingRow.register,
+                        title: settingRow.title,
 			manyEmail: settingRow.manyEmail,
 			addEmail: settingRow.addEmail,
 			autoRefreshTime: settingRow.autoRefreshTime,
@@ -170,11 +176,12 @@ const settingService = {
 			noticeDuration: settingRow.noticeDuration,
 			noticePosition: settingRow.noticePosition,
 			noticeWidth: settingRow.noticeWidth,
-			noticeOffset: settingRow.noticeOffset,
-			notice: settingRow.notice,
-			loginDomain: settingRow.loginDomain
-		};
-	}
+                        noticeOffset: settingRow.noticeOffset,
+                        notice: settingRow.notice,
+                        loginDomain: settingRow.loginDomain,
+                        oauthProviders
+                };
+        }
 };
 
 export default settingService;

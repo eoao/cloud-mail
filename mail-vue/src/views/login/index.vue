@@ -41,9 +41,33 @@
           </el-input>
           <el-input v-model="form.password" :placeholder="$t('password')" type="password" autocomplete="off">
           </el-input>
-          <el-button class="btn" type="primary" @click="submit" :loading="loginLoading"
+          <el-button class="btn" type="primary" @click="submit" :loading="loginLoading" :disabled="oauthProcessing"
           >{{ $t('loginBtn') }}
           </el-button>
+          <div v-if="oauthProviders.length" class="oauth-container">
+            <div class="oauth-divider">
+              <span>{{ $t('oauthLogin') }}</span>
+            </div>
+            <el-button
+                v-for="provider in oauthProviders"
+                :key="provider.provider"
+                class="oauth-btn"
+                type="default"
+                :loading="oauthLoadingProvider === provider.provider"
+                :disabled="oauthProcessing"
+                @click="startOAuth(provider.provider)"
+            >
+              <Icon :icon="providerIcon(provider.provider)" width="20" height="20" class="oauth-icon"/>
+              <span>{{ provider.name }}</span>
+            </el-button>
+          </div>
+          <el-alert
+              v-if="oauthProcessing"
+              class="oauth-alert"
+              type="info"
+              :title="$t('oauthProcessing')"
+              show-icon
+          />
         </div>
         <div v-show="show !== 'login'">
           <el-input class="email-input" v-model="registerForm.email" type="text" :placeholder="$t('emailAccount')"
@@ -105,9 +129,8 @@
 
 <script setup>
 import router from "@/router";
-import {computed, nextTick, reactive, ref} from "vue";
-import {login} from "@/request/login.js";
-import {register} from "@/request/login.js";
+import {computed, nextTick, reactive, ref, onMounted, watch} from "vue";
+import {login, register, oauthAuthorize, oauthCallback} from "@/request/login.js";
 import {isEmail} from "@/utils/verify-utils.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useAccountStore} from "@/store/account.js";
@@ -118,12 +141,14 @@ import {cvtR2Url} from "@/utils/convert.js";
 import {loginUserInfo} from "@/request/my.js";
 import {permsToRouter} from "@/perm/perm.js";
 import {useI18n} from "vue-i18n";
+import {useRoute} from "vue-router";
 
 const {t} = useI18n();
 const accountStore = useAccountStore();
 const userStore = useUserStore();
 const uiStore = useUiStore();
 const settingStore = useSettingStore();
+const route = useRoute();
 const loginLoading = ref(false)
 const show = ref('login')
 const form = reactive({
@@ -147,6 +172,91 @@ let verifyToken = ''
 let turnstileId = null
 let botJsError = ref(false)
 let verifyErrorCount = 0
+const oauthProviders = computed(() => settingStore.settings.oauthProviders || [])
+const oauthLoadingProvider = ref('')
+const oauthProcessing = ref(false)
+let processedOAuthState = null
+
+const providerIcon = (provider) => {
+  if (provider === 'github') {
+    return 'mdi:github';
+  }
+  return 'carbon:user-avatar';
+}
+
+const startOAuth = async (provider) => {
+  if (oauthLoadingProvider.value || oauthProcessing.value) {
+    return
+  }
+  oauthLoadingProvider.value = provider
+  try {
+    const { url } = await oauthAuthorize(provider)
+    sessionStorage.setItem('oauth_provider', provider)
+    window.location.href = url
+  } finally {
+    oauthLoadingProvider.value = ''
+  }
+}
+
+const completeLogin = async (token) => {
+  localStorage.setItem('token', token)
+  const user = await loginUserInfo();
+  accountStore.currentAccountId = user.accountId;
+  userStore.user = user;
+  const routers = permsToRouter(user.permKeys);
+  routers.forEach(routerData => {
+    router.addRoute('layout', routerData);
+  });
+  await router.replace({name: 'layout'})
+  uiStore.showNotice()
+}
+
+const handleOAuthCallback = async () => {
+  const query = route.query;
+  const code = Array.isArray(query.code) ? query.code[0] : query.code;
+  const state = Array.isArray(query.state) ? query.state[0] : query.state;
+
+  if (!code || !state) {
+    return
+  }
+
+  if (processedOAuthState === state) {
+    return
+  }
+
+  const storedProvider = sessionStorage.getItem('oauth_provider');
+  const queryProvider = Array.isArray(query.provider) ? query.provider[0] : query.provider;
+  const provider = queryProvider || storedProvider || (oauthProviders.value.length === 1 ? oauthProviders.value[0].provider : null);
+
+  if (!provider) {
+    return
+  }
+
+  processedOAuthState = state
+  oauthProcessing.value = true
+
+  try {
+    const data = await oauthCallback(provider, { code, state })
+    sessionStorage.removeItem('oauth_provider')
+    await completeLogin(data.token)
+  } finally {
+    oauthProcessing.value = false
+    sessionStorage.removeItem('oauth_provider')
+    if (router.currentRoute.value.name === 'login') {
+      await router.replace({ name: 'login', query: {} })
+    }
+  }
+}
+
+onMounted(() => {
+  handleOAuthCallback()
+})
+
+watch(oauthProviders, (providers) => {
+  if (providers.length) {
+    handleOAuthCallback()
+  }
+})
 
 window.onTurnstileSuccess = (token) => {
   verifyToken = token;
@@ -199,6 +309,10 @@ const openSelect = () => {
 
 const submit = () => {
 
+  if (oauthProcessing.value) {
+    return
+  }
+
   if (!form.email) {
     ElMessage({
       message: t('emptyEmailMsg'),
@@ -230,16 +344,7 @@ const submit = () => {
 
   loginLoading.value = true
   login(email, form.password).then(async data => {
-    localStorage.setItem('token', data.token)
-    const user = await loginUserInfo();
-    accountStore.currentAccountId = user.accountId;
-    userStore.user = user;
-    const routers = permsToRouter(user.permKeys);
-    routers.forEach(routerData => {
-      router.addRoute('layout', routerData);
-    });
-    await router.replace({name: 'layout'})
-    uiStore.showNotice()
+    await completeLogin(data.token)
   }).finally(() => {
     loginLoading.value = false
   })
@@ -458,6 +563,56 @@ function submitRegister() {
       color: var(--login-switch-color);
       cursor: pointer;
     }
+  }
+
+  .oauth-container {
+    margin-top: 16px;
+  }
+
+  .oauth-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--el-text-color-placeholder);
+    font-size: 12px;
+    margin-bottom: 12px;
+
+    span {
+      padding: 0 8px;
+    }
+
+    &::before,
+    &::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background-color: var(--el-border-color-lighter);
+    }
+
+    &::before {
+      margin-right: 12px;
+    }
+
+    &::after {
+      margin-left: 12px;
+    }
+  }
+
+  .oauth-btn {
+    width: 100%;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .oauth-icon {
+    display: inline-flex;
+  }
+
+  .oauth-alert {
+    margin-top: 12px;
   }
 
   :deep(.el-input__wrapper) {
