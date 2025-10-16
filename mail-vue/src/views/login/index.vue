@@ -130,7 +130,7 @@
 <script setup>
 import router from "@/router";
 import {computed, nextTick, reactive, ref, onMounted, watch} from "vue";
-import {login, register, oauthAuthorize, oauthCallback} from "@/request/login.js";
+import {login, register, oauthAuthorize} from "@/request/login.js";
 import {isEmail} from "@/utils/verify-utils.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useAccountStore} from "@/store/account.js";
@@ -211,7 +211,7 @@ const completeLogin = async (token) => {
   uiStore.showNotice()
 }
 
-const handleOAuthCallback = async () => {
+const handleOAuthCallback = () => {
   const query = route.query;
   const code = Array.isArray(query.code) ? query.code[0] : query.code;
   const state = Array.isArray(query.state) ? query.state[0] : query.state;
@@ -234,18 +234,7 @@ const handleOAuthCallback = async () => {
 
   processedOAuthState = state
   oauthProcessing.value = true
-
-  try {
-    const data = await oauthCallback(provider, { code, state })
-    sessionStorage.removeItem('oauth_provider')
-    await completeLogin(data.token)
-  } finally {
-    oauthProcessing.value = false
-    sessionStorage.removeItem('oauth_provider')
-    if (router.currentRoute.value.name === 'login') {
-      await router.replace({ name: 'login', query: {} })
-    }
-  }
+  router.replace({ name: 'oauth-callback', params: { provider }, query: { code, state } })
 }
 
 onMounted(() => {

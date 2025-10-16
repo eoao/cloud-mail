@@ -12,25 +12,26 @@ const init = {
 			return c.text(t('JWTMismatch'));
 		}
 
-		await this.intDB(c);
-		await this.v1_1DB(c);
-		await this.v1_2DB(c);
-		await this.v1_3DB(c);
-		await this.v1_3_1DB(c);
-		await this.v1_4DB(c);
-		await this.v1_5DB(c);
-		await this.v1_6DB(c);
-		await this.v1_7DB(c);
-		await this.v2DB(c);
+                await this.intDB(c);
+                await this.v1_1DB(c);
+                await this.v1_2DB(c);
+                await this.v1_3DB(c);
+                await this.v1_3_1DB(c);
+                await this.v1_4DB(c);
+                await this.v1_5DB(c);
+                await this.v1_6DB(c);
+                await this.v1_7DB(c);
+                await this.v2DB(c);
+                await this.v2_1DB(c);
 		await settingService.refresh(c);
 		return c.text(t('initSuccess'));
 	},
 
-	async v2DB(c) {
-		try {
-			await c.env.db.batch([
-				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN bucket TEXT NOT NULL DEFAULT '';`),
-				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN region TEXT NOT NULL DEFAULT '';`),
+        async v2DB(c) {
+                try {
+                        await c.env.db.batch([
+                                c.env.db.prepare(`ALTER TABLE setting ADD COLUMN bucket TEXT NOT NULL DEFAULT '';`),
+                                c.env.db.prepare(`ALTER TABLE setting ADD COLUMN region TEXT NOT NULL DEFAULT '';`),
 				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN endpoint TEXT NOT NULL DEFAULT '';`),
 				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN s3_access_key TEXT NOT NULL DEFAULT '';`),
 				c.env.db.prepare(`ALTER TABLE setting ADD COLUMN s3_secret_key TEXT NOT NULL DEFAULT '';`),
@@ -38,8 +39,30 @@ const init = {
 			]);
 		} catch (e) {
 			console.error(e.message)
-		}
-	},
+                }
+        },
+
+        async v2_1DB(c) {
+                try {
+                        await c.env.db.batch([
+                                c.env.db.prepare(`CREATE TABLE IF NOT EXISTS user_oauth (
+                                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                        user_id INTEGER NOT NULL,
+                                        provider TEXT NOT NULL,
+                                        external_id TEXT NOT NULL,
+                                        email TEXT NOT NULL DEFAULT '',
+                                        name TEXT NOT NULL DEFAULT '',
+                                        username TEXT NOT NULL DEFAULT '',
+                                        avatar TEXT NOT NULL DEFAULT '',
+                                        create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+                                );`),
+                                c.env.db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_oauth_provider_external ON user_oauth(provider, external_id);`),
+                                c.env.db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_oauth_user_provider ON user_oauth(user_id, provider);`)
+                        ]);
+                } catch (e) {
+                        console.error(e.message);
+                }
+        },
 
 	async v1_7DB(c) {
 		try {
