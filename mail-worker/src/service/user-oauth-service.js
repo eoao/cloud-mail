@@ -6,49 +6,28 @@ import { t } from '../i18n/i18n';
 
 const userOAuthService = {
 
-        async listByUserId(c, userId) {
-                try {
-                        return await orm(c)
-                                .select()
-                                .from(userOAuth)
-                                .where(eq(userOAuth.userId, userId))
-                                .all();
-                } catch (e) {
-                        if (e.message?.includes('no such table')) {
-                                return [];
-                        }
-                        throw e;
-                }
+        listByUserId(c, userId) {
+                return orm(c)
+                        .select()
+                        .from(userOAuth)
+                        .where(eq(userOAuth.userId, userId))
+                        .all();
         },
 
-        async selectByUserIdAndProvider(c, userId, provider) {
-                try {
-                        return await orm(c)
-                                .select()
-                                .from(userOAuth)
-                                .where(and(eq(userOAuth.userId, userId), eq(userOAuth.provider, provider)))
-                                .get();
-                } catch (e) {
-                        if (e.message?.includes('no such table')) {
-                                return null;
-                        }
-                        throw e;
-                }
+        selectByUserIdAndProvider(c, userId, provider) {
+                return orm(c)
+                        .select()
+                        .from(userOAuth)
+                        .where(and(eq(userOAuth.userId, userId), eq(userOAuth.provider, provider)))
+                        .get();
         },
 
-        async selectByProviderAndExternalId(c, provider, externalId) {
-                try {
-                        return await orm(c)
-                                .select()
-                                .from(userOAuth)
-                                .where(and(eq(userOAuth.provider, provider), eq(userOAuth.externalId, externalId)))
-                                .get();
-                } catch (e) {
-                        if (e.message?.includes('no such table')) {
-                                return null;
-                        }
-                        throw e;
-                }
+        selectByProviderAndExternalId(c, provider, externalId) {
+                return orm(c)
+                        .select()
+                        .from(userOAuth)
+                        .where(and(eq(userOAuth.provider, provider), eq(userOAuth.externalId, externalId)))
+                        .get();
         },
 
         async bind(c, userId, provider, payload) {
