@@ -15,7 +15,8 @@ const exclude = [
 	'/setting/websiteConfig',
 	'/webhooks',
 	'/init',
-	'/public/genToken'
+        '/public/genToken',
+        '/oauth'
 ];
 
 const requirePerms = [

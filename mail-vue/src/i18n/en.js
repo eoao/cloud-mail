@@ -127,6 +127,8 @@ const en = {
     regBtn: 'Sign up',
     loginTitle: 'Sign in to your account to access email',
     regTitle: 'Sign up for an account to use email',
+    oauthLogin: 'Or sign in with',
+    oauthProcessing: 'Signing in...',
     confirmPwd: 'Confirm password',
     regKeyOptional: 'Invite code (Optional)',
     noAccount: 'Don\'t have an account? \u200B',
