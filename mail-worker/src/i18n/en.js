@@ -71,6 +71,8 @@ const en = {
         oauthUserFetchFailed: 'Failed to fetch user information from OAuth provider',
         oauthEmailFetchFailed: 'Failed to fetch email address from OAuth provider',
         oauthEmailNotFound: 'Unable to determine email address from OAuth provider',
+        oauthAccountAlreadyBound: 'This GitHub account is already linked to another user',
+        oauthMissingExternalId: 'Failed to read account identifier from OAuth provider',
         perms: {
 		"邮件": "Email",
 		"邮件发送": "Send Email",

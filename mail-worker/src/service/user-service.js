@@ -16,6 +16,7 @@ import saltHashUtils from '../utils/crypto-utils';
 import constant from '../const/constant';
 import { t } from '../i18n/i18n'
 import reqUtils from '../utils/req-utils';
+import userOAuthService from './user-oauth-service';
 
 const userService = {
 
@@ -23,11 +24,12 @@ const userService = {
 
 		const userRow = await userService.selectById(c, userId);
 
-		const [account, roleRow, permKeys] = await Promise.all([
-			accountService.selectByEmailIncludeDel(c, userRow.email),
-			roleService.selectById(c, userRow.type),
-			userRow.email === c.env.admin ? Promise.resolve(['*']) : permService.userPermKeys(c, userId)
-		]);
+                const [account, roleRow, permKeys, oauthBindings] = await Promise.all([
+                        accountService.selectByEmailIncludeDel(c, userRow.email),
+                        roleService.selectById(c, userRow.type),
+                        userRow.email === c.env.admin ? Promise.resolve(['*']) : permService.userPermKeys(c, userId),
+                        userOAuthService.listByUserId(c, userRow.userId)
+                ]);
 
 		const user = {};
 		user.userId = userRow.userId;
@@ -36,7 +38,8 @@ const userService = {
 		user.accountId = account.accountId;
 		user.name = account.name;
 		user.permKeys = permKeys;
-		user.role = roleRow
+                user.role = roleRow
+                user.oauthBindings = oauthBindings;
 
 		if (c.env.admin === userRow.email) {
 			user.role = constant.ADMIN_ROLE
