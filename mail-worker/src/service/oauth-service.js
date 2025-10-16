@@ -10,15 +10,22 @@ import accountService from './account-service';
 import roleService from './role-service';
 import saltHashUtils from '../utils/crypto-utils';
 import userService from './user-service';
+import userOAuthService from './user-oauth-service';
 
 const OAUTH_STATE_TTL = 60 * 5;
 
 const oauthService = {
 
-        async authorize(c, provider) {
+        async authorize(c, provider, options = {}) {
                 const config = this.getProviderConfig(c, provider);
                 const state = uuidv4();
-                await c.env.kv.put(KvConst.OAUTH_STATE + state, JSON.stringify({ provider }), { expirationTtl: OAUTH_STATE_TTL });
+                const stateData = { provider, mode: options.mode || 'login' };
+
+                if (options.userId) {
+                        stateData.userId = options.userId;
+                }
+
+                await c.env.kv.put(KvConst.OAUTH_STATE + state, JSON.stringify(stateData), { expirationTtl: OAUTH_STATE_TTL });
                 const authorizeUrl = new URL('https://github.com/login/oauth/authorize');
                 authorizeUrl.searchParams.set('client_id', config.clientId);
                 authorizeUrl.searchParams.set('redirect_uri', config.redirectUri);
@@ -34,10 +41,32 @@ const oauthService = {
                         throw new BizError(t('oauthInvalidCallback'));
                 }
 
-                await this.validateState(c, provider, state);
+                const stateData = await this.validateState(c, provider, state);
 
                 if (provider === 'github') {
                         const profile = await this.fetchGitHubProfile(c, code);
+                        if (stateData?.mode === 'bind') {
+                                const binding = await this.bindGitHubAccount(c, stateData, profile);
+                                return { binding };
+                        }
+
+                        const binding = await userOAuthService.selectByProviderAndExternalId(c, 'github', profile.id);
+
+                        if (binding) {
+                                const userRow = await userService.selectByIdIncludeDel(c, binding.userId);
+
+                                if (!userRow || userRow.isDel === isDel.DELETE) {
+                                        throw new BizError(t('isDelUser'));
+                                }
+
+                                if (userRow.status === userConst.status.BAN) {
+                                        throw new BizError(t('isBanUser'));
+                                }
+
+                                const session = await loginService.createSession(c, userRow);
+                                return { token: session };
+                        }
+
                         const email = profile.email?.toLowerCase();
 
                         if (!email) {
@@ -46,7 +75,9 @@ const oauthService = {
 
                         const name = profile.name || emailUtils.getName(email);
                         const userRow = await this.ensureUser(c, email, name);
-                        return await loginService.createSession(c, userRow);
+                        await userOAuthService.bind(c, userRow.userId, 'github', profile);
+                        const session = await loginService.createSession(c, userRow);
+                        return { token: session };
                 }
 
                 throw new BizError(t('oauthUnsupportedProvider'));
@@ -60,6 +91,8 @@ const oauthService = {
                 if (!record || record.provider !== provider) {
                         throw new BizError(t('oauthStateInvalid'));
                 }
+
+                return record;
         },
 
         getProviderConfig(c, provider) {
@@ -142,7 +175,10 @@ const oauthService = {
 
                 return {
                         email,
-                        name: userJson.name || userJson.login
+                        name: userJson.name || userJson.login,
+                        id: String(userJson.id),
+                        username: userJson.login,
+                        avatar: userJson.avatar_url || ''
                 };
         },
 
@@ -200,6 +236,27 @@ const oauthService = {
                 await userService.updateUserInfo(c, userId, true);
 
                 return await userService.selectByEmailIncludeDel(c, normalizedEmail);
+        },
+
+        async bindGitHubAccount(c, stateData, profile) {
+                const { userId } = stateData || {};
+
+                if (!userId) {
+                        throw new BizError(t('oauthStateInvalid'));
+                }
+
+                const userRow = await userService.selectByIdIncludeDel(c, userId);
+
+                if (!userRow || userRow.isDel === isDel.DELETE) {
+                        throw new BizError(t('isDelUser'));
+                }
+
+                if (userRow.status === userConst.status.BAN) {
+                        throw new BizError(t('isBanUser'));
+                }
+
+                const binding = await userOAuthService.bind(c, userId, 'github', profile);
+                return binding;
         }
 };
 

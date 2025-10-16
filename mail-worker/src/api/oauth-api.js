@@ -10,6 +10,6 @@ app.get('/oauth/:provider/authorize', async (c) => {
 
 app.post('/oauth/:provider/callback', async (c) => {
         const { provider } = c.req.param();
-        const token = await oauthService.callback(c, provider, await c.req.json());
-        return c.json(result.ok({ token }));
+        const data = await oauthService.callback(c, provider, await c.req.json());
+        return c.json(result.ok(data));
 });

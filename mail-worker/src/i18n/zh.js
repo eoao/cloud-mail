@@ -71,6 +71,8 @@ const zh = {
         oauthUserFetchFailed: '获取第三方用户信息失败',
         oauthEmailFetchFailed: '获取第三方邮箱地址失败',
         oauthEmailNotFound: '无法从第三方获取有效邮箱地址',
+        oauthAccountAlreadyBound: '该 GitHub 账号已被其他用户绑定',
+        oauthMissingExternalId: '无法从第三方登录中获取账号标识',
         perms: {
 		"邮件": "邮件",
 		"邮件发送": "邮件发送",
