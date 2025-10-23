@@ -343,6 +343,27 @@
             </div>
           </div>
 
+          <!-- OAuth Login Configuration Card -->
+          <div class="settings-card">
+            <div class="card-title">{{ $t('oauthConfig') }}</div>
+            <div class="card-content">
+              <div class="setting-item">
+                <div>
+                  <span>{{ $t('oauthEnabled') }}</span>
+                  <el-tooltip effect="dark" content="用户可以在登录页面使用 OAuth 账号登录，需要先注册账号后才能绑定">
+                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+                  </el-tooltip>
+                </div>
+                <div class="forward">
+                  <span>{{ setting.oauthEnabled === 0 ? $t('enabled') : $t('disabled') }}</span>
+                  <el-button class="opt-button" size="small" type="primary" @click="oauthSettingShow = true">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="settings-card about">
             <div class="card-title">{{ $t('about') }}</div>
             <div class="card-content">
@@ -693,6 +714,69 @@
           </div>
         </form>
       </el-dialog>
+
+      <!-- OAuth Configuration Dialog -->
+      <el-dialog v-model="oauthSettingShow" :title="t('oauthConfig')" width="400">
+        <el-alert
+          title="说明"
+          type="info"
+          description="用户可以在登录页面使用 OAuth 账号登录。用户需要先用邮箱注册账号，然后在登录后的个人设置中绑定 OAuth 账号。"
+          :closable="false"
+          style="margin-bottom: 15px"
+        />
+        <form>
+          <div class="dialog-form-item">
+            <label>{{ $t('oauthEnabled') }}</label>
+            <el-switch :active-value="0" :inactive-value="1" v-model="oauthForm.enabled"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthCallbackUrl') }}</label>
+            <div class="callback-url-display">{{ oauthCallbackUrl }}</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('selectProvider') }}</label>
+            <el-select class="dialog-input" v-model="oauthForm.provider" @change="handleOauthProviderChange" clearable>
+              <el-option v-for="item in oauthProviderOptions" :key="item.value" :label="item.label" :value="item.value"/>
+            </el-select>
+          </div>
+          <div class="form-group" v-if="oauthForm.provider === 'custom'">
+            <label class="form-label">{{ $t('customProviderName') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.customProviderName" :placeholder="$t('customProviderNamePlaceholder')"/>
+          </div>
+          <div class="form-group" v-if="oauthForm.provider === 'microsoft'">
+            <label class="form-label">{{ $t('oauthTenantId') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.tenantId" :placeholder="$t('oauthTenantIdPlaceholder')"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthClientId') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.clientId"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthClientSecret') }}</label>
+            <el-input class="dialog-input" type="password" v-model="oauthForm.clientSecret"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthAuthUrl') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.authUrl"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthTokenUrl') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.tokenUrl"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthUserInfoUrl') }}</label>
+            <el-input class="dialog-input" type="text" v-model="oauthForm.userInfoUrl"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ $t('oauthScopes') }}</label>
+            <el-input style="margin-bottom: 10px" type="text" v-model="oauthForm.scopes"/>
+          </div>
+          <div class="dialog-footer">
+            <el-button @click="oauthSettingShow = false">{{ $t('cancel') }}</el-button>
+            <el-button type="primary" :loading="settingLoading" @click="saveOauthConfig">{{ $t('save') }}</el-button>
+          </div>
+        </form>
+      </el-dialog>
     </el-scrollbar>
   </div>
 </template>
@@ -754,6 +838,7 @@ let backup = '{}'
 const addS3Show = ref(false)
 const addVerifyCountShow = ref(false)
 const regVerifyCountShow = ref(false)
+const oauthSettingShow = ref(false)
 const resendTokenForm = reactive({
   domain: '',
   token: '',
@@ -816,6 +901,66 @@ const tgMsgFromOption = [{label: t('show'), value: 'show'}, {label: t('hide'), v
 const tgMsgToOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}]
 const tgMsgLabelWidth = computed(() => locale.value === 'en' ? '120px' : '100px');
 
+const oauthCallbackUrl = computed(() => {
+  const origin = window.location.origin
+  return `${origin}/api/auth/oauth/callback`
+})
+
+const oauthProviders = {
+  github: {
+    name: 'GitHub',
+    authUrl: 'https://github.com/login/oauth/authorize',
+    tokenUrl: 'https://github.com/login/oauth/access_token',
+    userInfoUrl: 'https://api.github.com/user',
+    scopes: 'user:email'
+  },
+  google: {
+    name: 'Google',
+    authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenUrl: 'https://oauth2.googleapis.com/token',
+    userInfoUrl: 'https://www.googleapis.com/oauth2/v2/userinfo',
+    scopes: 'openid profile email'
+  },
+  microsoft: {
+    name: 'Microsoft',
+    authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
+    scopes: 'openid profile email User.Read offline_access'
+  }
+}
+
+const oauthProviderOptions = computed(() => [
+  { label: t('selectProvider'), value: '' },
+  { label: 'GitHub', value: 'github' },
+  { label: 'Google', value: 'google' },
+  { label: 'Microsoft', value: 'microsoft' },
+  { label: t('customProvider'), value: 'custom' }
+])
+
+function handleOauthProviderChange(value) {
+  if (value && value !== 'custom' && oauthProviders[value]) {
+    const provider = oauthProviders[value]
+    oauthForm.authUrl = provider.authUrl
+    oauthForm.tokenUrl = provider.tokenUrl
+    oauthForm.userInfoUrl = provider.userInfoUrl
+    oauthForm.scopes = provider.scopes
+  }
+}
+
+const oauthForm = reactive({
+  enabled: 1,
+  provider: '',
+  customProviderName: '',
+  tenantId: '',
+  clientId: '',
+  clientSecret: '',
+  authUrl: '',
+  tokenUrl: '',
+  userInfoUrl: '',
+  scopes: ''
+})
+
 getSettings()
 getUpdate()
 
@@ -831,6 +976,17 @@ function getSettings() {
     r2DomainInput.value = setting.value.r2Domain
     addVerifyCount.value = setting.value.addVerifyCount
     regVerifyCount.value = setting.value.regVerifyCount
+    // Load OAuth configuration
+    oauthForm.enabled = settingData.oauthEnabled ?? 1
+    oauthForm.provider = settingData.oauthProvider ?? ''
+    oauthForm.customProviderName = settingData.oauthCustomProviderName ?? ''
+    oauthForm.tenantId = settingData.oauthTenantId ?? ''
+    oauthForm.clientId = settingData.oauthClientId ?? ''
+    oauthForm.clientSecret = settingData.oauthClientSecret ?? ''
+    oauthForm.authUrl = settingData.oauthAuthUrl ?? ''
+    oauthForm.tokenUrl = settingData.oauthTokenUrl ?? ''
+    oauthForm.userInfoUrl = settingData.oauthUserInfoUrl ?? ''
+    oauthForm.scopes = settingData.oauthScopes ?? ''
     resetNoticeForm()
     resetAddS3Form()
   })
@@ -1234,6 +1390,22 @@ function jump(href) {
   doc.click()
 }
 
+function saveOauthConfig() {
+  const settingForm = {
+    oauthEnabled: oauthForm.enabled,
+    oauthProvider: oauthForm.provider,
+    oauthCustomProviderName: oauthForm.customProviderName,
+    oauthTenantId: oauthForm.tenantId,
+    oauthClientId: oauthForm.clientId,
+    oauthClientSecret: oauthForm.clientSecret,
+    oauthAuthUrl: oauthForm.authUrl,
+    oauthTokenUrl: oauthForm.tokenUrl,
+    oauthUserInfoUrl: oauthForm.userInfoUrl,
+    oauthScopes: oauthForm.scopes
+  }
+  editSetting(settingForm)
+}
+
 function editSetting(settingForm, refreshStatus = true) {
   if (settingLoading.value) return
   settingLoading.value = true
@@ -1262,6 +1434,7 @@ function editSetting(settingForm, refreshStatus = true) {
     regVerifyCountShow.value = false
     noticePopupShow.value = false
     addS3Show.value = false
+    oauthSettingShow.value = false
   }).catch((e) => {
     loginOpacity.value = setting.value.loginOpacity
     setting.value = {...setting.value, ...JSON.parse(backup)}
@@ -1509,6 +1682,43 @@ function editSetting(settingForm, refreshStatus = true) {
 :deep(.cut-dialog.el-dialog) {
   width: fit-content !important;
   height: fit-content !important;
+}
+
+.dialog-input {
+  margin-bottom: 10px;
+}
+
+.dialog-form-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+
+  label {
+    font-weight: 500;
+  }
+}
+
+.form-group {
+  margin-bottom: 15px;
+
+  .form-label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 5px;
+    font-size: 14px;
+  }
+}
+
+.callback-url-display {
+  padding: 8px 12px;
+  background-color: var(--el-fill-color-light);
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  word-break: break-all;
+  font-family: monospace;
 }
 
 

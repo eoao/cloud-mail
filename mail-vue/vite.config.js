@@ -13,6 +13,13 @@ export default defineConfig(({mode}) => {
             host: true,
             port: 3001,
             hmr: true,
+            proxy: {
+                '/api': {
+                    target: env.VITE_PROXY_TARGET || 'http://127.0.0.1:8787',
+                    changeOrigin: false,
+                    rewrite: (path) => path
+                }
+            }
         },
         base: env.VITE_STATIC_URL || '/',
         plugins: [vue(),

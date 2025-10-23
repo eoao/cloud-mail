@@ -30,6 +30,39 @@
         </div>
       </div>
     </div>
+    <div class="container">
+      <div class="title">{{$t('oauthBinding')}}</div>
+      <div style="color: var(--regular-text-color); margin-bottom: 15px;">
+        {{$t('oauthBindingDesc')}}
+      </div>
+      <div class="oauth-bindings">
+        <div v-for="provider in oauthProviders" :key="provider.key" class="oauth-item">
+          <div class="oauth-header">
+            <Icon :icon="provider.icon" width="24" height="24" class="provider-icon"/>
+            <span class="provider-name">{{ provider.label }}</span>
+            <span v-if="userOauthBindings[provider.key]" class="bound-status">{{ $t('bound') }}</span>
+          </div>
+          <div class="oauth-actions">
+            <el-button
+              v-if="!userOauthBindings[provider.key]"
+              type="primary"
+              size="small"
+              @click="handleBindOauth(provider.key)"
+            >
+              {{$t('bindOauth')}}
+            </el-button>
+            <el-button
+              v-else
+              type="danger"
+              size="small"
+              @click="handleUnbindOauth(provider.key)"
+            >
+              {{$t('unbindOauth')}}
+            </el-button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="del-email" v-perm="'my:delete'">
       <div class="title">{{$t('deleteUser')}}</div>
       <div style="color: var(--regular-text-color);">
@@ -49,24 +82,83 @@
   </div>
 </template>
 <script setup>
-import {reactive, ref, defineOptions} from 'vue'
+import {reactive, ref, defineOptions, computed} from 'vue'
 import {resetPassword, userDelete} from "@/request/my.js";
 import {useUserStore} from "@/store/user.js";
 import router from "@/router/index.js";
 import {accountSetName} from "@/request/account.js";
 import {useAccountStore} from "@/store/account.js";
 import {useI18n} from "vue-i18n";
+import {getOauthBindings, initOauthBind, unbindOauthAccount} from "@/request/oauth.js";
+import {useSettingStore} from "@/store/setting.js";
+import {onMounted} from "vue";
+import {Icon} from "@iconify/vue";
 
 const { t } = useI18n()
 const accountStore = useAccountStore()
 const userStore = useUserStore();
+const settingStore = useSettingStore();
 const setPwdLoading = ref(false)
 const setNameShow = ref(false)
 const accountName = ref(null)
+const userOauthBindings = ref({})
+
+// Get provider icon based on type
+const getProviderIcon = (providerKey) => {
+  const presetProviders = {
+    github: 'mdi:github',
+    google: 'mdi:google',
+    microsoft: 'mdi:microsoft'
+  }
+  return presetProviders[providerKey] || 'mdi:account-circle-outline'
+}
+
+// Get OAuth providers from settings
+const oauthProviders = computed(() => {
+  const settings = settingStore.settings
+  if (!settings.oauthProvider) {
+    return [
+      { key: 'github', label: 'GitHub', icon: getProviderIcon('github') },
+      { key: 'google', label: 'Google', icon: getProviderIcon('google') },
+      { key: 'microsoft', label: 'Microsoft', icon: getProviderIcon('microsoft') }
+    ]
+  }
+  
+  // If custom provider, use custom name
+  if (settings.oauthProvider === 'custom') {
+    return [{ 
+      key: 'custom', 
+      label: settings.oauthCustomProviderName || t('customProvider'),
+      icon: getProviderIcon('custom')
+    }]
+  }
+  
+  // Return configured provider
+  return [{ 
+    key: settings.oauthProvider, 
+    label: settings.oauthProvider.charAt(0).toUpperCase() + settings.oauthProvider.slice(1),
+    icon: getProviderIcon(settings.oauthProvider)
+  }]
+})
 
 defineOptions({
   name: 'setting'
 })
+
+// Load user OAuth bindings
+async function loadOauthBindings() {
+  try {
+    const bindings = await getOauthBindings()
+    const bindingMap = {}
+    bindings.forEach(binding => {
+      bindingMap[binding.provider] = binding
+    })
+    userOauthBindings.value = bindingMap
+  } catch (error) {
+    console.error('Failed to load OAuth bindings:', error)
+    userOauthBindings.value = {}
+  }
+}
 
 function showSetName() {
   accountName.value = userStore.user.name
@@ -178,6 +270,120 @@ function submitPwd() {
 
 }
 
+async function handleBindOauth(provider) {
+  const settings = settingStore.settings
+  
+  if (settings.oauthEnabled !== 0) {
+    ElMessage({
+      message: t('oauthNotConfigured'),
+      type: 'error',
+      plain: true,
+    })
+    return
+  }
+
+  try {
+    // Call API to get authorization URL
+    const result = await initOauthBind(provider)
+    
+    // Open OAuth authorization in popup window
+    const width = 600
+    const height = 700
+    const left = (screen.width / 2) - (width / 2)
+    const top = (screen.height / 2) - (height / 2)
+    
+    const popup = window.open(
+      result.authorizationUrl,
+      'OAuth Authorization',
+      `width=${width},height=${height},left=${left},top=${top}`
+    )
+    
+    // Listen for messages from popup
+    const messageHandler = (event) => {
+      // Verify origin for security
+      if (event.origin !== window.location.origin) {
+        console.warn('Received postMessage from untrusted origin:', event.origin)
+        return
+      }
+      
+      if (event.data.type === 'oauth_bind_success') {
+        ElMessage({
+          message: t('oauthBindingSuccess'),
+          type: 'success',
+          plain: true,
+        })
+        loadOauthBindings()
+        window.removeEventListener('message', messageHandler)
+      } else if (event.data.type === 'oauth_error') {
+        const providerName = event.data.provider || provider
+        let errorMsg = event.data.error || t('oauthBindingFailed')
+        
+        // If error is about already used OAuth ID, append provider name
+        if (errorMsg.includes('already bound to another user') || errorMsg.includes('已被其他用户绑定')) {
+          errorMsg = `${providerName} ${errorMsg}`
+        }
+        
+        ElMessage({
+          message: errorMsg,
+          type: 'error',
+          plain: true,
+          duration: 5000
+        })
+        window.removeEventListener('message', messageHandler)
+      }
+    }
+    
+    window.addEventListener('message', messageHandler)
+    
+    // Clean up if popup is closed
+    const checkPopup = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkPopup)
+        window.removeEventListener('message', messageHandler)
+      }
+    }, 1000)
+  } catch (error) {
+    console.error('OAuth binding error:', error)
+    ElMessage({
+      message: error.message || t('oauthBindingFailed'),
+      type: 'error',
+      plain: true,
+    })
+  }
+}
+
+async function handleUnbindOauth(provider) {
+  ElMessageBox.confirm(t('confirmUnbindOauth'), {
+    confirmButtonText: t('confirm'),
+    cancelButtonText: t('cancel'),
+    type: 'warning'
+  }).then(async () => {
+    try {
+      await unbindOauthAccount(provider)
+      ElMessage({
+        message: t('oauthUnbindSuccess'),
+        type: 'success',
+        plain: true,
+      })
+      await loadOauthBindings()
+    } catch (error) {
+      console.error('OAuth unbind error:', error)
+      ElMessage({
+        message: error.message || t('oauthUnbindFailed'),
+        type: 'error',
+        plain: true,
+      })
+    }
+  }).catch(() => {
+    // User cancelled
+  })
+}
+
+// Initialize on component mount
+onMounted(() => {
+  loadOauthBindings()
+})
+
 </script>
 <style scoped lang="scss">
 .box {
@@ -254,6 +460,48 @@ function submitPwd() {
     display: flex;
     flex-direction: column;
     gap: 20px;
+  }
+
+  .oauth-bindings {
+    display: grid;
+    gap: 15px;
+
+    .oauth-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      border: 1px solid var(--el-border-color);
+      border-radius: 4px;
+      background-color: var(--el-fill-color-light);
+
+      .oauth-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        .provider-icon {
+          flex-shrink: 0;
+        }
+
+        .provider-name {
+          font-weight: 500;
+        }
+
+        .bound-status {
+          font-size: 12px;
+          color: #67c23a;
+          background-color: rgba(103, 194, 58, 0.1);
+          padding: 2px 8px;
+          border-radius: 2px;
+        }
+      }
+
+      .oauth-actions {
+        display: flex;
+        gap: 10px;
+      }
+    }
   }
 }
 </style>

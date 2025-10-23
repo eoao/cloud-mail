@@ -66,6 +66,8 @@ const settingService = {
 
 		settingRow.s3AccessKey = settingRow.s3AccessKey ? `${settingRow.s3AccessKey.slice(0, 12)}******` : null;
 		settingRow.s3SecretKey = settingRow.s3SecretKey ? `${settingRow.s3SecretKey.slice(0, 12)}******` : null;
+		settingRow.oidcClientSecret = settingRow.oidcClientSecret ? `${settingRow.oidcClientSecret.slice(0, 12)}******` : null;
+		settingRow.oauthClientSecret = settingRow.oauthClientSecret ? `${settingRow.oauthClientSecret.slice(0, 12)}******` : null;
 		settingRow.hasR2 = !!c.env.r2
 
 		let regVerifyOpen = false
@@ -113,7 +115,7 @@ const settingService = {
 		if (hasOss) {
 
 			if (background) {
-				await r2Service.delete(c,background)
+				await r2Service.delete(c, background)
 				await orm(c).update(setting).set({ background: '' }).run();
 				await this.refresh(c)
 			}
@@ -187,7 +189,23 @@ const settingService = {
 			noticeWidth: settingRow.noticeWidth,
 			noticeOffset: settingRow.noticeOffset,
 			notice: settingRow.notice,
-			loginDomain: settingRow.loginDomain
+			loginDomain: settingRow.loginDomain,
+			oidcEnabled: settingRow.oidcEnabled,
+			oidcProvider: settingRow.oidcProvider,
+			oidcClientId: settingRow.oidcClientId,
+			oidcClientSecret: settingRow.oidcClientSecret,
+			oidcDiscoveryUrl: settingRow.oidcDiscoveryUrl,
+			oidcScopes: settingRow.oidcScopes,
+			oauthEnabled: settingRow.oauthEnabled,
+			oauthProvider: settingRow.oauthProvider,
+			oauthCustomProviderName: settingRow.oauthCustomProviderName,
+			oauthTenantId: settingRow.oauthTenantId,
+			oauthClientId: settingRow.oauthClientId,
+			oauthClientSecret: settingRow.oauthClientSecret,
+			oauthAuthUrl: settingRow.oauthAuthUrl,
+			oauthTokenUrl: settingRow.oauthTokenUrl,
+			oauthUserInfoUrl: settingRow.oauthUserInfoUrl,
+			oauthScopes: settingRow.oauthScopes
 		};
 	}
 };

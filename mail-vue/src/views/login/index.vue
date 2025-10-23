@@ -44,6 +44,23 @@
           <el-button class="btn" type="primary" @click="submit" :loading="loginLoading"
           >{{ $t('loginBtn') }}
           </el-button>
+          <!-- OAuth Login Buttons -->
+          <div v-if="settingStore.settings.oauthEnabled === 0" class="oauth-login-section">
+            <div class="oauth-divider">
+              <span>{{ $t('oauthLogin') }}</span>
+            </div>
+            <div class="oauth-buttons">
+              <el-button
+                v-for="provider in oauthProviders"
+                :key="provider.key"
+                class="oauth-btn"
+                @click="handleOauthLogin(provider.key)"
+              >
+                <Icon :icon="provider.icon" width="18" height="18"/>
+                {{ provider.label }}
+              </el-button>
+            </div>
+          </div>
         </div>
         <div v-show="show !== 'login'">
           <el-input class="email-input" v-model="registerForm.email" type="text" :placeholder="$t('emailAccount')"
@@ -118,6 +135,7 @@ import {cvtR2Url} from "@/utils/convert.js";
 import {loginUserInfo} from "@/request/my.js";
 import {permsToRouter} from "@/perm/perm.js";
 import {useI18n} from "vue-i18n";
+import {initOauthLogin} from "@/request/oauth.js";
 
 const {t} = useI18n();
 const accountStore = useAccountStore();
@@ -126,6 +144,18 @@ const uiStore = useUiStore();
 const settingStore = useSettingStore();
 const loginLoading = ref(false)
 const show = ref('login')
+
+// Check for OAuth error from sessionStorage
+const oauthError = sessionStorage.getItem('oauth_error')
+if (oauthError) {
+  ElMessage({
+    message: oauthError,
+    type: 'error',
+    plain: true,
+    duration: 5000
+  })
+  sessionStorage.removeItem('oauth_error')
+}
 const form = reactive({
   email: '',
   password: '',
@@ -176,6 +206,44 @@ window.loadAfter = (e) => {
 window.loadBefore = (e) => {
   console.log('loadBefore')
 }
+
+// Get provider icon based on type
+const getProviderIcon = (providerKey) => {
+  const presetProviders = {
+    github: 'mdi:github',
+    google: 'mdi:google',
+    microsoft: 'mdi:microsoft'
+  }
+  return presetProviders[providerKey] || 'mdi:account-circle-outline'
+}
+
+// Get OAuth providers from settings
+const oauthProviders = computed(() => {
+  const settings = settingStore.settings
+  if (!settings.oauthProvider) {
+    return [
+      { key: 'github', label: 'GitHub', icon: getProviderIcon('github') },
+      { key: 'google', label: 'Google', icon: getProviderIcon('google') },
+      { key: 'microsoft', label: 'Microsoft', icon: getProviderIcon('microsoft') }
+    ]
+  }
+  
+  // If custom provider, use custom name
+  if (settings.oauthProvider === 'custom') {
+    return [{ 
+      key: 'custom', 
+      label: settings.oauthCustomProviderName || t('customProvider'),
+      icon: getProviderIcon('custom')
+    }]
+  }
+  
+  // Return configured provider
+  return [{ 
+    key: settings.oauthProvider, 
+    label: settings.oauthProvider.charAt(0).toUpperCase() + settings.oauthProvider.slice(1),
+    icon: getProviderIcon(settings.oauthProvider)
+  }]
+})
 
 const loginOpacity = computed(() => {
   const opacity = settingStore.settings.loginOpacity
@@ -245,6 +313,33 @@ const submit = () => {
   })
 }
 
+async function handleOauthLogin(provider) {
+  const settings = settingStore.settings
+
+  if (settings.oauthEnabled !== 0) {
+    ElMessage({
+      message: t('oauthNotConfigured'),
+      type: 'error',
+      plain: true,
+    })
+    return
+  }
+
+  try {
+    // Call API to get authorization URL
+    const result = await initOauthLogin(provider)
+    
+    // Redirect to OAuth provider
+    window.location.href = result.authorizationUrl
+  } catch (error) {
+    console.error('OAuth login error:', error)
+    ElMessage({
+      message: error.message || t('oauthBindingFailed'),
+      type: 'error',
+      plain: true,
+    })
+  }
+}
 
 function submitRegister() {
 
@@ -500,6 +595,51 @@ function submitRegister() {
 
 .register-turnstile {
   margin-bottom: 18px;
+}
+
+.oauth-login-section {
+  margin-top: 20px;
+}
+
+.oauth-divider {
+  display: flex;
+  align-items: center;
+  margin: 15px 0;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background-color: var(--el-border-color);
+  }
+
+  span {
+    padding: 0 10px;
+  }
+}
+
+.oauth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.oauth-btn {
+  width: 100%;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  border-radius: 6px;
+
+  :deep(.el-icon) {
+    font-size: 18px;
+  }
 }
 
 .select {
