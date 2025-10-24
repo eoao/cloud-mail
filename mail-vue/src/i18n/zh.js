@@ -302,6 +302,7 @@ const zh = {
     customDomainDesc: 'Worker 自定义域',
     show: '显示',
     hide: '隐藏',
-    onlyName: '仅名字'
+    onlyName: '仅名字',
+    emailText: '邮件文本'
 }
 export default zh

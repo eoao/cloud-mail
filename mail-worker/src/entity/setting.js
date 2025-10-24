@@ -44,6 +44,7 @@ export const setting = sqliteTable('setting', {
 	forcePathStyle: integer('force_path_style').default(1).notNull(),
 	customDomain: text('custom_domain').default('').notNull(),
 	tgMsgFrom: text('tg_msg_from').default('only-name').notNull(),
-	tgMsgTo: text('tg_msg_to').default('show').notNull()
+	tgMsgTo: text('tg_msg_to').default('show').notNull(),
+	tgMsgText: text('tg_msg_text').default('hide').notNull()
 });
 export default setting

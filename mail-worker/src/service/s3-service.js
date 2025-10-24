@@ -1,6 +1,7 @@
 import { S3Client, PutObjectCommand, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import settingService from './setting-service';
 import domainUtils from '../utils/domain-uitls';
+import { settingConst } from '../const/entity-const';
 const s3Service = {
 
 	async putObj(c, key, content, metadata) {
@@ -76,10 +77,11 @@ const s3Service = {
 
 
 	async client(c) {
-		const { region, endpoint, s3AccessKey, s3SecretKey } = await settingService.query(c);
+		const { region, endpoint, s3AccessKey, s3SecretKey, forcePathStyle } = await settingService.query(c);
 		return new S3Client({
 			region: region || 'auto',
 			endpoint: domainUtils.toOssDomain(endpoint),
+			forcePathStyle: forcePathStyle === settingConst.forcePathStyle.OPEN,
 			credentials: {
 				accessKeyId: s3AccessKey,
 				secretAccessKey: s3SecretKey,

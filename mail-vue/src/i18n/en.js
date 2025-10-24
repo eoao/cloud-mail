@@ -302,7 +302,8 @@ const en = {
     customDomainDesc: 'Worker custom domain',
     show: 'Show',
     hide: 'Hide',
-    onlyName: 'Only name'
+    onlyName: 'Only name',
+    emailText: 'Email Text'
 }
 
 export default en

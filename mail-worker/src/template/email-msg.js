@@ -1,4 +1,6 @@
-export default function emailMsgTemplate(email, tgMsgTo, tgMsgFrom) {
+import emailUtils from '../utils/email-utils';
+
+export default function emailMsgTemplate(email, tgMsgTo, tgMsgFrom, tgMsgText) {
 
 	let template = `<b>${email.subject}</b>`
 
@@ -18,14 +20,19 @@ export default function emailMsgTemplate(email, tgMsgTo, tgMsgFrom) {
 			template += `
 
 收件人：\u200B${email.toEmail}`
-			return template
-		}
 
-	if(tgMsgTo === 'show') {
+		} else if(tgMsgTo === 'show') {
 		template += `
 收件人：\u200B${email.toEmail}`
 	}
 
-		return template;
+
+	if(tgMsgText === 'show') {
+		template += `
+
+${email.text || emailUtils.htmlToText(email.content)}`
+	}
+
+	return template;
 
 }
