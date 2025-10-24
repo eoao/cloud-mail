@@ -10,6 +10,13 @@
     <div v-else :style="background"></div>
     <div class="form-wrapper">
       <div class="container">
+        <!-- APP下载导航链接 -->
+        <div class="app-download-link">
+          <a href="https://api.husohua.com/app/" target="_blank" rel="noopener noreferrer">
+            <Icon icon="mingcute:download-2-fill" width="16" height="16"/>
+            <span>APP下载</span>
+          </a>
+        </div>
         <span class="form-title">{{ settingStore.settings.title }}</span>
         <span class="form-desc" v-if="show === 'login'">{{ $t('loginTitle') }}</span>
         <span class="form-desc" v-else>{{ $t('regTitle') }}</span>
@@ -213,7 +220,7 @@ const submit = () => {
   if (!isEmail(email)) {
     ElMessage({
       message: t('notEmailMsg'),
-      type: 'error',
+      输入: 'error'，
       plain: true,
     })
     return
@@ -437,6 +444,27 @@ function submitRegister() {
     height: 36px;
     width: 100%;
     border-radius: 6px;
+  }
+
+  .app-download-link {
+    margin-bottom: 20px;
+    text-align: center;
+
+    a {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--el-color-primary);
+      text-decoration: none;
+      font-size: 14px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background: var(--base-fill);
+      }
+    }
   }
 
   .form-desc {
