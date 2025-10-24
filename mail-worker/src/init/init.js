@@ -106,6 +106,13 @@ const init = {
 				}
 			}
 		}
+
+		try {
+			await c.env.db.prepare(`ALTER TABLE setting ADD COLUMN tg_msg_text TEXT NOT NULL DEFAULT 'hide';`).run();
+		} catch (e) {
+			console.error(e)
+		}
+
 	},
 
 	async v2DB(c) {

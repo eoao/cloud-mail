@@ -529,6 +529,17 @@
               />
             </el-select>
           </div>
+          <div class="tg-msg-label">
+            <span>{{t('emailText')}}</span>
+            <el-select  v-model="tgMsgText" >
+              <el-option
+                  v-for="item in tgMsgTextOption"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+              />
+            </el-select>
+          </div>
         </div>
         <template #footer>
           <div class="dialog-footer">
@@ -896,9 +907,11 @@ const ruleType = ref(0)
 const ruleEmail = ref([])
 const tgMsgFrom = ref('')
 const tgMsgTo = ref('')
+const tgMsgText = ref('')
 
 const tgMsgFromOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}, {label: t('onlyName'), value:'only-name'}]
 const tgMsgToOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}]
+const tgMsgTextOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}]
 const tgMsgLabelWidth = computed(() => locale.value === 'en' ? '120px' : '100px');
 
 const oauthCallbackUrl = computed(() => {
@@ -1086,6 +1099,7 @@ function openTgSetting() {
   tgBotToken.value = setting.value.tgBotToken
   customDomain.value = setting.value.customDomain
   tgMsgFrom.value = setting.value.tgMsgFrom
+  tgMsgText.value = setting.value.tgMsgText
   tgMsgTo.value = setting.value.tgMsgTo
   tgChatId.value = []
   if (setting.value.tgChatId) {
@@ -1224,6 +1238,7 @@ function tgBotSave() {
     tgBotStatus: tgBotStatus.value,
     tgChatId: tgChatId.value + '',
     tgMsgFrom: tgMsgFrom.value,
+    tgMsgText: tgMsgText.value,
     tgMsgTo: tgMsgTo.value
   }
   editSetting(form)
