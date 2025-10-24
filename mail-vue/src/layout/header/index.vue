@@ -10,6 +10,10 @@
       </div>
     </div>
     <div class="toolbar">
+      <!-- APP下载导航链接 -->
+      <a href="https://api.husohua.com/app/" target="_blank" rel="noopener noreferrer" class="app-download-link icon-item">
+        <Icon icon="mingcute:download-2-fill" width="20" height="20"/>
+      </a>
       <div v-if="uiStore.dark" class="sun-icon icon-item" @click="openDark($event)">
         <Icon icon="mingcute:sun-fill"/>
       </div>
@@ -423,6 +427,12 @@ function formatName(email) {
 
   .icon-item:hover {
     background: var(--base-fill);
+  }
+
+  .app-download-link {
+    color: var(--el-text-color-primary);
+    text-decoration: none;
+    font-size: 20px;
   }
 
   .notice {
