@@ -6,7 +6,7 @@
 <h1>Cloud Mail</h1>
 </div>
 <div align="center">
-    <h4>Serverless 响应式邮箱服务，支持邮件发送，可部署到Cloudflare平台 🎉</h4> 
+    <h4>Serverless 响应式邮箱服务，支持邮件发送，可部署到Cloudflare平台1 🎉</h4> 
 </div>
 <div align="center">
     <span>简体中文 | <a href="/README-en.md" style="margin-left: 5px">English </a></span>
