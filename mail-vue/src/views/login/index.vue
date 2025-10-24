@@ -10,7 +10,7 @@
     <div v-else :style="background"></div>
     <div class="form-wrapper">
       <div class="container">
-        <!-- APP下载导航链接1 -->
+        <!-- APP下载导航链接11 -->
         <div class="app-download-link">
           <a href="https://api.husohua.com/app/" target="_blank" rel="noopener noreferrer">
             <Icon icon="mingcute:download-2-fill" width="16" height="16"/>
