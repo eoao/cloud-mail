@@ -11,6 +11,7 @@ import roleService from '../service/role-service';
 import userService from '../service/user-service';
 import telegramService from '../service/telegram-service';
 import aiService from '../service/ai-service';
+import { sanitizeHtml } from '../utils/sanitize-utils';
 
 export async function email(message, env, ctx) {
 
@@ -48,6 +49,10 @@ export async function email(message, env, ctx) {
 		}
 
 		const email = await PostalMime.parse(content);
+
+		if (email.html) {
+			email.html = sanitizeHtml(email.html);
+		}
 
 
 		const blockFlag = checkBlock(blackSubject, blackContent, blackFrom, email);

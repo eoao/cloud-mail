@@ -146,7 +146,8 @@ const deleteConfirm = () => {
     type: 'warning'
   }).then(() => {
     userDelete().then(() => {
-      localStorage.removeItem('token');
+      const userStore = useUserStore();
+      userStore.clearAuth();
       router.replace('/login');
       ElMessage({
         message: t('delSuccessMsg'),

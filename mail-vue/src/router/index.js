@@ -2,6 +2,7 @@ import {createRouter, createWebHistory} from 'vue-router'
 import NProgress from 'nprogress';
 import {useUiStore} from "@/store/ui.js";
 import {useSettingStore} from "@/store/setting.js";
+import {useUserStore} from "@/store/user.js";
 import {cvtR2Url} from "@/utils/convert.js";
 
 const routes = [
@@ -98,18 +99,19 @@ router.beforeEach((to, from, next) => {
         }, 100)
     }
 
-    const token = localStorage.getItem('token')
+    const userStore = useUserStore();
+    const isAuth = userStore.isAuthenticated
 
-    if (!token && to.name !== 'login') {
+    if (!isAuth && to.name !== 'login') {
         return next({name: 'login'})
     }
 
-    if (!token && to.name === 'login') {
+    if (!isAuth && to.name === 'login') {
         loadBackground(next)
         return
     }
 
-    if (token && to.name === 'login') {
+    if (isAuth && to.name === 'login') {
         return next(from.path)
     }
 

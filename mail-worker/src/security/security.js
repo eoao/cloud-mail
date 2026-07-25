@@ -8,6 +8,12 @@ import permService from '../service/perm-service';
 import { t } from '../i18n/i18n'
 import app from '../hono/hono';
 
+function getCookie(c, name) {
+	const cookie = c.req.header('Cookie') || '';
+	const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+	return match ? decodeURIComponent(match[1]) : null;
+}
+
 const exclude = [
 	'/login',
 	'/register',
@@ -112,7 +118,7 @@ app.use('*', async (c, next) => {
 	}
 
 
-	const jwt = c.req.header(constant.TOKEN_HEADER);
+	const jwt = c.req.header(constant.TOKEN_HEADER) || getCookie(c, constant.TOKEN_COOKIE);
 
 	const result = await jwtUtils.verifyToken(c, jwt);
 

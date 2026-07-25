@@ -387,7 +387,8 @@ async function sendEmail() {
       position: 'bottom-right'
     })
     if (e.code === 401) {
-      localStorage.removeItem('token');
+      const userStore = useUserStore();
+      userStore.clearAuth();
       router.replace('/login');
     }
     show.value = true

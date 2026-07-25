@@ -243,7 +243,8 @@ function changeAside() {
 function clickLogout() {
   logoutLoading.value = true
   logout().then(() => {
-    localStorage.removeItem("token")
+    const userStore = useUserStore();
+    userStore.clearAuth();
     router.replace('/login')
   }).finally(() => {
     logoutLoading.value = false
