@@ -25,3 +25,7 @@ mail-vue/node_modules
 mail-vue/dist
 .wrangler
 .venv
+*.env
+*.env.bak
+.admin-credentials.txt
+.dev.vars
