@@ -1,5 +1,8 @@
 const encoder = new TextEncoder();
 
+const PBKDF2_ITERATIONS = 120000;
+const PBKDF2_PREFIX = '$pbkdf2$';
+
 const saltHashUtils = {
 
 	generateSalt(length = 16) {
@@ -8,14 +11,37 @@ const saltHashUtils = {
 		return btoa(String.fromCharCode(...array));
 	},
 
-
 	async hashPassword(password) {
 		const salt = this.generateSalt();
-		const hash = await this.genHashPassword(password, salt);
+		const hash = await this._pbkdf2Hash(password, salt);
 		return { salt, hash };
 	},
 
-	async genHashPassword(password, salt) {
+	async _pbkdf2Hash(password, salt) {
+		const keyMaterial = await crypto.subtle.importKey(
+			'raw',
+			encoder.encode(password),
+			'PBKDF2',
+			false,
+			['deriveBits']
+		);
+
+		const derived = await crypto.subtle.deriveBits(
+			{
+				name: 'PBKDF2',
+				salt: encoder.encode(salt),
+				iterations: PBKDF2_ITERATIONS,
+				hash: 'SHA-256',
+			},
+			keyMaterial,
+			256
+		);
+
+		const hashArray = Array.from(new Uint8Array(derived));
+		return PBKDF2_PREFIX + btoa(String.fromCharCode(...hashArray));
+	},
+
+	async _legacyHash(password, salt) {
 		const data = encoder.encode(salt + password);
 		const hashBuffer = await crypto.subtle.digest('SHA-256', data);
 		const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -23,8 +49,17 @@ const saltHashUtils = {
 	},
 
 	async verifyPassword(inputPassword, salt, storedHash) {
-		const hash = await this.genHashPassword(inputPassword, salt);
-		return hash === storedHash;
+		if (storedHash && storedHash.startsWith(PBKDF2_PREFIX)) {
+			const hash = await this._pbkdf2Hash(inputPassword, salt);
+			return hash === storedHash;
+		}
+
+		const legacyHash = await this._legacyHash(inputPassword, salt);
+		return legacyHash === storedHash;
+	},
+
+	async needsRehash(storedHash) {
+		return !storedHash || !storedHash.startsWith(PBKDF2_PREFIX);
 	},
 
 	genRandomPwd(length = 8) {

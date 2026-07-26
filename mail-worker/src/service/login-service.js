@@ -265,6 +265,10 @@ const loginService = {
 			await c.env.kv.delete(KvConst.LOGIN_ATTEMPT + ip);
 		}
 
+		if (!noVerifyPwd && await saltHashUtils.needsRehash(userRow.password)) {
+			await userService.resetPassword(c, { password }, userRow.userId);
+		}
+
 		const uuid = uuidv4();
 		const jwt = await JwtUtils.generateToken(c,{ userId: userRow.userId, token: uuid });
 
