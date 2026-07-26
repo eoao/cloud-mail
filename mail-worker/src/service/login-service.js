@@ -170,8 +170,8 @@ const loginService = {
 			throw new BizError(t('noRegKeyCount'));
 		}
 
-		const today = toUtc().tz('Asia/Shanghai').startOf('day')
-		const expireTime = toUtc(regKeyRow.expireTime).tz('Asia/Shanghai').startOf('day');
+		const today = toUtc().startOf('day')
+		const expireTime = toUtc(regKeyRow.expireTime).startOf('day');
 
 		if (expireTime.isBefore(today)) {
 			throw new BizError(t('regKeyExpire'));
@@ -192,8 +192,8 @@ const loginService = {
 			return null
 		}
 
-		const today = toUtc().tz('Asia/Shanghai').startOf('day')
-		const expireTime = toUtc(regKeyRow.expireTime).tz('Asia/Shanghai').startOf('day');
+		const today = toUtc().startOf('day')
+		const expireTime = toUtc(regKeyRow.expireTime).startOf('day');
 
 		if (regKeyRow.count <= 0 || expireTime.isBefore(today)) {
 			return null
@@ -202,20 +202,18 @@ const loginService = {
 		return { type: regKeyRow.roleId, regKeyId: regKeyRow.regKeyId };
 	},
 
-	async login(c, params, noVerifyPwd = false) {
+	async login(c, params) {
 
 		const { email, password, token } = params;
 
-		if (!noVerifyPwd) {
-			const ip = reqUtils.getIp(c);
-			const attemptKey = KvConst.LOGIN_ATTEMPT + ip;
-			const attempts = parseInt(await c.env.kv.get(attemptKey) || '0');
-			if (attempts >= LOGIN_MAX_ATTEMPTS) {
-				throw new BizError(t('tooManyAttempts'), 429);
-			}
+		const ip = reqUtils.getIp(c);
+		const attemptKey = KvConst.LOGIN_ATTEMPT + ip;
+		const attempts = parseInt(await c.env.kv.get(attemptKey) || '0');
+		if (attempts >= LOGIN_MAX_ATTEMPTS) {
+			throw new BizError(t('tooManyAttempts'), 429);
 		}
 
-		if ((!email || !password) && !noVerifyPwd) {
+		if (!email || !password) {
 			throw new BizError(t('emailAndPwdEmpty'));
 		}
 
@@ -233,44 +231,37 @@ const loginService = {
 			throw new BizError(t('isBanUser'));
 		}
 
-		if (!noVerifyPwd) {
-			const { registerVerify, regVerifyCount } = await settingService.query(c);
+		const { registerVerify, regVerifyCount } = await settingService.query(c);
 
-			if (registerVerify === settingConst.registerVerify.OPEN) {
+		if (registerVerify === settingConst.registerVerify.OPEN) {
+			await turnstileService.verify(c, token);
+		}
+
+		if (registerVerify === settingConst.registerVerify.COUNT) {
+			const attempts = parseInt(await c.env.kv.get(attemptKey) || '0');
+			if (attempts >= (regVerifyCount || 3)) {
 				await turnstileService.verify(c, token);
-			}
-
-			if (registerVerify === settingConst.registerVerify.COUNT) {
-				const ip = reqUtils.getIp(c);
-				const attemptKey = KvConst.LOGIN_ATTEMPT + ip;
-				const attempts = parseInt(await c.env.kv.get(attemptKey) || '0');
-				if (attempts >= (regVerifyCount || 3)) {
-					await turnstileService.verify(c, token);
-				}
 			}
 		}
 
-		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password) && !noVerifyPwd) {
-			if (!noVerifyPwd) {
-				const ip = reqUtils.getIp(c);
-				const attemptKey = KvConst.LOGIN_ATTEMPT + ip;
-				const attempts = parseInt(await c.env.kv.get(attemptKey) || '0');
-				await c.env.kv.put(attemptKey, String(attempts + 1), { expirationTtl: LOGIN_RATE_WINDOW });
-			}
+		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password)) {
+			const attempts = parseInt(await c.env.kv.get(attemptKey) || '0');
+			await c.env.kv.put(attemptKey, String(attempts + 1), { expirationTtl: LOGIN_RATE_WINDOW });
 			throw new BizError(t('IncorrectPwd'));
 		}
 
-		if (!noVerifyPwd) {
-			const ip = reqUtils.getIp(c);
-			await c.env.kv.delete(KvConst.LOGIN_ATTEMPT + ip);
-		}
+		await c.env.kv.delete(attemptKey);
 
-		if (!noVerifyPwd && await saltHashUtils.needsRehash(userRow.password)) {
+		if (await saltHashUtils.needsRehash(userRow.password)) {
 			await userService.resetPassword(c, { password }, userRow.userId);
 		}
 
+		return await this.issueSession(c, userRow);
+	},
+
+	async issueSession(c, userRow) {
 		const uuid = uuidv4();
-		const jwt = await JwtUtils.generateToken(c,{ userId: userRow.userId, token: uuid });
+		const jwt = await JwtUtils.generateToken(c, { userId: userRow.userId, token: uuid });
 
 		let authInfo = await c.env.kv.get(KvConst.AUTH_INFO + userRow.userId, { type: 'json' });
 

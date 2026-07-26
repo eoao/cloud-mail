@@ -17,7 +17,6 @@ function getCookie(c, name) {
 const exclude = [
 	'/login',
 	'/register',
-	'/oss',
 	'/setting/websiteConfig',
 	'/webhooks',
 	'/init',

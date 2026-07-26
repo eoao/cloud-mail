@@ -9,12 +9,20 @@ import BizError from '../error/biz-error';
 import {t} from '../i18n/i18n'
 import verifyRecordService from './verify-record-service';
 import userContext from '../security/user-context';
+import { decryptSetting, encryptSetting, decryptJsonSetting, encryptJsonSetting } from '../utils/encrypt-utils';
 
 const settingService = {
 
 	async refresh(c) {
 		const settingRow = await orm(c).select().from(setting).get();
-		settingRow.resendTokens = JSON.parse(settingRow.resendTokens);
+		settingRow.secretKey = await decryptSetting(c, settingRow.secretKey);
+		settingRow.tgBotToken = await decryptSetting(c, settingRow.tgBotToken);
+		settingRow.s3AccessKey = await decryptSetting(c, settingRow.s3AccessKey);
+		settingRow.s3SecretKey = await decryptSetting(c, settingRow.s3SecretKey);
+		settingRow.resendTokens = await decryptJsonSetting(c, settingRow.resendTokens);
+		if (typeof settingRow.resendTokens === 'string') {
+			settingRow.resendTokens = JSON.parse(settingRow.resendTokens);
+		}
 		c.set('setting', settingRow);
 		await c.env.kv.put(KvConst.SETTING, JSON.stringify(settingRow));
 	},
@@ -140,6 +148,23 @@ const settingService = {
 		}
 
 		params.resendTokens = JSON.stringify(resendTokens);
+
+		if (params.secretKey !== undefined && params.secretKey !== settingData.secretKey) {
+			params.secretKey = await encryptSetting(c, params.secretKey);
+		}
+		if (params.tgBotToken !== undefined && params.tgBotToken !== settingData.tgBotToken) {
+			params.tgBotToken = await encryptSetting(c, params.tgBotToken);
+		}
+		if (params.s3AccessKey !== undefined && params.s3AccessKey !== settingData.s3AccessKey) {
+			params.s3AccessKey = await encryptSetting(c, params.s3AccessKey);
+		}
+		if (params.s3SecretKey !== undefined && params.s3SecretKey !== settingData.s3SecretKey) {
+			params.s3SecretKey = await encryptSetting(c, params.s3SecretKey);
+		}
+		if (params.resendTokens !== undefined) {
+			params.resendTokens = await encryptJsonSetting(c, params.resendTokens);
+		}
+
 		await orm(c).update(setting).set({ ...params }).returning().get();
 		await this.refresh(c);
 	},
