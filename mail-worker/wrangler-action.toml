@@ -23,7 +23,7 @@ id = "${KV_NAMESPACE_ID}"
 binding = "r2"
 bucket_name = "${R2_BUCKET_NAME}"
 
-[[send_mail]]
+[[send_email]]
 name = "email"
 
 [ai]
