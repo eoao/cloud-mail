@@ -51,7 +51,7 @@ export async function email(message, env, ctx) {
 		const email = await PostalMime.parse(content);
 
 		if (email.html) {
-			email.html = sanitizeHtml(email.html);
+			email.html = await sanitizeHtml(email.html);
 		}
 
 

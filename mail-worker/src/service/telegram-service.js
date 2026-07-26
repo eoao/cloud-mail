@@ -32,7 +32,7 @@ const telegramService = {
 
 			if (emailRow.content) {
 				const { r2Domain } = await settingService.query(c);
-				return emailHtmlTemplate(emailRow.content || '', r2Domain)
+				return await emailHtmlTemplate(emailRow.content || '', r2Domain)
 			} else {
 				return emailTextTemplate(emailRow.text || '')
 			}

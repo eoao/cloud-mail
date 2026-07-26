@@ -1,54 +1,44 @@
-import { parseHTML } from 'linkedom';
-import DOMPurify from 'dompurify';
+const REMOVE_TAGS = ['script', 'iframe', 'object', 'embed', 'form'];
+const DANGEROUS_URL_ATTRS = ['href', 'src', 'action', 'formaction', 'poster', 'background'];
+const DANGEROUS_URL_PATTERN = /^\s*(javascript|data|vbscript):/i;
 
-const { window } = parseHTML('<!DOCTYPE html><html><body></body></html>');
-const purify = DOMPurify(window);
+class RemoveElement {
+	element(el) {
+		el.remove();
+	}
+}
 
-const ALLOWED_TAGS = [
-	'html', 'head', 'body', 'meta', 'title',
-	'div', 'span', 'p', 'br', 'hr',
-	'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-	'blockquote', 'pre', 'code', 'cite',
-	'b', 'i', 'u', 'strong', 'em', 'small', 'sub', 'sup', 'del', 'ins', 'mark',
-	'ul', 'ol', 'li', 'dl', 'dt', 'dd',
-	'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
-	'a', 'img',
-	'font', 'center',
-	'style', 'link',
-];
-
-const ALLOWED_ATTR = [
-	'href', 'src', 'alt', 'title', 'width', 'height',
-	'style', 'class', 'id',
-	'colspan', 'rowspan', 'align', 'valign',
-	'border', 'cellpadding', 'cellspacing', 'cellspacing',
-	'target', 'rel', 'name', 'charset', 'content',
-	'color', 'bgcolor', 'face', 'size',
-	'type', 'media',
-	'dir', 'lang',
-];
-
-purify.addHook('afterSanitizeAttributes', (node) => {
-	if (node.hasAttribute('href')) {
-		const href = node.getAttribute('href');
-		if (/^\s*javascript:/i.test(href) || /^\s*data:/i.test(href)) {
-			node.removeAttribute('href');
+class StripDangerousAttributes {
+	element(el) {
+		for (const [name] of [...el.attributes]) {
+			if (/^on/i.test(name)) {
+				el.removeAttribute(name);
+			}
+		}
+		for (const attr of DANGEROUS_URL_ATTRS) {
+			const value = el.getAttribute(attr);
+			if (value && DANGEROUS_URL_PATTERN.test(value)) {
+				el.removeAttribute(attr);
+			}
 		}
 	}
-	if (node.hasAttribute('src')) {
-		const src = node.getAttribute('src');
-		if (/^\s*javascript:/i.test(src)) {
-			node.removeAttribute('src');
-		}
-	}
-});
+}
 
-export function sanitizeHtml(html) {
+export async function sanitizeHtml(html) {
+
 	if (!html) return '';
-	return purify.sanitize(html, {
-		ALLOWED_TAGS,
-		ALLOWED_ATTR,
-		ALLOW_DATA_ATTR: false,
-		ALLOW_UNKNOWN_PROTOCOLS: false,
-	});
+
+	let rewriter = new HTMLRewriter();
+
+	for (const tag of REMOVE_TAGS) {
+		rewriter = rewriter.on(tag, new RemoveElement());
+	}
+
+	rewriter = rewriter.on('*', new StripDangerousAttributes());
+
+	const response = rewriter.transform(new Response(html, {
+		headers: { 'content-type': 'text/html; charset=utf-8' }
+	}));
+
+	return await response.text();
 }

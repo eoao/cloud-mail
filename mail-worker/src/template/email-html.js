@@ -1,9 +1,9 @@
 import { sanitizeHtml } from '../utils/sanitize-utils';
 import domainUtils from '../utils/domain-uitls';
 
-export default function emailHtmlTemplate(html, domain) {
+export default async function emailHtmlTemplate(html, domain) {
 
-	html = sanitizeHtml(html);
+	html = await sanitizeHtml(html);
 	html = html.replace(/{{domain}}/g, domainUtils.toOssDomain(domain) + '/');
 	const safeHtmlJson = JSON.stringify(html).replace(/</g, '\\u003C');
 
