@@ -3,12 +3,10 @@ import emailUtils from '../utils/email-utils';
 import {emailConst} from "../const/entity-const";
 
 const dbInit = {
-	async init(c) {
+	async init(c, secret) {
 
-		const secret = c.req.param('secret');
-
-		if (secret !== c.env.jwt_secret) {
-			return c.text('❌ JWT secret mismatch');
+		if (!c.env.init_secret || secret !== c.env.init_secret) {
+			return { success: false, message: 'Unauthorized' };
 		}
 
 		await this.intDB(c);
@@ -30,7 +28,7 @@ const dbInit = {
 		await this.v2_9DB(c);
 		await this.v3_0DB(c);
 		await settingService.refresh(c);
-		return c.text('success');
+		return { success: true, message: 'Database initialized successfully' };
 	},
 
 	async v3_0DB(c) {
