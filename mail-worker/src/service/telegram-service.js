@@ -49,17 +49,19 @@ const telegramService = {
 
 		const tgChatIds = tgChatId.split(',');
 
-		const jwtToken = await jwtUtils.generateToken(c, { emailId: email.emailId })
+		const jwtToken = await jwtUtils.generateToken(c, { emailId: email.emailId }, 3600)
 
-		const webAppUrl = customDomain ? `${domainUtils.toOssDomain(customDomain)}/api/telegram/getEmail/${jwtToken}` : 'https://www.cloudflare.com/404'
-		const inlineKeyboard = [
-			[
+		const inlineKeyboard = [];
+
+		if (customDomain) {
+			const webAppUrl = `${domainUtils.toOssDomain(customDomain)}/api/telegram/getEmail/${jwtToken}`
+			inlineKeyboard.push([
 				{
 					text: 'View',
 					web_app: { url: webAppUrl }
 				}
-			]
-		];
+			]);
+		}
 
 		if (email.code) {
 			inlineKeyboard.push([
