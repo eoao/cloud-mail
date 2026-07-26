@@ -16,9 +16,12 @@ binding = "kv"			#kv绑定名默认不可修改
 id = "9be10cd058e04c55b526f8c0c116f50c"					#kv数据库id
 
 #(可选)
-#[[r2_buckets]]
-#binding = "r2"			#r2对象存储绑定名默认不可修改
-#bucket_name = "test-email"		#r2对象存储桶的名字
+# 备份测试需要 r2 绑定; miniflare 在本地模拟, 不会触及真实存储桶。
+# Backup/restore tests need the r2 binding; miniflare simulates it locally and
+# never touches a real bucket.
+[[r2_buckets]]
+binding = "r2"			#r2对象存储绑定名默认不可修改
+bucket_name = "test-email"		#r2对象存储桶的名字
 
 # 不绑定 ai: vitest-pool-workers 无法解析 AI 的 wrapped binding，会导致运行时无法启动。
 # ai-service 在 c.env.ai 缺失时会被 try/catch 兜底，返回空字符串。
