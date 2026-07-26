@@ -20,8 +20,10 @@ id = "9be10cd058e04c55b526f8c0c116f50c"					#kv数据库id
 #binding = "r2"			#r2对象存储绑定名默认不可修改
 #bucket_name = "test-email"		#r2对象存储桶的名字
 
-[ai]
-binding = "ai"
+# 不绑定 ai: vitest-pool-workers 无法解析 AI 的 wrapped binding，会导致运行时无法启动。
+# ai-service 在 c.env.ai 缺失时会被 try/catch 兜底，返回空字符串。
+# No ai binding: vitest-pool-workers cannot resolve the AI wrapped binding and the
+# runtime fails to start. ai-service falls back to '' via try/catch when c.env.ai is absent.
 
 [assets]
 binding = "assets"		#静态资源绑定名默认不可修改
@@ -40,6 +42,7 @@ orm_log = false			#是否sql日志
 domain = ["example.com"]				#邮件域名可可配置多个 示例: ["example1.com","example2.com"]
 admin = "admin@example.com"				#管理员的邮箱	示例: admin@example.com
 jwt_secret = "b7f29a1d-18e2-4d3b-941f-f6b2c97c02fd"			#jwt令牌的密钥,随便填一串字符串
+init_secret = "test-init-secret"			#测试环境数据库初始化密钥 / test-only DB init secret
 
 [build]
 command = "pnpm --prefix ../mail-vue install && pnpm --prefix ../mail-vue run build"

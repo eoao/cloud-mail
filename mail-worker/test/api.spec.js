@@ -40,22 +40,27 @@ describe('GET /init (A2)', () => {
 	});
 });
 
+// bindUser rejects via BizError, which hono's onError renders as HTTP 200 with the
+// status in the JSON envelope. Assert on body.code so the test tracks the actual
+// contract; asserting response.status here would pass only if that convention changed.
 describe('PUT /api/oauth/bindUser (F1-OAUTH)', () => {
-	it('returns 401 without bindToken', async () => {
+	it('refuses a bind without bindToken', async () => {
 		const response = await SELF.fetch('http://example.com/api/oauth/bindUser', {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ email: 'test@example.com', code: 'abc' }),
 		});
-		expect(response.status).toBe(401);
+		const body = await response.json();
+		expect(body.code).toBe(401);
 	});
 
-	it('returns 401 with invalid bindToken', async () => {
+	it('refuses a bind with an invalid bindToken', async () => {
 		const response = await SELF.fetch('http://example.com/api/oauth/bindUser', {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ email: 'test@example.com', bindToken: 'invalid.token.here', code: 'abc' }),
 		});
-		expect(response.status).toBe(401);
+		const body = await response.json();
+		expect(body.code).toBe(401);
 	});
 });
