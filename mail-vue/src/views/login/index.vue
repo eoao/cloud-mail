@@ -41,6 +41,16 @@
           </el-input>
           <el-input v-model="form.password" :placeholder="$t('password')" type="password" autocomplete="off">
           </el-input>
+          <div v-show="loginVerifyShow"
+               class="login-turnstile"
+               :data-sitekey="settingStore.settings.siteKey"
+               data-callback="onLoginTurnstileSuccess"
+               data-error-callback="onLoginTurnstileError"
+               data-after-interactive-callback="loadAfter"
+               data-before-interactive-callback="loadBefore"
+          >
+            <span style="font-size: 12px;color: #F56C6C" v-if="loginBotJsError">{{ $t('verifyModuleFailed') }}</span>
+          </div>
           <el-button class="btn" type="primary" @click="submit" :loading="loginLoading"
           >{{ $t('loginBtn') }}
           </el-button>
@@ -224,6 +234,57 @@ window.onTurnstileError = (e) => {
   }, 1500)
 };
 
+const loginVerifyShow = ref(false)
+let loginVerifyToken = ''
+let loginTurnstileId = null
+let loginBotJsError = ref(false)
+let loginVerifyErrorCount = 0
+
+window.onLoginTurnstileSuccess = (token) => {
+  loginVerifyToken = token;
+};
+
+window.onLoginTurnstileError = (e) => {
+  if (loginVerifyErrorCount >= 4) {
+    return
+  }
+  loginVerifyErrorCount++
+  console.warn('人机验加载失败', e)
+  setTimeout(() => {
+    nextTick(() => {
+      if (!loginTurnstileId) {
+        loginTurnstileId = window.turnstile.render('.login-turnstile')
+      } else {
+        window.turnstile.reset(loginTurnstileId);
+      }
+    })
+  }, 1500)
+};
+
+function showLoginTurnstile() {
+  if (!loginVerifyShow.value) {
+    loginVerifyShow.value = true
+    nextTick(() => {
+      if (!loginTurnstileId) {
+        try {
+          loginTurnstileId = window.turnstile.render('.login-turnstile')
+        } catch (e) {
+          loginBotJsError.value = true
+          console.log('人机验证js加载失败')
+        }
+      } else {
+        window.turnstile.reset(loginTurnstileId)
+      }
+    })
+  } else if (!loginBotJsError.value) {
+    ElMessage({
+      message: t('botVerifyMsg'),
+      type: "error",
+      plain: true
+    })
+  }
+}
+
 window.loadAfter = (e) => {
   console.log('loadAfter')
 }
@@ -392,9 +453,22 @@ const submit = () => {
     return
   }
 
+  if (!loginVerifyToken && settingStore.settings.registerVerify === 0) {
+    showLoginTurnstile()
+    return
+  }
+
   loginLoading.value = true
-  login(email, form.password).then(async data => {
+  login(email, form.password, loginVerifyToken).then(async data => {
     await saveToken(data.token)
+  }).catch(res => {
+    if (res && res.code === 400) {
+      loginVerifyToken = ''
+      if (loginTurnstileId) {
+        window.turnstile.reset(loginTurnstileId)
+      }
+      showLoginTurnstile()
+    }
   }).finally(() => {
     loginLoading.value = false
   })
@@ -732,7 +806,7 @@ function submitRegister() {
   margin: 0;
 }
 
-.register-turnstile {
+.register-turnstile, .login-turnstile {
   margin-bottom: 18px;
 }
 

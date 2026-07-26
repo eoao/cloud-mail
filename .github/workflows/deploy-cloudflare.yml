@@ -32,6 +32,7 @@ jobs:
       LINUXDO_CLIENT_SECRET: ${{ secrets.LINUXDO_CLIENT_SECRET || vars.LINUXDO_CLIENT_SECRET }}
       LINUXDO_CALLBACK_URL: ${{ secrets.LINUXDO_CALLBACK_URL || vars.LINUXDO_CALLBACK_URL }}
       LINUXDO_SWITCH: ${{ secrets.LINUXDO_SWITCH || vars.LINUXDO_SWITCH }}
+      RESEND_SIGNING_SECRET: ${{ secrets.RESEND_SIGNING_SECRET || vars.RESEND_SIGNING_SECRET }}
 
 
     outputs:
@@ -239,30 +240,42 @@ jobs:
           echo "worker_url=$WORKER_URL" >> $GITHUB_OUTPUT
           echo "✅ Setup completed."
 
-      - name: 🔑 设置 JWT 密钥 / Set JWT secret
+      - name: 🔑 设置密钥 / Set Worker secrets
         working-directory: ./mail-worker
         run: |
           echo "🔑 Setting jwt_secret as a Worker secret..."
           echo -n "$JWT_SECRET" | pnpm wrangler secret put jwt_secret --config wrangler-action.toml
+
+          echo "🔑 Generating and setting init_secret as a Worker secret..."
+          INIT_SECRET=$(openssl rand -hex 32)
+          echo "::add-mask::$INIT_SECRET"
+          echo "INIT_SECRET=$INIT_SECRET" >> "$GITHUB_ENV"
+          echo -n "$INIT_SECRET" | pnpm wrangler secret put init_secret --config wrangler-action.toml
+
+          if [ -n "$RESEND_SIGNING_SECRET" ]; then
+            echo "🔑 Setting resend_signing_secret as a Worker secret..."
+            echo -n "$RESEND_SIGNING_SECRET" | pnpm wrangler secret put resend_signing_secret --config wrangler-action.toml
+          fi
+
           echo "✅ Setup completed."
 
       - name: ♻️ 初始化数据库 / Initialize database
         run: |
           echo "🛠️ Starting database initialization..."
           sleep 15
-          
+
           WORKER_URL="${CUSTOM_DOMAIN:+https://$CUSTOM_DOMAIN}"
           WORKER_URL="${WORKER_URL:-${{ steps.deploy.outputs.worker_url }}}"
-          
+
           if [ -z "$WORKER_URL" ]; then
             echo "❌ Preview URL not available. Please set CUSTOM_DOMAIN."
             exit 1
           fi
-          
-          HTTP_CODE=$(curl -sL -w "%{http_code}" -o response.txt "$WORKER_URL/api/init/${JWT_SECRET}")
+
+          HTTP_CODE=$(curl -sL -w "%{http_code}" -o response.txt -H "Authorization: $INIT_SECRET" "$WORKER_URL/api/init")
           RESPONSE_BODY=$(cat response.txt)
 
-          if [ "$RESPONSE_BODY" = "success" ]; then
+          if [ "$HTTP_CODE" = "200" ]; then
             echo "✅ Setup completed."
           else
             echo "❌ Failed. HTTP: $HTTP_CODE, Response: $RESPONSE_BODY"
