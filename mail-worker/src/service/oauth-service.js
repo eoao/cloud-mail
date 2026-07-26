@@ -5,12 +5,27 @@ import { eq, inArray } from 'drizzle-orm';
 import userService from "./user-service";
 import loginService from "./login-service";
 import cryptoUtils from "../utils/crypto-utils";
+import jwtUtils from "../utils/jwt-utils";
+
+const BIND_TOKEN_EXPIRY = 300;
 
 const oauthService = {
 
 	async bindUser(c, params) {
 
-		const { email, oauthUserId, code } = params;
+		const { email, bindToken, code } = params;
+
+		if (!bindToken) {
+			throw new BizError('bindToken is required', 401);
+		}
+
+		const bindPayload = await jwtUtils.verifyToken(c, bindToken);
+
+		if (!bindPayload || bindPayload.purpose !== 'bind' || !bindPayload.oauthUserId) {
+			throw new BizError('Invalid or expired bind token', 401);
+		}
+
+		const oauthUserId = bindPayload.oauthUserId;
 
 		const oauthRow = await this.getById(c, oauthUserId);
 
@@ -75,14 +90,18 @@ const oauthService = {
 		userInfo.avatar = userInfo.avatar_url;
 
 		const  oauthRow = await this.saveUser(c, userInfo);
+		const bindToken = await jwtUtils.generateToken(c,
+			{ oauthUserId: userInfo.oauthUserId, purpose: 'bind' },
+			BIND_TOKEN_EXPIRY
+		);
 		const userRow = await userService.selectByIdIncludeDel(c, oauthRow.userId);
 
 		if (!userRow) {
-			return { userInfo: oauthRow, token: null }
+			return { userInfo: oauthRow, token: null, bindToken }
 		}
 
 		const JwtToken = await loginService.login(c, { email: userRow.email, password: null }, true);
-		return { userInfo: oauthRow, token: JwtToken }
+		return { userInfo: oauthRow, token: JwtToken, bindToken }
 	},
 
 	async saveUser(c, userInfo) {
