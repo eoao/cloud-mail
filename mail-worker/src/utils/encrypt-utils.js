@@ -2,14 +2,30 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 const AES_PREFIX = '$aes$';
+const HKDF_SALT = 'cloud-mail-settings-encryption-v1';
+const HKDF_INFO = 'settings-aes-gcm-key';
 
-async function getKey(c) {
-	const raw = c.env.settings_encryption_key;
-	if (!raw) return null;
-	return await crypto.subtle.importKey(
+async function deriveKey(c) {
+	const jwtSecret = c.env.jwt_secret;
+	if (!jwtSecret) return null;
+
+	const hkdfKey = await crypto.subtle.importKey(
 		'raw',
-		encoder.encode(raw),
-		{ name: 'AES-GCM' },
+		encoder.encode(jwtSecret),
+		'HKDF',
+		false,
+		['deriveKey']
+	);
+
+	return await crypto.subtle.deriveKey(
+		{
+			name: 'HKDF',
+			hash: 'SHA-256',
+			salt: encoder.encode(HKDF_SALT),
+			info: encoder.encode(HKDF_INFO),
+		},
+		hkdfKey,
+		{ name: 'AES-GCM', length: 256 },
 		false,
 		['encrypt', 'decrypt']
 	);
@@ -17,26 +33,32 @@ async function getKey(c) {
 
 export async function encryptSetting(c, plaintext) {
 	if (!plaintext || plaintext.includes('******')) return plaintext;
-	const key = await getKey(c);
-	if (!key) return plaintext;
 
-	const iv = crypto.getRandomValues(new Uint8Array(12));
-	const encoded = encoder.encode(plaintext);
-	const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+	try {
+		const key = await deriveKey(c);
+		if (!key) return plaintext;
 
-	const combined = new Uint8Array(iv.length + ciphertext.byteLength);
-	combined.set(iv);
-	combined.set(new Uint8Array(ciphertext), iv.length);
+		const iv = crypto.getRandomValues(new Uint8Array(12));
+		const encoded = encoder.encode(plaintext);
+		const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
 
-	return AES_PREFIX + btoa(String.fromCharCode(...combined));
+		const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+		combined.set(iv);
+		combined.set(new Uint8Array(ciphertext), iv.length);
+
+		return AES_PREFIX + btoa(String.fromCharCode(...combined));
+	} catch {
+		return plaintext;
+	}
 }
 
 export async function decryptSetting(c, value) {
 	if (!value || !value.startsWith(AES_PREFIX)) return value;
-	const key = await getKey(c);
-	if (!key) return value;
 
 	try {
+		const key = await deriveKey(c);
+		if (!key) return value;
+
 		const encoded = value.slice(AES_PREFIX.length);
 		const combined = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
 		const iv = combined.slice(0, 12);

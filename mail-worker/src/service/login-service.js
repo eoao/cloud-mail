@@ -223,14 +223,6 @@ const loginService = {
 			throw new BizError(t('notExistUser'));
 		}
 
-		if(userRow.isDel === isDel.DELETE) {
-			throw new BizError(t('isDelUser'));
-		}
-
-		if(userRow.status === userConst.status.BAN) {
-			throw new BizError(t('isBanUser'));
-		}
-
 		const { registerVerify, regVerifyCount } = await settingService.query(c);
 
 		if (registerVerify === settingConst.registerVerify.OPEN) {
@@ -260,6 +252,15 @@ const loginService = {
 	},
 
 	async issueSession(c, userRow) {
+
+		if (userRow.isDel === isDel.DELETE) {
+			throw new BizError(t('isDelUser'));
+		}
+
+		if (userRow.status === userConst.status.BAN) {
+			throw new BizError(t('isBanUser'));
+		}
+
 		const uuid = uuidv4();
 		const jwt = await JwtUtils.generateToken(c, { userId: userRow.userId, token: uuid });
 
