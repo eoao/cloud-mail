@@ -9,6 +9,9 @@ import { parseHTML } from 'linkedom';
 import { v4 as uuidv4 } from 'uuid';
 import domainUtils from '../utils/domain-uitls';
 import settingService from "./setting-service";
+import BizError from '../error/biz-error';
+
+const ALLOWED_FIELDS = ['user_id', 'email_id', 'account_id'];
 
 const attService = {
 
@@ -213,6 +216,10 @@ const attService = {
 	},
 
 	async removeAttByField(c, fieldName, fieldValues) {
+
+		if (!ALLOWED_FIELDS.includes(fieldName)) {
+			throw new BizError(`Invalid field name: ${fieldName}`);
+		}
 
 		const sqlList = [];
 
