@@ -1,20 +1,21 @@
-import { env, createExecutionContext, waitOnExecutionContext, SELF } from 'cloudflare:test';
+import { SELF } from 'cloudflare:test';
 import { describe, it, expect } from 'vitest';
-import worker from '../src';
 
-describe('Hello World worker', () => {
-	it('responds with Hello World! (unit style)', async () => {
-		const request = new Request('http://example.com');
-		// Create an empty context to pass to `worker.fetch()`.
-		const ctx = createExecutionContext();
-		const response = await worker.fetch(request, env, ctx);
-		// Wait for all `Promise`s passed to `ctx.waitUntil()` to settle before running test assertions
-		await waitOnExecutionContext(ctx);
-		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
+describe('Worker smoke test', () => {
+	it('serves website config endpoint', async () => {
+		const response = await SELF.fetch('http://example.com/api/setting/websiteConfig');
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(body.code).toBe(200);
 	});
 
-	it('responds with Hello World! (integration style)', async () => {
-		const response = await SELF.fetch('http://example.com');
-		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
+	it('returns 401 on protected endpoint without auth', async () => {
+		const response = await SELF.fetch('http://example.com/api/my/info');
+		expect(response.status).toBe(401);
+	});
+
+	it('returns 200 on login page', async () => {
+		const response = await SELF.fetch('http://example.com/');
+		expect(response.status).toBe(200);
 	});
 });

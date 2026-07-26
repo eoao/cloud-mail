@@ -1,290 +1,54 @@
-name: 🚀 Deploy cloud-mail to Cloudflare Workers
+name: Deploy
 
 on:
   push:
-    branches: [ main ]
-    paths:
-      - "mail-worker/**"
-      - "mail-vue/**"
-  workflow_dispatch:
+    branches: [main]
 
 jobs:
-  Deploy-cloud-mail:
-    name: 🏗️ Build and Deploy
+  build:
     runs-on: ubuntu-latest
-
-    env:
-      NAME: ${{ secrets.NAME || vars.NAME || 'cloud-mail' }}
-      CUSTOM_DOMAIN: ${{ secrets.CUSTOM_DOMAIN || vars.CUSTOM_DOMAIN }}
-      DOMAIN: ${{ secrets.DOMAIN || vars.DOMAIN }}
-      ADMIN: ${{ secrets.ADMIN || vars.ADMIN }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET || vars.JWT_SECRET }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || vars.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
-      D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID || vars.D1_DATABASE_ID }}
-      KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID || vars.KV_NAMESPACE_ID }}
-      R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || vars.R2_BUCKET_NAME }}
-      PROJECT_LINK: ${{ secrets.PROJECT_LINK || vars.PROJECT_LINK }}
-      AI_MODEL: ${{ secrets.AI_MODEL || vars.AI_MODEL || '@cf/meta/llama-3.1-8b-instruct' }}
-      CLOUDFLARE_EMAIL: ${{ secrets.CF_EMAIL || vars.CF_EMAIL || false }}
-      ANALYSIS_CACHE: ${{ secrets.ANALYSIS_CACHE || vars.ANALYSIS_CACHE || false }}
-      LINUXDO_CLIENT_ID: ${{ secrets.LINUXDO_CLIENT_ID || vars.LINUXDO_CLIENT_ID }}
-      LINUXDO_CLIENT_SECRET: ${{ secrets.LINUXDO_CLIENT_SECRET || vars.LINUXDO_CLIENT_SECRET }}
-      LINUXDO_CALLBACK_URL: ${{ secrets.LINUXDO_CALLBACK_URL || vars.LINUXDO_CALLBACK_URL }}
-      LINUXDO_SWITCH: ${{ secrets.LINUXDO_SWITCH || vars.LINUXDO_SWITCH }}
-      RESEND_SIGNING_SECRET: ${{ secrets.RESEND_SIGNING_SECRET || vars.RESEND_SIGNING_SECRET }}
-
-
-    outputs:
-      worker_url: ${{ steps.deploy.outputs.worker_url }}
-
-
     steps:
-      - name: 🚚 检出代码仓库 / Checkout repository
-        uses: actions/checkout@v4
-
-      - name: ⚙ 设置 pnpm / Set up pnpm
-        uses: pnpm/action-setup@v4.1.0
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
-          version: 9
+          node-version: '22'
+          cache: 'pnpm'
+      - run: pnpm --prefix mail-worker install
+      - run: pnpm --prefix mail-vue install
+      - run: pnpm --prefix mail-vue run build
 
-      - name: ⚙ 设置 Node.js / Set up Node.js
-        uses: actions/setup-node@v4
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          cache: "pnpm"
-          cache-dependency-path: "./mail-worker/pnpm-lock.yaml"
+          node-version: '22'
+          cache: 'pnpm'
+      - run: pnpm --prefix mail-worker install
+      - run: pnpm --prefix mail-worker test
 
-      - name: 📦 安装依赖 / Install dependencies
-        run: pnpm install --frozen-lockfile
-        working-directory: ./mail-worker
-
-      - name: 📡 禁用 Wrangler 遥测 / Disable wrangler telemetry
-        working-directory: ./mail-worker
-        run: pnpm wrangler telemetry disable
-
-      - name: 🛠️ 设置环境 / Set up environment
-        working-directory: ./mail-worker
-        run: |
-          
-          echo "🔐 Starting environment setup..."
-          
-          if [ -z "$JWT_SECRET" ] || grep -q '[?%#/\\]' <<< "$JWT_SECRET"; then
-            echo "❌ JWT_SECRET variable is empty or contains invalid characters (?, %, #, /, \\)."
-            exit 1
-          fi
-          
-          if ! jq -e 'type == "array"' <<< "$DOMAIN" ; then
-            echo "❌ DOMAIN variable must be a JSON array (e.g., [\"example.com\"])."
-            exit 1
-          fi
-          
-          if [ -z "$ADMIN" ]; then
-            echo "❌ ADMIN variable cannot be empty."
-            exit 1
-          fi
-          
-          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "❌ CLOUDFLARE_ACCOUNT_ID variable cannot be empty."
-            exit 1
-          fi
-          
-          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
-            echo "❌ CLOUDFLARE_API_TOKEN variable cannot be empty."
-            exit 1
-          fi
-          
-          if [ -z "$CUSTOM_DOMAIN" ]; then
-            echo "::warning:: CUSTOM_DOMAIN variable is not set."
-          fi
-          
-          CONFIG_FILE="wrangler-action.toml"
-          
-          if [ -z "$R2_BUCKET_NAME" ]; then
-            sed -i '/\[\[r2_buckets\]\]/,/^$/d' "$CONFIG_FILE"
-          fi
-          
-          if [ -z "$PROJECT_LINK" ]; then
-            sed -i '/^project_link = /d' "$CONFIG_FILE"
-          fi
-          
-          if [ -z "$LINUXDO_CLIENT_ID" ] || [ -z "$LINUXDO_CLIENT_SECRET" ]; then
-            sed -i '/^linuxdo_client_id = /,/^linuxdo_switch = /d' "$CONFIG_FILE"
-          fi
-          
-          if [ -z "$CUSTOM_DOMAIN" ]; then
-            sed -i '/\[\[routes\]\]/,/^$/d' "$CONFIG_FILE"
-          fi
-          
-          if [ "$(printf '%s' "$CLOUDFLARE_EMAIL" | tr '[:upper:]' '[:lower:]')" = "true" ]; then
-            cat >> "$CONFIG_FILE" <<'EOF'
-
-          [[send_email]]
-          name = "email"
-          EOF
-          fi
-
-          sed -i "s|\${NAME}|${NAME}|g" "$CONFIG_FILE"
-          sed -i "s|\${CUSTOM_DOMAIN}|${CUSTOM_DOMAIN}|g" "$CONFIG_FILE"
-          sed -i "s|\"\${DOMAIN}\"|${DOMAIN}|g" "$CONFIG_FILE"
-          sed -i "s|\${ADMIN}|${ADMIN}|g" "$CONFIG_FILE"
-          sed -i "s|\${R2_BUCKET_NAME}|${R2_BUCKET_NAME}|g" "$CONFIG_FILE"
-          sed -i "s|\${PROJECT_LINK}|${PROJECT_LINK}|g" "$CONFIG_FILE"
-          sed -i "s|\${ANALYSIS_CACHE}|${ANALYSIS_CACHE}|g" "$CONFIG_FILE"
-          sed -i "s|\${AI_MODEL}|${AI_MODEL}|g" "$CONFIG_FILE"
-          sed -i "s|\${LINUXDO_CLIENT_ID}|${LINUXDO_CLIENT_ID}|g" "$CONFIG_FILE"
-          sed -i "s|\${LINUXDO_CLIENT_SECRET}|${LINUXDO_CLIENT_SECRET}|g" "$CONFIG_FILE"
-          sed -i "s|\${LINUXDO_CALLBACK_URL}|${LINUXDO_CALLBACK_URL}|g" "$CONFIG_FILE"
-          sed -i "s|\${LINUXDO_SWITCH}|${LINUXDO_SWITCH}|g" "$CONFIG_FILE"
-          
-          echo "✅ Environment setup completed."
-
-      - name: ⚡ 设置KV数据库 / Set up KV database
-        working-directory: ./mail-worker
-        run: |
-          
-          CONFIG_FILE="wrangler-action.toml"
-          
-          if [ -n "$KV_NAMESPACE_ID" ]; then
-            sed -i "s|\${KV_NAMESPACE_ID}|${KV_NAMESPACE_ID}|g" "$CONFIG_FILE"
-            echo "✅ Using the database from environment variables."
-            exit 0
-          fi
-          
-          echo "🔍 Checking if the database exists..."
-          
-          set +e
-            KV_LIST=$(pnpm wrangler kv namespace list 2>&1)
-            STATUS=$?
-          set -e
-          
-          if [ $STATUS -ne 0 ]; then
-            echo "$KV_LIST"
-            exit 1
-          fi
-                  
-          if echo "$KV_LIST" | jq -e ".[] | select(.title == \"$NAME\")" >/dev/null; then
-            echo "✅ Database $NAME already exists."
-            KV_ID=$(echo "$KV_LIST" | jq -r ".[] | select(.title == \"$NAME\") | .id")
-            echo "KV_NAMESPACE_ID: $KV_ID"
-          else
-            echo "⚠️ Database $NAME does not exist. Starting creation..."
-            pnpm wrangler kv namespace create $NAME
-            KV_LIST=$(pnpm wrangler kv namespace list)
-            KV_ID=$(echo "$KV_LIST" | jq -r ".[] | select(.title == \"$NAME\") | .id")
-          fi
-          
-          sed -i "s|\${KV_NAMESPACE_ID}|$KV_ID|g" "$CONFIG_FILE"
-          echo "✅ Setup completed."
-
-      - name: 🐬 设置D1数据库 / Set up D1 database
-        working-directory: ./mail-worker
-        run: |
-          
-          CONFIG_FILE="wrangler-action.toml"
-          
-          if [ -n "$D1_DATABASE_ID" ]; then
-            sed -i "s|\${D1_DATABASE_ID}|${D1_DATABASE_ID}|g" "$CONFIG_FILE"
-            echo "✅ Using the database from environment variables."
-            exit 0
-          fi
-          
-          echo "🔍 Checking if the database exists..."
-          
-          set +e
-            DB_LIST=$(pnpm wrangler d1 list --json 2>&1)
-            STATUS=$?
-          set -e
-          
-          if [ $STATUS -ne 0 ]; then
-            echo "$DB_LIST"
-            exit 1
-          fi
-          
-          if echo "$DB_LIST" | jq -e ".[] | select(.name == \"$NAME\")" >/dev/null; then
-            echo "✅ Database $NAME already exists."
-            D1_ID=$(echo "$DB_LIST" | jq -r ".[] | select(.name == \"$NAME\") | .uuid")
-            echo "D1_DATABASE_ID: $D1_ID"
-          else
-            echo "⚠️ Database $NAME does not exist. Starting creation..."
-            pnpm wrangler d1 create $NAME
-            DB_LIST=$(pnpm wrangler d1 list --json)
-            D1_ID=$(echo "$DB_LIST" | jq -r ".[] | select(.name == \"$NAME\") | .uuid")
-          fi
-          
-          sed -i "s|\${D1_DATABASE_ID}|$D1_ID|g" "$CONFIG_FILE"
-          echo "✅ Setup completed."
-
-      - name: 🚀 开始部署 / Start deployment
-        id: deploy
-        working-directory: ./mail-worker
-        run: |
-          echo "🚀 Starting deployment..."
-          pnpm wrangler deploy -c wrangler-action.toml 2>&1 \
-            | tee deploy.log \
-            | grep -v "https://.*\.workers\.dev" \
-            | sed -E 's/env\.domain .*/env.domain (***)/' \
-            || true
-          
-          DEPLOY_EXIT_CODE=${PIPESTATUS[0]}
-          if [ $DEPLOY_EXIT_CODE -ne 0 ]; then
-            exit 1
-          fi
-          
-          WORKER_URL=$(grep -o "https://.*\.workers\.dev" deploy.log || echo "")
-          
-          if [ -n "$WORKER_URL" ]; then
-            echo "::add-mask::$WORKER_URL"
-          fi
-          
-          echo "worker_url=$WORKER_URL" >> $GITHUB_OUTPUT
-          echo "✅ Setup completed."
-
-      - name: 🔑 设置密钥 / Set Worker secrets
-        working-directory: ./mail-worker
-        run: |
-          echo "🔑 Setting jwt_secret as a Worker secret..."
-          echo -n "$JWT_SECRET" | pnpm wrangler secret put jwt_secret --config wrangler-action.toml
-
-          echo "🔑 Generating and setting init_secret as a Worker secret..."
-          INIT_SECRET=$(openssl rand -hex 32)
-          echo "::add-mask::$INIT_SECRET"
-          echo "INIT_SECRET=$INIT_SECRET" >> "$GITHUB_ENV"
-          echo -n "$INIT_SECRET" | pnpm wrangler secret put init_secret --config wrangler-action.toml
-
-          if [ -n "$RESEND_SIGNING_SECRET" ]; then
-            echo "🔑 Setting resend_signing_secret as a Worker secret..."
-            echo -n "$RESEND_SIGNING_SECRET" | pnpm wrangler secret put resend_signing_secret --config wrangler-action.toml
-          fi
-
-          echo "✅ Setup completed."
-
-      - name: ♻️ 初始化数据库 / Initialize database
-        run: |
-          echo "🛠️ Starting database initialization..."
-          sleep 15
-
-          WORKER_URL="${CUSTOM_DOMAIN:+https://$CUSTOM_DOMAIN}"
-          WORKER_URL="${WORKER_URL:-${{ steps.deploy.outputs.worker_url }}}"
-
-          if [ -z "$WORKER_URL" ]; then
-            echo "❌ Preview URL not available. Please set CUSTOM_DOMAIN."
-            exit 1
-          fi
-
-          HTTP_CODE=$(curl -sL -w "%{http_code}" -o response.txt -H "Authorization: $INIT_SECRET" "$WORKER_URL/api/init")
-          RESPONSE_BODY=$(cat response.txt)
-
-          if [ "$HTTP_CODE" = "200" ]; then
-            echo "✅ Setup completed."
-          else
-            echo "❌ Failed. HTTP: $HTTP_CODE, Response: $RESPONSE_BODY"
-            exit 1
-          fi
-
-      - name: 🗑️ 删除运行记录 / Delete workflow runs
-        uses: GitRML/delete-workflow-runs@main
-        continue-on-error: true
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
-          retain_days: '1'
-          keep_minimum_runs: '0'
+          node-version: '22'
+          cache: 'pnpm'
+      - run: pnpm --prefix mail-worker install
+      - run: pnpm --prefix mail-vue install
+      - run: pnpm --prefix mail-vue run build
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: mail-worker
+          command: deploy --config wrangler-action.toml
