@@ -16,7 +16,7 @@ deriveKey(c) = HKDF-SHA256(ikm = c.env.jwt_secret,
                             info = "settings-aes-gcm-key") -> AES-256-GCM key
 ```
 
-This was a deliberate trade-off (see `PLANO_ACAO_CORRECAO.md`, item **M1**): reusing
+This was a deliberate trade-off: reusing
 `jwt_secret` avoids provisioning yet another Worker secret, and HKDF removes the key-length
 footgun that a standalone `crypto.subtle.importKey('raw', ...)` secret had (AES-GCM requires
 exactly 16/24/32 raw bytes; HKDF normalizes any input length to a valid 256-bit key).
@@ -47,9 +47,8 @@ bot, Resend sending, and S3-backed attachment storage will all silently fail usi
 credentials.
 
 This is unrelated to, and does not affect, session validity: existing JWTs and KV auth
-entries signed with the old `jwt_secret` are correctly invalidated by rotation (that is the
-intended effect for G3 in `PLANO_ACAO_CORRECAO.md`). Only the encrypted **settings columns**
-have this extra dependency.
+entries signed with the old `jwt_secret` are correctly invalidated by rotation, which is the
+intended effect. Only the encrypted **settings columns** have this extra dependency.
 
 ## Pre-rotation checklist
 

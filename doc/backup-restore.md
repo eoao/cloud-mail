@@ -1,9 +1,7 @@
 # Runbook — D1 Backup and Restore
 
-> Covers plan item **P4** in `PLANO_ACAO_CORRECAO.md`. Implementation lives in
-> `mail-worker/src/service/backup-service.js`, exposed through
-> `mail-worker/src/api/backup-api.js`, and exercised by
-> `mail-worker/test/backup.spec.js`.
+> Implementation lives in `mail-worker/src/service/backup-service.js`, exposed through
+> `mail-worker/src/api/backup-api.js`, and exercised by `mail-worker/test/backup.spec.js`.
 
 ## What gets backed up
 
@@ -38,7 +36,7 @@ this matters only if the object store itself was lost.
 `setting` rows are stored encrypted (`$aes$…`) and are only readable with the
 `jwt_secret` in force when the backup was taken. Restoring a backup taken before a
 `jwt_secret` rotation yields unusable credentials — see
-[`RUNBOOK_JWT_SECRET_ROTATION.md`](./RUNBOOK_JWT_SECRET_ROTATION.md).
+[`jwt-secret-rotation.md`](./jwt-secret-rotation.md).
 
 ## Prerequisites
 
