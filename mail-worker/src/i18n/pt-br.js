@@ -99,7 +99,8 @@ const ptBr = {
 		"系统设置": "Configurações do Sistema",
 		"设置查看": "Visualizar Configurações",
 		"设置修改": "Alterar Configurações",
-		"发件重置": "Redefinir Contagem de Envios"
+		"发件重置": "Redefinir Contagem de Envios",
+		tooManyAttempts: 'Muitas tentativas de login, tente novamente mais tarde'
 	}
 };
 

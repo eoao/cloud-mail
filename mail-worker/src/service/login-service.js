@@ -19,7 +19,10 @@ import dayjs from 'dayjs';
 import { toUtc } from '../utils/date-uitil';
 import { t } from '../i18n/i18n.js';
 import verifyRecordService from './verify-record-service';
+import reqUtils from '../utils/req-utils';
 
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_RATE_WINDOW = 60;
 const loginService = {
 
 	async register(c, params, oauth = false) {
@@ -201,7 +204,16 @@ const loginService = {
 
 	async login(c, params, noVerifyPwd = false) {
 
-		const { email, password } = params;
+		const { email, password, token } = params;
+
+		if (!noVerifyPwd) {
+			const ip = reqUtils.getIp(c);
+			const attemptKey = KvConst.LOGIN_ATTEMPT + ip;
+			const attempts = parseInt(await c.env.kv.get(attemptKey) || '0');
+			if (attempts >= LOGIN_MAX_ATTEMPTS) {
+				throw new BizError(t('tooManyAttempts'), 429);
+			}
+		}
 
 		if ((!email || !password) && !noVerifyPwd) {
 			throw new BizError(t('emailAndPwdEmpty'));
@@ -221,8 +233,36 @@ const loginService = {
 			throw new BizError(t('isBanUser'));
 		}
 
+		if (!noVerifyPwd) {
+			const { registerVerify, regVerifyCount } = await settingService.query(c);
+
+			if (registerVerify === settingConst.registerVerify.OPEN) {
+				await turnstileService.verify(c, token);
+			}
+
+			if (registerVerify === settingConst.registerVerify.COUNT) {
+				const ip = reqUtils.getIp(c);
+				const attemptKey = KvConst.LOGIN_ATTEMPT + ip;
+				const attempts = parseInt(await c.env.kv.get(attemptKey) || '0');
+				if (attempts >= (regVerifyCount || 3)) {
+					await turnstileService.verify(c, token);
+				}
+			}
+		}
+
 		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password) && !noVerifyPwd) {
+			if (!noVerifyPwd) {
+				const ip = reqUtils.getIp(c);
+				const attemptKey = KvConst.LOGIN_ATTEMPT + ip;
+				const attempts = parseInt(await c.env.kv.get(attemptKey) || '0');
+				await c.env.kv.put(attemptKey, String(attempts + 1), { expirationTtl: LOGIN_RATE_WINDOW });
+			}
 			throw new BizError(t('IncorrectPwd'));
+		}
+
+		if (!noVerifyPwd) {
+			const ip = reqUtils.getIp(c);
+			await c.env.kv.delete(KvConst.LOGIN_ATTEMPT + ip);
 		}
 
 		const uuid = uuidv4();

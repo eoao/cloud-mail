@@ -99,7 +99,8 @@ const en = {
 		"系统设置": "System Settings",
 		"设置查看": "View Settings",
 		"设置修改": "Change Settings",
-		"发件重置": "Reset Send Count"
+		"发件重置": "Reset Send Count",
+		tooManyAttempts: 'Too many login attempts, please try again later'
 	}
 };
 
