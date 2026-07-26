@@ -1,6 +1,6 @@
 const encoder = new TextEncoder();
 
-const PBKDF2_ITERATIONS = 120000;
+const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_PREFIX = '$pbkdf2$';
 
 const saltHashUtils = {
