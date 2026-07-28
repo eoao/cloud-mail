@@ -128,6 +128,7 @@ function initEditor() {
     autofocus: true,
     branding: false,
     file_picker_types: 'image',
+    paste_data_images: true,
     image_dimensions: false,
     image_description: false,
     link_title: false,
@@ -141,13 +142,7 @@ function initEditor() {
         let file = e.target.files[0];
         const reader = new FileReader();
         reader.onload = () => {
-          const id = 'blobid' + (new Date()).getTime();
-          const blobCache = tinymce.activeEditor.editorUpload.blobCache;
-          const base64 = reader.result.split(',')[1];
-          const blobInfo = blobCache.create(id, file, base64);
-          blobCache.add(blobInfo);
-
-          callback(blobInfo.blobUri(), {title: file.name});
+          callback(reader.result, {title: file.name});
         }
         reader.readAsDataURL(file);
       });

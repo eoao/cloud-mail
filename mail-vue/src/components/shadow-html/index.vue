@@ -23,6 +23,7 @@ function buildSrcdoc(rawHtml) {
   let html = purify.sanitize(rawHtml, {
     ALLOW_DATA_ATTR: false,
     ALLOW_UNKNOWN_PROTOCOLS: false,
+    WHOLE_DOCUMENT: true,
   })
 
   const bodyStyleRegex = /<body[^>]*style="([^"]*)"[^>]*>/i
