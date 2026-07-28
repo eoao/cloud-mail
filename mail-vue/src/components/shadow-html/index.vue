@@ -1,11 +1,11 @@
 <template>
   <div class="content-box">
-    <iframe ref="iframe" class="content-iframe" sandbox="allow-same-origin" title="email-content" />
+    <iframe ref="iframe" class="content-iframe" sandbox="allow-same-origin" title="email-content" @load="onLoad" />
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import DOMPurify from 'dompurify'
 
 const props = defineProps({
@@ -46,14 +46,16 @@ function buildSrcdoc(rawHtml) {
     }
     html, body {
       width: 100%;
-      height: 100%;
+      /* A altura acompanha o conteúdo; o iframe é redimensionado por JS para
+         caber a mensagem inteira, evitando uma barra de rolagem aninhada. */
+      overflow-x: auto;
+      overflow-y: hidden;
       font-family: Inter, -apple-system, BlinkMacSystemFont,
                   'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       font-size: 14px;
       line-height: 1.5;
       color: #13181D;
       word-break: break-word;
-      overflow: auto;
     }
     h1, h2, h3, h4 {
       font-size: 18px;
@@ -90,6 +92,51 @@ function updateContent() {
   iframe.value.srcdoc = srcdoc
 }
 
+let resizeObserver = null
+
+// Ajusta o iframe à altura real do conteúdo, para a mensagem ocupar todo o
+// espaço disponível e a rolagem ficar por conta do container externo.
+function syncHeight() {
+  const el = iframe.value
+  const doc = el?.contentDocument
+  if (!doc) return
+
+  const height = Math.max(
+    doc.documentElement?.scrollHeight || 0,
+    doc.body?.scrollHeight || 0
+  )
+  if (!height) return
+
+  const next = height + 'px'
+  if (el.style.height !== next) {
+    el.style.height = next
+  }
+}
+
+function onLoad() {
+  const doc = iframe.value?.contentDocument
+  if (!doc) return
+
+  syncHeight()
+
+  // Imagens do email só têm altura conhecida depois de carregarem.
+  doc.querySelectorAll('img').forEach((img) => {
+    if (!img.complete) {
+      img.addEventListener('load', syncHeight, { once: true })
+      img.addEventListener('error', syncHeight, { once: true })
+    }
+  })
+
+  resizeObserver?.disconnect()
+  resizeObserver = new ResizeObserver(syncHeight)
+  resizeObserver.observe(doc.documentElement)
+}
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
+})
+
 // O iframe só existe após a montagem, por isso a carga inicial acontece aqui.
 // Um watch com immediate rodaria durante o setup, quando a ref ainda é null.
 onMounted(updateContent)
@@ -102,13 +149,11 @@ watch(() => props.html, () => {
 <style scoped>
 .content-box {
   width: 100%;
-  height: 100%;
-  overflow: hidden;
 }
 
 .content-iframe {
   width: 100%;
-  height: 100%;
   border: none;
+  display: block;
 }
 </style>
