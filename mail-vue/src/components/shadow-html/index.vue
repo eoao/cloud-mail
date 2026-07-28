@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import DOMPurify from 'dompurify'
 
 const props = defineProps({
@@ -28,7 +28,9 @@ function buildSrcdoc(rawHtml) {
 
   const bodyStyleRegex = /<body[^>]*style="([^"]*)"[^>]*>/i
   const bodyStyleMatch = html.match(bodyStyleRegex)
-  const bodyStyle = bodyStyleMatch ? bodyStyleMatch[1] : ''
+  // Aplicado como atributo inline, não dentro de um bloco CSS: o style do body
+  // vem do email e pode conter chaves que escapariam da regra e injetariam CSS.
+  const bodyStyle = bodyStyleMatch ? bodyStyleMatch[1].replace(/["<>]/g, '') : ''
   html = html.replace(/<\/?body[^>]*>/gi, '')
 
   return `<!DOCTYPE html>
@@ -67,7 +69,6 @@ function buildSrcdoc(rawHtml) {
       width: fit-content;
       height: fit-content;
       min-width: 100%;
-      ${bodyStyle ? bodyStyle : ''}
     }
     img:not(table img) {
       max-width: 100% !important;
@@ -76,7 +77,7 @@ function buildSrcdoc(rawHtml) {
   </style>
 </head>
 <body>
-  <div class="shadow-content">
+  <div class="shadow-content" style="${bodyStyle}">
     ${html}
   </div>
 </body>
@@ -89,9 +90,13 @@ function updateContent() {
   iframe.value.srcdoc = srcdoc
 }
 
+// O iframe só existe após a montagem, por isso a carga inicial acontece aqui.
+// Um watch com immediate rodaria durante o setup, quando a ref ainda é null.
+onMounted(updateContent)
+
 watch(() => props.html, () => {
   updateContent()
-}, { immediate: true })
+})
 </script>
 
 <style scoped>
