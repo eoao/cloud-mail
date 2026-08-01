@@ -1,4 +1,5 @@
 import NotificationProvider from '../notification-provider.js';
+import emailUtils from '../../utils/email-utils.js';
 
 function getRecipientName(emailData) {
 	try {
@@ -55,7 +56,7 @@ class WebhookProvider extends NotificationProvider {
 			: (emailData.sendEmail || '');
 		const to = getRecipientName(emailData);
 		const toAddress = getRecipientAddress(emailData);
-		const content = emailData.text || '';
+		const content = emailData.text || emailUtils.htmlToText(emailData.content) || '';
 		const message = `📧 新邮件\n发件人: ${from}\n收件人: ${to}\n主题: ${subject}\n内容: ${content}`;
 		const timestamp = emailData.createTime || new Date().toISOString();
 

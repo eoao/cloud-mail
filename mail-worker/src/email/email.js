@@ -47,6 +47,17 @@ export async function email(message, env, ctx) {
 
 		const email = await PostalMime.parse(content);
 
+		if ((!email.text && !email.html) && email.attachments?.length) {
+			const rfc822Att = email.attachments.find(a => a.mimeType === 'message/rfc822');
+			if (rfc822Att?.content) {
+				try {
+					const subEmail = await PostalMime.parse(rfc822Att.content);
+					if (!email.text && subEmail.text) email.text = subEmail.text;
+					if (!email.html && subEmail.html) email.html = subEmail.html;
+				} catch {}
+			}
+		}
+
 
 		const blockFlag = checkBlock(blackSubject, blackContent, blackFrom, email);
 

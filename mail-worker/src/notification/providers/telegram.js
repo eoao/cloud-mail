@@ -1,4 +1,5 @@
 import NotificationProvider from '../notification-provider.js';
+import emailUtils from '../../utils/email-utils.js';
 
 function getRecipientName(emailData) {
 	try {
@@ -110,7 +111,7 @@ class TelegramProvider extends NotificationProvider {
 		const from = this.formatFrom(emailData, msgFrom);
 		const to = getRecipientName(emailData);
 		const subject = emailData.subject || '';
-		const preview = emailData.text || '';
+		const preview = emailData.text || emailUtils.htmlToText(emailData.content) || '';
 
 		if (parseMode === 'MarkdownV2') {
 			const lines = [`📧 *新邮件*`, `━━━━━━━━━━━━━━`];

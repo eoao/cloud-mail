@@ -1,4 +1,5 @@
 import NotificationProvider from '../notification-provider.js';
+import emailUtils from '../../utils/email-utils.js';
 
 function getRecipientName(emailData) {
 	try {
@@ -94,11 +95,10 @@ class OneBotProvider extends NotificationProvider {
 			`收件人: ${recipient}`,
 			`主题: ${emailData.subject || '(无主题)'}`,
 		];
-		if (emailData.text) {
-			const text = emailData.text.length > 200
-				? emailData.text.slice(0, 200) + '...'
-				: emailData.text;
-			lines.push(`内容: ${text}`);
+		const text = emailData.text || emailUtils.htmlToText(emailData.content) || '';
+		if (text) {
+			const truncated = text.length > 200 ? text.slice(0, 200) + '...' : text;
+			lines.push(`内容: ${truncated}`);
 		}
 		return lines.join('\n');
 	}
