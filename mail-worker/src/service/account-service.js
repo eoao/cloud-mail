@@ -5,8 +5,9 @@ import userService from './user-service';
 import emailService from './email-service';
 import orm from '../entity/orm';
 import account from '../entity/account';
+import emailTable from '../entity/email';
 import { and, asc, eq, gt, inArray, count, sql, ne, or, lt, desc } from 'drizzle-orm';
-import {accountConst, isDel, settingConst} from '../const/entity-const';
+import {accountConst, emailConst, isDel, settingConst} from '../const/entity-const';
 import settingService from './setting-service';
 import turnstileService from './turnstile-service';
 import roleService from './role-service';
@@ -89,6 +90,18 @@ const accountService = {
 
 
 		accountRow = await orm(c).insert(account).values({ email: email, userId: userId, name: emailUtils.getName(email) }).returning().get();
+
+		await orm(c).update(emailTable).set({
+			userId: userId,
+			accountId: accountRow.accountId,
+			status: emailConst.status.RECEIVE
+		}).where(
+			and(
+				sql`${emailTable.toEmail} COLLATE NOCASE = ${email}`,
+				eq(emailTable.userId, 0),
+				eq(emailTable.accountId, 0)
+			)
+		).run();
 
 		if (addEmailVerify === settingConst.addEmailVerify.COUNT && !addVerifyOpen) {
 			const row = await verifyRecordService.increaseAddCount(c);
@@ -202,7 +215,21 @@ const accountService = {
 	},
 
 	async restoreByEmail(c, email) {
+		const accountRow = await this.selectByEmailIncludeDel(c, email);
 		await orm(c).update(account).set({isDel: isDel.NORMAL}).where(eq(account.email, email)).run();
+		if (accountRow) {
+			await orm(c).update(emailTable).set({
+				userId: accountRow.userId,
+				accountId: accountRow.accountId,
+				status: emailConst.status.RECEIVE
+			}).where(
+				and(
+					sql`${emailTable.toEmail} COLLATE NOCASE = ${email}`,
+					eq(emailTable.userId, 0),
+					eq(emailTable.accountId, 0)
+				)
+			).run();
+		}
 	},
 
 	async restoreByUserId(c, userId) {
