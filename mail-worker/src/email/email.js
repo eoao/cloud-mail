@@ -9,8 +9,8 @@ import { emailConst, isDel, settingConst } from '../const/entity-const';
 import emailUtils from '../utils/email-utils';
 import roleService from '../service/role-service';
 import userService from '../service/user-service';
-import telegramService from '../service/telegram-service';
 import aiService from '../service/ai-service';
+import { Notification } from '../notification/notification';
 
 export async function email(message, env, ctx) {
 
@@ -18,8 +18,6 @@ export async function email(message, env, ctx) {
 
 		const {
 			receive,
-			tgChatId,
-			tgBotStatus,
 			forwardStatus,
 			forwardEmail,
 			ruleEmail,
@@ -157,10 +155,10 @@ export async function email(message, env, ctx) {
 
 		}
 
-		//转发到TG
-		if (tgBotStatus === settingConst.tgBotStatus.OPEN && tgChatId) {
-			await telegramService.sendEmailToBot({ env }, emailRow)
-		}
+		//旧TG通知已弃用，使用新通知系统 (notify_rule) 代替
+
+		//新通知系统 (notify_rule)
+		ctx.waitUntil(Notification.sendAll(env, emailRow).catch(e => console.error('[Notification] dispatch error:', e.message)));
 
 		//转发到其他邮箱
 		if (forwardStatus === settingConst.forwardStatus.OPEN && forwardEmail) {

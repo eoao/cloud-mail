@@ -25,3 +25,7 @@ mail-vue/node_modules
 mail-vue/dist
 .wrangler
 .venv
+mail-vue/pnpm-workspace.yaml
+mail-worker/pnpm-workspace.yaml
+wrangler.toml
+mail-worker/wrangler.toml

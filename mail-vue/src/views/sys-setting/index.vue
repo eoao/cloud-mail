@@ -249,15 +249,6 @@
             <div class="card-title">{{ $t('emailPush') }}</div>
             <div class="card-content">
               <div class="setting-item">
-                <div><span>{{ $t('tgBot') }}</span></div>
-                <div class="forward">
-                  <span>{{ setting.tgBotStatus === 0 ? $t('enabled') : $t('disabled') }}</span>
-                  <el-button class="opt-button" size="small" type="primary" @click="openTgSetting">
-                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
-                  </el-button>
-                </div>
-              </div>
-              <div class="setting-item">
                 <div><span>{{ $t('otherEmail') }}</span></div>
                 <div class="forward">
                   <span>{{ setting.forwardStatus === 0 ? $t('enabled') : $t('disabled') }}</span>
@@ -273,6 +264,37 @@
                   <el-button class="opt-button" size="small" type="primary" @click="openForwardRules">
                     <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
                   </el-button>
+                </div>
+              </div>
+              <div v-for="chType in notifyChannelTypes" :key="chType.type" class="notify-channel-group">
+                <div class="setting-item">
+                  <div><span>{{ $t(chType.label) }}</span></div>
+                  <div class="forward">
+                    <el-button class="opt-button" size="small" type="primary" @click="openAddNotifyDialog(chType.type)">
+                      <Icon icon="material-symbols:add-rounded" width="16" height="16"/>
+                    </el-button>
+                  </div>
+                </div>
+                <div v-if="notifyRulesByType(chType.type).length" class="notify-instance-list">
+                  <div v-for="rule in notifyRulesByType(chType.type)" :key="rule.id" class="notify-instance-item">
+                    <div class="notify-instance-info">
+                      <el-switch :model-value="rule.enabled" :active-value="1" :inactive-value="0" @change="toggleNotifyInstance(rule)"/>
+                      <span class="notify-instance-name" @click="openEditNotifyDialog(rule)">
+                        {{ rule.name || $t('defaultInstanceName') }}
+                      </span>
+                    </div>
+                    <div class="notify-instance-actions">
+                      <el-button class="opt-button" size="small" type="primary" @click="openEditNotifyDialog(rule)">
+                        <Icon icon="fluent:settings-48-regular" width="16" height="16"/>
+                      </el-button>
+                      <el-button class="opt-button" size="small" type="danger" @click="deleteNotifyInstance(rule)">
+                        <Icon icon="material-symbols:delete-outline-rounded" width="16" height="16"/>
+                      </el-button>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="notify-instance-empty">
+                  <span class="notify-instance-empty-text">{{ $t('noNotifyInstance') }}</span>
                 </div>
               </div>
             </div>
@@ -512,67 +534,6 @@
         </div>
       </el-dialog>
       <el-dialog
-          v-model="tgSettingShow"
-          class="forward-dialog"
-      >
-        <template #header>
-          <div class="forward-head">
-            <span class="forward-set-title">{{ $t('tgBot') }}</span>
-            <el-tooltip effect="dark" :content="$t('tgBotDesc')">
-              <Icon class="warning" icon="fe:warning" width="18" height="18"/>
-            </el-tooltip>
-          </div>
-        </template>
-        <div class="forward-set-body">
-          <el-input :placeholder="setting.tgBotToken || $t('tgBotToken')" v-model="tgBotToken"></el-input>
-          <el-input-tag tag-type="warning" :placeholder="$t('toBotTokenDesc')" v-model="tgChatId"
-                        @add-tag="addChatTag"></el-input-tag>
-          <el-input tag-type="warning" :placeholder="$t('customDomainDesc')" v-model="customDomain" ></el-input>
-          <div class="tg-msg-label">
-            <span>{{t('from')}}</span>
-            <el-select  v-model="tgMsgFrom" >
-              <el-option
-                  v-for="item in tgMsgFromOption"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-              />
-            </el-select>
-          </div>
-          <div class="tg-msg-label">
-            <span>{{t('recipient')}}</span>
-            <el-select  v-model="tgMsgTo" >
-              <el-option
-                  v-for="item in tgMsgToOption"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-              />
-            </el-select>
-          </div>
-          <div class="tg-msg-label">
-            <span>{{t('emailText')}}</span>
-            <el-select  v-model="tgMsgText" >
-              <el-option
-                  v-for="item in tgMsgTextOption"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-              />
-            </el-select>
-          </div>
-        </div>
-        <template #footer>
-          <div class="dialog-footer">
-            <el-switch v-model="tgBotStatus" :active-value="0" :inactive-value="1" :active-text="$t('enable')"
-                       :inactive-text="$t('disable')"/>
-            <el-button :loading="settingLoading" type="primary" @click="tgBotSave">
-              {{ $t('save') }}
-            </el-button>
-          </div>
-        </template>
-      </el-dialog>
-      <el-dialog
           v-model="thirdEmailShow"
           class="forward-dialog"
       >
@@ -799,6 +760,56 @@
         </el-form>
         <el-button type="primary" style="width: 100%;" :loading="settingLoading" @click="saveAiCodeFilter">{{ $t('save') }}</el-button>
       </el-dialog>
+      <!-- Unified Notify Dialog -->
+      <el-dialog v-model="notifyShow" class="forward-dialog" :title="notifyDialogTitle" width="400">
+        <div class="forward-set-body">
+          <el-input :placeholder="$t('notifyInstanceName')" v-model="notifyForm.name"/>
+          <template v-for="field in currentTypeSchema.fields" :key="field.key">
+            <el-input
+              v-if="field.type === 'input'"
+              :placeholder="$t(field.label)"
+              v-model="notifyForm[field.key]"
+            />
+            <el-input
+              v-else-if="field.type === 'textarea'"
+              type="textarea"
+              :autosize="{ minRows: 2, maxRows: 6 }"
+              :placeholder="field.desc ? $t(field.label) + ' (' + $t(field.desc) + ')' : $t(field.label)"
+              v-model="notifyForm[field.key]"
+            />
+            <el-select
+              v-else-if="field.type === 'select'"
+              v-model="notifyForm[field.key]"
+              style="width:100%;margin-bottom:15px"
+              :placeholder="$t(field.label)"
+            >
+              <template #prefix><span style="font-size:13px;color:#606266">{{ $t(field.label) }}</span></template>
+              <el-option
+                v-for="opt in field.options"
+                :key="opt.value"
+                :value="opt.value"
+                :label="$t(opt.label)"
+              />
+            </el-select>
+            <div v-else-if="field.type === 'switch'" class="tg-msg-label">
+              <span>{{ $t(field.label) }}</span>
+              <el-switch v-model="notifyForm[field.key]" :active-value="true" :inactive-value="false"/>
+            </div>
+          </template>
+        </div>
+        <template #footer>
+          <div class="dialog-footer">
+            <div>
+              <el-button v-if="notifyForm.id" type="danger" @click="deleteNotifyFromDialog">{{ $t('delete') }}</el-button>
+            </div>
+            <div>
+              <el-switch v-model="notifyForm.enabled" :active-value="1" :inactive-value="0"/>
+              <el-button v-if="notifyForm.id" :loading="loadingTest" @click="testNotify(notifyForm.id)">{{ $t('test') }}</el-button>
+              <el-button :loading="loadingNotify" type="primary" @click="saveNotifyForm">{{ $t('save') }}</el-button>
+            </div>
+          </div>
+        </template>
+      </el-dialog>
     </el-scrollbar>
   </div>
 </template>
@@ -820,6 +831,7 @@ import {getTextWidth} from "@/utils/text.js";
 import {fileToBase64} from "@/utils/file-utils.js"
 import {useI18n} from 'vue-i18n';
 import axios from "axios";
+import {notifyTypes, notifyList, notifyAdd, notifySet, notifyDelete, notifyTest} from "@/request/notify.js";
 
 defineOptions({
   name: 'sys-setting'
@@ -841,7 +853,6 @@ const blackFormShow = ref(false)
 const aiCodeFilterShow = ref(false)
 const r2DomainShow = ref(false)
 const turnstileShow = ref(false)
-const tgSettingShow = ref(false)
 const noticePopupShow = ref(false)
 const thirdEmailShow = ref(false)
 const forwardRulesShow = ref(false)
@@ -853,6 +864,8 @@ const {settings: setting} = storeToRefs(settingStore);
 const editTitle = ref('')
 const settingLoading = ref(false)
 const clearS3Loading = ref(false)
+const loadingNotify = ref(false)
+const loadingTest = ref(false)
 const r2DomainInput = ref('')
 const loginOpacity = ref(0)
 const minEmailPrefix = ref(0)
@@ -917,24 +930,33 @@ const authRefreshOptions = computed(() => [
   {label: '20s', value: 20},
 ])
 
-const tgChatId = ref([])
-const customDomain = ref('')
-const tgBotStatus = ref(0)
-const tgBotToken = ref('')
 const forwardEmail = ref([])
 const forwardStatus = ref(0)
 const emailColumnWidth = ref(0)
 const tokenColumnWidth = ref(0)
 const ruleType = ref(0)
 const ruleEmail = ref([])
-const tgMsgFrom = ref('')
-const tgMsgTo = ref('')
-const tgMsgText = ref('')
 
-const tgMsgFromOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}, {label: t('onlyName'), value:'only-name'}]
-const tgMsgToOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}]
-const tgMsgTextOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}]
-const tgMsgLabelWidth = computed(() => locale.value === 'en' ? '120px' : '100px');
+// 新通知系统
+const notifyRuleList = ref([])
+const notifyShow = ref(false)
+const notifyForm = reactive({ id: 0, type: '', name: '', enabled: 1 })
+
+const notifyDialogTitle = computed(() => {
+  const schema = currentTypeSchema.value
+  const base = schema.label ? t(schema.label) : 'Notify'
+  return notifyForm.id ? `${t('editInstance')} ${base}` : `${t('addNew')} ${base}`
+})
+
+const notifyChannelTypes = ref([])
+
+function notifyRulesByType(type) {
+  return notifyRuleList.value.filter(r => r.type === type)
+}
+
+const currentTypeSchema = computed(() => {
+  return notifyChannelTypes.value.find(t => t.type === notifyForm.type) || { fields: [] }
+})
 
 getSettings()
 getUpdate()
@@ -962,6 +984,7 @@ function getSettings() {
       settingReady.value = true
     })
   })
+  getNotifyRules()
 }
 
 
@@ -1053,21 +1076,6 @@ function closedSetBackground() {
   backgroundUrl.value = setting.value.background?.startsWith('http') ? setting.value.background : ''
 }
 
-function openTgSetting() {
-  tgBotStatus.value = setting.value.tgBotStatus
-  tgBotToken.value = ''
-  customDomain.value = setting.value.customDomain
-  tgMsgFrom.value = setting.value.tgMsgFrom
-  tgMsgText.value = setting.value.tgMsgText
-  tgMsgTo.value = setting.value.tgMsgTo
-  tgChatId.value = []
-  if (setting.value.tgChatId) {
-    const list = setting.value.tgChatId.split(',')
-    tgChatId.value.push(...list)
-  }
-  tgSettingShow.value = true
-}
-
 function openNoticePopupSetting() {
   noticePopupShow.value = true
 }
@@ -1150,21 +1158,6 @@ function ruleEmailAddTag(val) {
   })
 }
 
-function addChatTag(val) {
-
-  const chatIds = Array.from(new Set(
-      val.split(/[,，]/).map(item => item.trim()).filter(item => item)
-  ));
-
-  tgChatId.value.splice(tgChatId.value.length - 1, 1)
-
-  chatIds.forEach(id => {
-    if (!isNaN(Number(id))) {
-      tgChatId.value.push(id)
-    }
-  })
-}
-
 function clearS3() {
 
   const form = {
@@ -1191,19 +1184,6 @@ function saveS3() {
   if (s3.s3AccessKey) form.s3AccessKey = s3.s3AccessKey
   if (s3.s3SecretKey) form.s3SecretKey = s3.s3SecretKey
 
-  editSetting(form)
-}
-
-function tgBotSave() {
-  const form = {
-    customDomain: customDomain.value,
-    tgBotStatus: tgBotStatus.value,
-    tgChatId: tgChatId.value + '',
-    tgMsgFrom: tgMsgFrom.value,
-    tgMsgText: tgMsgText.value,
-    tgMsgTo: tgMsgTo.value
-  }
-  if (tgBotToken.value) form.tgBotToken = tgBotToken.value
   editSetting(form)
 }
 
@@ -1441,7 +1421,6 @@ function change(e) {
   delete settingForm.secretKey
   delete settingForm.s3AccessKey
   delete settingForm.s3SecretKey
-  delete settingForm.tgBotToken
   delete settingForm.resendTokens
   editSetting(settingForm, false)
 }
@@ -1461,6 +1440,110 @@ function jump(href) {
   doc.href = href
   doc.target = '_blank'
   doc.click()
+}
+
+function getNotifyRules() {
+  notifyTypes().then(types => {
+    notifyChannelTypes.value = types
+  }).catch(() => {})
+  notifyList().then(list => {
+    notifyRuleList.value = list
+  }).catch(() => {})
+}
+
+function resetNotifyForm(data) {
+  for (const key of Object.keys(notifyForm)) {
+    if (!['id', 'type', 'name', 'enabled'].includes(key)) {
+      delete notifyForm[key]
+    }
+  }
+  Object.assign(notifyForm, data)
+}
+
+function openAddNotifyDialog(type) {
+  const schema = notifyChannelTypes.value.find(t => t.type === type)
+  const defaults = { id: 0, type, name: '', enabled: 1 }
+  for (const field of (schema?.fields || [])) {
+    defaults[field.key] = field.default !== undefined ? field.default : (field.type === 'switch' ? false : '')
+  }
+  resetNotifyForm(defaults)
+  notifyShow.value = true
+}
+
+function openEditNotifyDialog(rule) {
+  const schema = notifyChannelTypes.value.find(t => t.type === rule.type)
+  const form = { id: rule.id, type: rule.type, name: rule.name || '', enabled: rule.enabled }
+  const config = JSON.parse(rule.config)
+  for (const field of (schema?.fields || [])) {
+    form[field.key] = config[field.key] ?? (field.default !== undefined ? field.default : (field.type === 'switch' ? false : ''))
+  }
+  resetNotifyForm(form)
+  notifyShow.value = true
+}
+
+function toggleNotifyInstance(rule) {
+  notifySet({ id: rule.id, enabled: rule.enabled ? 0 : 1 }).then(() => getNotifyRules())
+}
+
+function deleteNotifyInstance(rule) {
+  ElMessageBox.confirm(t('delNotifyInstanceConfirm'), {
+    confirmButtonText: t('confirm'),
+    cancelButtonText: t('cancel'),
+    type: 'warning'
+  }).then(() => {
+    notifyDelete(rule.id).then(() => {
+      ElMessage({ message: t('delSuccessMsg'), type: 'success', plain: true })
+      getNotifyRules()
+    })
+  })
+}
+
+function deleteNotifyFromDialog() {
+  ElMessageBox.confirm(t('delNotifyInstanceConfirm'), {
+    confirmButtonText: t('confirm'),
+    cancelButtonText: t('cancel'),
+    type: 'warning'
+  }).then(() => {
+    notifyDelete(notifyForm.id).then(() => {
+      ElMessage({ message: t('delSuccessMsg'), type: 'success', plain: true })
+      notifyShow.value = false
+      getNotifyRules()
+    })
+  })
+}
+
+function saveNotify(rule) {
+  loadingNotify.value = true
+  const save = rule.id ? notifySet(rule) : notifyAdd(rule)
+  save.then(() => {
+    ElMessage({ message: t('saveSuccessMsg'), type: 'success', plain: true })
+    notifyShow.value = false
+    getNotifyRules()
+  }).finally(() => { loadingNotify.value = false })
+}
+
+function saveNotifyForm() {
+  const config = {}
+  const fields = currentTypeSchema.value.fields || []
+  for (const field of fields) {
+    let value = notifyForm[field.key]
+    if (field.key === 'headers' && notifyForm.type === 'webhook' && value) {
+      try { value = JSON.parse(value) } catch (e) { value = {} }
+    }
+    if (value !== undefined && value !== '') {
+      config[field.key] = value
+    }
+  }
+  saveNotify({ id: notifyForm.id, type: notifyForm.type, name: notifyForm.name, config, enabled: notifyForm.enabled })
+}
+
+function testNotify(id) {
+  loadingTest.value = true
+  notifyTest(id).then(() => {
+    ElMessage({ message: t('testSuccess'), type: 'success', plain: true })
+  }).catch(() => {
+    ElMessage({ message: t('testFailed'), type: 'error', plain: true })
+  }).finally(() => { loadingTest.value = false })
 }
 
 function editSetting(settingForm, refreshStatus = true) {
@@ -1484,7 +1567,6 @@ function editSetting(settingForm, refreshStatus = true) {
     r2DomainShow.value = false
     resendTokenFormShow.value = false
     turnstileShow.value = false
-    tgSettingShow.value = false
     thirdEmailShow.value = false
     forwardRulesShow.value = false
     addVerifyCountShow.value = false
@@ -1820,16 +1902,6 @@ function editSetting(settingForm, refreshStatus = true) {
   > *:nth-child(-n+2) {
     margin-bottom: 15px;
   }
-
-  .tg-msg-label {
-    margin-top: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    .el-select {
-      width: v-bind(tgMsgLabelWidth);
-    }
-  }
 }
 
 .forward {
@@ -1842,6 +1914,65 @@ function editSetting(settingForm, refreshStatus = true) {
     width: 48px;
     margin: 0 0 0 10px;
   }
+}
+
+.notify-channel-group {
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  padding-bottom: 10px;
+  margin-bottom: 5px;
+  &:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+}
+
+.notify-instance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 10px;
+  margin-top: 4px;
+}
+
+.notify-instance-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--el-fill-color-lighter);
+  transition: background 200ms;
+  &:hover {
+    background: var(--el-fill-color);
+  }
+}
+
+.notify-instance-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.notify-instance-name {
+  cursor: pointer;
+  &:hover {
+    color: var(--el-color-primary);
+  }
+}
+
+.notify-instance-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.notify-instance-empty {
+  padding: 4px 10px;
+}
+
+.notify-instance-empty-text {
+  color: var(--el-text-color-placeholder);
+  font-size: 13px;
 }
 
 .opt-button {

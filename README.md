@@ -29,7 +29,6 @@
     </p>
 </p>
 
-
 ## 项目简介
 
 只需要一个域名，就可以创建多个不同的邮箱，类似各大邮箱平台，本项目支持署到 Cloudflare Workers ，降低服务器成本，搭建自己的邮箱服务
@@ -40,11 +39,8 @@
 - [部署文档](https://doc.skymail.ink)<br>
 
 | ![](/doc/demo/demo1.png) | ![](/doc/demo/demo2.png) |
-|-----------------------|-----------------------|
+| ------------------------ | ------------------------ |
 | ![](/doc/demo/demo3.png) | ![](/doc/demo/demo4.png) |
-
-
-
 
 ## 功能介绍
 
@@ -60,9 +56,18 @@
 
 - **🔔 邮件推送**：接收邮件后可以转发到TG机器人或其他服务商邮箱
 
-- **📡 开放API**：支持使用API批量生成用户，多条件查询邮件 
+- **📢 多渠道通知**：支持 7 个通知渠道，邮件到达时自动推送
+  - OneBot
+  - Telegram (HTML/MarkdownV2)
+  - Webhook (POST/GET/PUT)
+  - 飞书 (卡片消息)
+  - 企业微信 (Markdown)
+  - Server酱 (Markdown)
+  - 推送加 (Markdown)
 
-- **🔢 验证码识别**：使用Workers AI，自动识别邮件验证码 
+- **📡 开放API**：支持使用API批量生成用户，多条件查询邮件
+
+- **🔢 验证码识别**：使用Workers AI，自动识别邮件验证码
 
 - **📈 数据可视化**：使用ECharts对系统数据详情，用户邮件增长可视化显示
 
@@ -72,8 +77,6 @@
 
 - **📜 更多功能**：正在开发中...
 
-
-
 ## 技术栈
 
 - **平台**：[Cloudflare Workers](https://developers.cloudflare.com/workers/)
@@ -82,9 +85,9 @@
 
 - **ORM：**[Drizzle](https://orm.drizzle.team/)
 
-- **前端框架**：[Vue3](https://vuejs.org/) 
+- **前端框架**：[Vue3](https://vuejs.org/)
 
-- **UI框架**：[Element Plus](https://element-plus.org/) 
+- **UI框架**：[Element Plus](https://element-plus.org/)
 
 - **邮件推送：** [Resend](https://resend.com/)
 
@@ -99,12 +102,13 @@
 ```
 cloud-mail
 ├── mail-worker				    # worker后端项目
-│   ├── src                  
-│   │   ├── api	 			    # api接口层			
+│   ├── src
+│   │   ├── api	 			    # api接口层
 │   │   ├── const  			    # 项目常量
 │   │   ├── dao                 # 数据访问层
 │   │   ├── email			    # 邮件处理接收
 │   │   ├── entity			    # 数据库实体
+│   │   ├── notification		    # 多渠道通知系统
 │   │   ├── error			    # 自定义异常
 │   │   ├── hono			    # web框架配置、拦截器、全局异常等
 │   │   ├── i18n			    # 语言国际化
@@ -147,12 +151,8 @@ cloud-mail
 
 ## 许可证
 
-本项目采用 [MIT](LICENSE) 许可证	
-
+本项目采用 [MIT](LICENSE) 许可证
 
 ## 交流
 
 [Telegram](https://t.me/cloud_mail_tg)
-
-
-

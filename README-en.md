@@ -30,15 +30,16 @@
 </p>
 
 ## Description
+
 With only one domain, you can create multiple different email addresses, similar to major email platforms. This project can be deployed on Cloudflare Workers to reduce server costs and build your own email service.
+
 ## Project Showcase
 
 - [Live Demo](https://skymail.ink)<br>
 - [Deployment Guide](https://doc.skymail.ink/en/)<br>
 
-
 | ![](/doc/demo/demo1.png) | ![](/doc/demo/demo2.png) |
-|--------------------------|--------------------------|
+| ------------------------ | ------------------------ |
 | ![](/doc/demo/demo3.png) | ![](/doc/demo/demo4.png) |
 
 ## Features
@@ -54,6 +55,15 @@ With only one domain, you can create multiple different email addresses, similar
 - **📦 Attachment Support**: Send and receive attachments, stored and downloaded via R2 object storage.
 
 - **🔔 Email Push**: Forward received emails to Telegram bots or other email providers.
+
+- **📢 Multi-Channel Notifications**: Support 7 notification channels, automatically push when emails arrive
+  - OneBot
+  - Telegram (HTML/MarkdownV2)
+  - Webhook (POST/GET/PUT)
+  - Feishu (Card Message)
+  - WeCom (Markdown)
+  - ServerChan (Markdown)
+  - PushPlus (Markdown)
 
 - **📡 Open API**: Supports batch user creation via API and multi-condition email queries
 
@@ -92,12 +102,13 @@ With only one domain, you can create multiple different email addresses, similar
 ```
 cloud-mail
 ├── mail-worker				    # Backend worker project
-│   ├── src                  
+│   ├── src
 │   │   ├── api	 			    # API layer
 │   │   ├── const  			    # Project constants
 │   │   ├── dao                 # Data access layer
 │   │   ├── email			    # Email processing and handling
 │   │   ├── entity			    # Database entities
+│   │   ├── notification		    # Multi-channel notification system
 │   │   ├── error			    # Custom exceptions
 │   │   ├── hono			    # Web framework, middleware, error handling
 │   │   ├── i18n			    # Internationalization

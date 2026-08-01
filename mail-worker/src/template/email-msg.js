@@ -21,6 +21,25 @@ function truncateText(text, maxLength) {
 	return text.slice(0, maxLength - TRUNCATED_SUFFIX.length) + TRUNCATED_SUFFIX;
 }
 
+function getRecipient(email) {
+	try {
+		const list = JSON.parse(email.recipient || '[]');
+		if (list.length > 0) {
+			const r = list[0];
+			return r.name ? `${r.name} <${r.address}>` : r.address;
+		}
+	} catch {}
+	return email.toEmail || '';
+}
+
+function getRecipientAddress(email) {
+	try {
+		const list = JSON.parse(email.recipient || '[]');
+		if (list.length > 0) return list[0].address || '';
+	} catch {}
+	return email.toEmail || '';
+}
+
 export default function emailMsgTemplate(email, tgMsgTo, tgMsgFrom, tgMsgText) {
 
 	let template = `<b>${escapeHtml(email.subject || '')}</b>`
@@ -28,23 +47,24 @@ export default function emailMsgTemplate(email, tgMsgTo, tgMsgFrom, tgMsgText) {
 		if (tgMsgFrom === 'only-name') {
 			template += `
 
-From\u200B：${escapeHtml(email.name || '')}`
+发件人：${escapeHtml(email.name || '')}`
 		}
 
 		if (tgMsgFrom === 'show') {
 			template += `
 
-From\u200B：${escapeHtml(email.name || '')}  &lt;${escapeHtml(email.sendEmail || '')}&gt;`
+发件人：${escapeHtml(email.name || '')}  &lt;${escapeHtml(email.sendEmail || '')}&gt;`
 		}
 
 		if(tgMsgTo === 'show' && tgMsgFrom === 'hide') {
 			template += `
 
-To：\u200B${escapeHtml(email.toEmail || '')}`
+收件人：${escapeHtml(getRecipient(email))}`
 
 		} else if(tgMsgTo === 'show') {
 		template += `
-To：\u200B${escapeHtml(email.toEmail || '')}`
+
+收件人：${escapeHtml(getRecipient(email))}`
 	}
 
 	const text = escapeHtml(emailUtils.formatText(email.text) || emailUtils.htmlToText(email.content));

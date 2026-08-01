@@ -1,0 +1,81 @@
+# Cloud Mail - Wrangler 配置示例
+# 复制此文件为 wrangler.toml 并填入你的实际配置
+# 文档: https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "cloud-mail"
+main = "src/index.js"
+compatibility_date = "2025-06-04"
+keep_vars = true
+
+# 路由配置 (绑定自定义域名时需要)
+# 留空则使用 *.workers.dev 默认域名
+# routes = [
+# 	{ pattern = "email.example.com/", zone_name = "example.com" },
+# 	{ pattern = "email.example.com/*", zone_name = "example.com" },
+# ]
+
+# 预览部署 (每次 PR 自动部署预览环境)
+# preview_urls = true
+
+[observability]
+enabled = true
+
+# ========== 数据库绑定 ==========
+
+# D1 数据库 (必需)
+# 创建方式: wrangler d1 create cloud-mail
+[[d1_databases]]
+binding = "db"
+database_id = "YOUR_D1_DATABASE_ID"
+
+# KV 命名空间 (必需, 用于缓存和对象存储)
+# 创建方式: wrangler kv namespace create kv
+[[kv_namespaces]]
+binding = "kv"
+id = "YOUR_KV_NAMESPACE_ID"
+
+# R2 存储桶 (可选, 用于存储邮件附件)
+# 创建方式: wrangler r2 bucket create email
+# [[r2_buckets]]
+# binding = "r2"
+# bucket_name = "email"
+
+# CF 发件 (可选, 配置后优先使用)
+# [[send_email]]
+# name = "email"
+
+# AI 绑定 (可选, 用于 AI 分析功能)
+[ai]
+binding = "ai"
+
+# ========== 前端静态资源 ==========
+
+[assets]
+binding = "assets"          # 静态资源绑定名, 默认不可修改
+directory = "./dist"        # 前端 vue 项目打包输出目录
+not_found_handling = "single-page-application"  # SPA 路由回退
+run_worker_first = true     # API 优先, 静态资源兜底
+
+# ========== 定时任务 ==========
+
+[triggers]
+crons = ["0 16 * * *"]      # 每天 UTC 16:00 (北京时间 00:00) 刷新分析缓存
+
+# ========== 环境变量 ==========
+
+[vars]
+# --- 必填 ---
+domain = ["example.com"]                    # 邮件域名, 支持多个
+admin = "admin@example.com"                 # 管理员邮箱
+jwt_secret = "your-random-jwt-secret-here"  # JWT 密钥, 随便填一串字符串
+
+# --- 可选 ---
+project_link = "false"                      # 是否显示项目链接
+# ai_model = ""                             # AI 模型, 不填默认使用 @cf/meta/llama-3.1-8b-instruct
+# analysis_cache = false                    # 是否开启分析数据缓存
+# orm_log = false                           # 是否开启 SQL 日志
+
+# ========== 构建命令 ==========
+
+[build]
+command = "pnpm --prefix ../mail-vue install && pnpm --prefix ../mail-vue run build"
