@@ -7,7 +7,7 @@
     </p>
     <p align="center">
         <a href="https://github.com/maillab/cloud-mail/tree/main?tab=MIT-1-ov-file" target="_blank" >
-            <img src="https://img.shields.io/badge/license-MIT-green" />
+            <img src="https://img.shields.io/badge/license-GPLv3-blue" />
         </a>    
         <a href="https://github.com/maillab/cloud-mail/releases" target="_blank" >
             <img src="https://img.shields.io/github/v/release/maillab/cloud-mail" alt="releases" />
@@ -28,6 +28,11 @@
         </a>
     </p>
 </p>
+
+> [!info]
+> This project is forked from [maillab/cloud-mail](https://github.com/maillab/cloud-mail) with the following changes:
+> - **Notification System Refactored**: Added OneBot / Telegram / Webhook notification support with custom Headers, Body template variables, and Content-Type options
+> - **Email Migration Feature**: Automatically matches unassigned old emails to corresponding mailboxes with one-click migration
 
 ## Description
 
@@ -167,7 +172,7 @@ cloud-mail
 
 ## License
 
-This project is licensed under the [MIT](LICENSE) license.
+This project is licensed under the [GPLv3](LICENSE) license.
 
 ## Communication
 

@@ -3,11 +3,8 @@
     <h1 align="center">Cloud Mail</h1>
     <p align="center">基于 Cloudflare 的简约响应式邮箱服务，支持邮件发送、附件收发 🎉</p> 
     <p align="center">
-        简体中文 | <a href="/README-en.md" style="margin-left: 5px">English </a>
-    </p>
-    <p align="center">
         <a href="https://github.com/maillab/cloud-mail/tree/main?tab=MIT-1-ov-file" target="_blank" >
-            <img src="https://img.shields.io/badge/license-MIT-green" />
+            <img src="https://img.shields.io/badge/license-GPLv3-blue" />
         </a>    
         <a href="https://github.com/maillab/cloud-mail/releases" target="_blank" >
             <img src="https://img.shields.io/github/v/release/maillab/cloud-mail" alt="releases" />
@@ -28,6 +25,11 @@
         </a>
     </p>
 </p>
+
+> [!info]
+> 本项目基于 [maillab/cloud-mail](https://github.com/maillab/cloud-mail) 修改,主要变更:
+> - **通知系统重构**: 新增 OneBot / Telegram / Webhook 三种通知方式,支持自定义 Headers、Body 模板变量、Content-Type
+> - **邮件迁移功能**: 自动匹配未分配的旧邮件到对应邮箱,支持一键迁移
 
 ## 项目简介
 
@@ -60,10 +62,6 @@
   - OneBot
   - Telegram (HTML/MarkdownV2)
   - Webhook (POST/GET, 自定义 Headers/Body/Content-Type)
-  - 飞书 (卡片消息)
-  - 企业微信 (Markdown)
-  - Server酱 (Markdown)
-  - 推送加 (Markdown)
 
 - **📡 开放API**：支持使用API批量生成用户，多条件查询邮件
 
@@ -101,16 +99,16 @@
 
 在 `wrangler.toml` 中配置，详见 [wrangler.example.toml](mail-worker/wrangler.example.toml)
 
-| 变量 | 必填 | 说明 |
-| --- | --- | --- |
-| `domain` | ✅ | 邮件域名，支持多个，如 `["example.com"]` |
-| `admin` | ✅ | 管理员邮箱 |
-| `jwt_secret` | ✅ | JWT 密钥 |
-| `timezone` | ❌ | 通知时间戳时区，默认 `Asia/Shanghai`，如 `America/New_York` |
-| `project_link` | ❌ | 是否显示项目链接，默认 `false` |
-| `ai_model` | ❌ | AI 模型，默认使用 `@cf/meta/llama-3.1-8b-instruct` |
-| `analysis_cache` | ❌ | 是否开启分析数据缓存，默认 `false` |
-| `orm_log` | ❌ | 是否开启 SQL 日志，默认 `false` |
+| 变量             | 必填 | 说明                                                        |
+| ---------------- | ---- | ----------------------------------------------------------- |
+| `domain`         | ✅   | 邮件域名，支持多个，如 `["example.com"]`                    |
+| `admin`          | ✅   | 管理员邮箱                                                  |
+| `jwt_secret`     | ✅   | JWT 密钥                                                    |
+| `timezone`       | ❌   | 通知时间戳时区，默认 `Asia/Shanghai`，如 `America/New_York` |
+| `project_link`   | ❌   | 是否显示项目链接，默认 `false`                              |
+| `ai_model`       | ❌   | AI 模型，默认使用 `@cf/meta/llama-3.1-8b-instruct`          |
+| `analysis_cache` | ❌   | 是否开启分析数据缓存，默认 `false`                          |
+| `orm_log`        | ❌   | 是否开启 SQL 日志，默认 `false`                             |
 
 ## 目录结构
 
@@ -160,14 +158,10 @@ cloud-mail
 
 ## 赞助
 
-<a href="https://doc.skymail.ink/support.html" >
+<a href="https://cn3.top/blog/sponsor/" >
 <img width="170px" src="./doc/images/support.png" alt="">
 </a>
 
 ## 许可证
 
-本项目采用 [MIT](LICENSE) 许可证
-
-## 交流
-
-[Telegram](https://t.me/cloud_mail_tg)
+本项目采用 [GPLv3](LICENSE) 许可证
