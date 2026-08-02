@@ -26,7 +26,7 @@
     </p>
 </p>
 
-> [!info]
+> [!IMPORTANT]
 > 本项目基于 [maillab/cloud-mail](https://github.com/maillab/cloud-mail) 修改,主要变更:
 > - **通知系统重构**: 新增 OneBot / Telegram / Webhook 三种通知方式,支持自定义 Headers、Body 模板变量、Content-Type
 > - **邮件迁移功能**: 自动匹配未分配的旧邮件到对应邮箱,支持一键迁移
