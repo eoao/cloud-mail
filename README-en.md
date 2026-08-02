@@ -174,6 +174,10 @@ cloud-mail
 
 This project is licensed under the [GPLv3](LICENSE) license.
 
+## Upstream
+
+This project is forked from [maillab/cloud-mail](https://github.com/maillab/cloud-mail)
+
 ## Communication
 
 [Telegram](https://t.me/cloud_mail_tg)

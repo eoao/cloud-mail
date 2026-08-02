@@ -165,3 +165,7 @@ cloud-mail
 ## 许可证
 
 本项目采用 [GPLv3](LICENSE) 许可证
+
+## Upstream
+
+本项目基于 [maillab/cloud-mail](https://github.com/maillab/cloud-mail) 修改
