@@ -201,6 +201,19 @@
                   </el-button>
                 </div>
               </div>
+              <div class="setting-item">
+                <div>
+                  <span>{{ $t('manualMigration') }}</span>
+                  <el-tooltip effect="dark" :content="$t('migrateEmailDesc')">
+                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+                  </el-tooltip>
+                </div>
+                <div>
+                  <el-button class="opt-button" size="small" type="primary" :loading="migrationLoading" @click="startMigration">
+                    <Icon icon="material-symbols:upload-rounded" width="16" height="16"/>
+                  </el-button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -760,22 +773,96 @@
         </el-form>
         <el-button type="primary" style="width: 100%;" :loading="settingLoading" @click="saveAiCodeFilter">{{ $t('save') }}</el-button>
       </el-dialog>
-      <!-- Unified Notify Dialog -->
-      <el-dialog v-model="notifyShow" class="forward-dialog" :title="notifyDialogTitle" width="400">
+    </el-scrollbar>
+      <el-dialog
+        v-model="notifyShow"
+        class="forward-dialog"
+      >
+        <template #header>
+          <span class="forward-set-title">{{ notifyDialogTitle }}</span>
+        </template>
         <div class="forward-set-body">
-          <el-input :placeholder="$t('notifyInstanceName')" v-model="notifyForm.name"/>
-          <template v-for="field in currentTypeSchema.fields" :key="field.key">
+          <el-input :placeholder="$t('notifyInstanceName')" v-model="notifyForm.name" style="margin-bottom:15px"/>
+
+          <!-- Webhook 专用 UI -->
+          <template v-if="notifyForm.type === 'webhook'">
+            <el-input :placeholder="$t('webhookUrl')" v-model="notifyForm.url" style="margin-bottom:15px"/>
+            <el-select v-model="notifyForm.method" style="width:100%;margin-bottom:15px" :placeholder="$t('webhookMethod')">
+              <template #prefix><span style="font-size:13px;color:#606266">{{ $t('webhookMethod') }}</span></template>
+              <el-option value="POST" label="POST"/>
+              <el-option value="GET" label="GET"/>
+            </el-select>
+
+            <!-- Content-Type -->
+            <div class="kv-section">
+              <div class="kv-header">
+                <span>Content-Type</span>
+              </div>
+              <el-select
+                v-model="webhookContentType"
+                filterable
+                allow-create
+                clearable
+                default-first-option
+                style="width:100%;margin-bottom:15px"
+                placeholder="Content-Type"
+              >
+                <el-option value="application/json" label="application/json"/>
+                <el-option value="multipart/form-data" label="multipart/form-data"/>
+                <el-option value="text/plain" label="text/plain"/>
+                <el-option value="application/x-www-form-urlencoded" label="application/x-www-form-urlencoded"/>
+              </el-select>
+            </div>
+
+            <!-- Headers -->
+            <div class="kv-section">
+              <div class="kv-header">
+                <span>Headers</span>
+                <el-button size="small" @click="addWebhookHeader" circle>
+                  <Icon icon="material-symbols:add-rounded" width="16" height="16"/>
+                </el-button>
+              </div>
+              <div v-for="(item, idx) in webhookHeaders" :key="idx" class="kv-row">
+                <el-input v-model="item.key" placeholder="Key" style="flex:1"/>
+                <span class="kv-colon">:</span>
+                <el-input v-model="item.value" placeholder="Value" style="flex:1"/>
+                <el-button type="danger" circle size="small" @click="removeWebhookHeader(idx)">
+                  <Icon icon="material-symbols:delete-outline-rounded" width="16" height="16"/>
+                </el-button>
+              </div>
+            </div>
+
+            <!-- Body -->
+            <div v-if="webhookContentType !== 'multipart/form-data'" class="kv-section">
+              <div class="kv-header">
+                <span>Body</span>
+              </div>
+              <textarea
+                :value="webhookBodyRaw"
+                @input="webhookBodyRaw = $event.target.value"
+                placeholder='{"key":"value"}'
+                rows="4"
+                style="width:100%;min-height:80px;max-height:300px;resize:vertical;padding:5px 11px;border:1px solid #dcdfe6;border-radius:4px;font-family:monospace;font-size:13px;margin-bottom:5px"
+              />
+              <div v-pre style="color:#909399;font-size:12px;margin-bottom:15px">可用变量: message, subject, from, to, toAddress, content, timestamp（使用双花括号包裹变量，如：{{message}}）</div>
+            </div>
+          </template>
+
+          <!-- 其他 provider 走通用 schema -->
+          <template v-else v-for="field in currentTypeSchema.fields" :key="field.key">
             <el-input
               v-if="field.type === 'input'"
               :placeholder="$t(field.label)"
               v-model="notifyForm[field.key]"
+              style="margin-bottom:15px"
             />
             <el-input
               v-else-if="field.type === 'textarea'"
               type="textarea"
-              :autosize="{ minRows: 2, maxRows: 6 }"
+              :rows="3"
               :placeholder="field.desc ? $t(field.label) + ' (' + $t(field.desc) + ')' : $t(field.label)"
               v-model="notifyForm[field.key]"
+              style="margin-bottom:15px"
             />
             <el-select
               v-else-if="field.type === 'select'"
@@ -791,7 +878,7 @@
                 :label="$t(opt.label)"
               />
             </el-select>
-            <div v-else-if="field.type === 'switch'" class="tg-msg-label">
+            <div v-else-if="field.type === 'switch'" class="tg-msg-label" style="margin-bottom:15px">
               <span>{{ $t(field.label) }}</span>
               <el-switch v-model="notifyForm[field.key]" :active-value="true" :inactive-value="false"/>
             </div>
@@ -804,18 +891,22 @@
             </div>
             <div>
               <el-switch v-model="notifyForm.enabled" :active-value="1" :inactive-value="0"/>
-              <el-button v-if="notifyForm.id" :loading="loadingTest" @click="testNotify(notifyForm.id)">{{ $t('test') }}</el-button>
+              <el-button @click="previewNotifyConfig">{{ $t('preview') }}</el-button>
+              <el-button :loading="loadingTest" @click="testNotify()">{{ $t('test') }}</el-button>
               <el-button :loading="loadingNotify" type="primary" @click="saveNotifyForm">{{ $t('save') }}</el-button>
             </div>
           </div>
         </template>
       </el-dialog>
-    </el-scrollbar>
+
+      <el-dialog v-model="previewShow" title="Config Preview" width="600px">
+        <pre class="config-preview">{{ previewContent }}</pre>
+      </el-dialog>
   </div>
 </template>
 
 <script setup>
-import {computed, defineOptions, nextTick, reactive, ref} from "vue";
+import {computed, defineOptions, nextTick, reactive, ref, watch} from "vue";
 import {deleteBackground, setBackground, setBlackList, settingQuery, settingSet} from "@/request/setting.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useUiStore} from "@/store/ui.js";
@@ -831,7 +922,8 @@ import {getTextWidth} from "@/utils/text.js";
 import {fileToBase64} from "@/utils/file-utils.js"
 import {useI18n} from 'vue-i18n';
 import axios from "axios";
-import {notifyTypes, notifyList, notifyAdd, notifySet, notifyDelete, notifyTest} from "@/request/notify.js";
+import {notifyTypes, notifyList, notifyAdd, notifySet, notifyDelete, notifyTest, notifyTestPreview} from "@/request/notify.js";
+import {migrationStart} from "@/request/migration.js";
 
 defineOptions({
   name: 'sys-setting'
@@ -866,6 +958,7 @@ const settingLoading = ref(false)
 const clearS3Loading = ref(false)
 const loadingNotify = ref(false)
 const loadingTest = ref(false)
+const migrationLoading = ref(false)
 const r2DomainInput = ref('')
 const loginOpacity = ref(0)
 const minEmailPrefix = ref(0)
@@ -941,6 +1034,51 @@ const ruleEmail = ref([])
 const notifyRuleList = ref([])
 const notifyShow = ref(false)
 const notifyForm = reactive({ id: 0, type: '', name: '', enabled: 1 })
+
+// Webhook 键值对
+const webhookHeaders = ref([])
+const webhookBodyRaw = ref('')
+const webhookContentType = ref('')
+
+// Config 预览
+const previewShow = ref(false)
+const previewContent = ref('')
+
+function previewNotifyConfig() {
+  const config = buildNotifyConfig()
+  previewContent.value = JSON.stringify(config, null, 2)
+  previewShow.value = true
+}
+
+function kvEmpty() { return { key: '', value: '' } }
+function addWebhookHeader() { webhookHeaders.value.push(kvEmpty()) }
+function removeWebhookHeader(i) { webhookHeaders.value.splice(i, 1) }
+
+function kvArrayToObj(arr) {
+  const obj = {}
+  for (const item of arr) {
+    if (item.key) obj[item.key] = item.value
+  }
+  return obj
+}
+
+function objToKvArray(obj) {
+  if (!obj || typeof obj !== 'object') return []
+  return Object.entries(obj).map(([key, value]) => ({ key, value: String(value) }))
+}
+
+watch(webhookContentType, (val) => {
+  const idx = webhookHeaders.value.findIndex(h => h.key.toLowerCase() === 'content-type')
+  if (val) {
+    if (idx >= 0) {
+      webhookHeaders.value[idx].value = val
+    } else {
+      webhookHeaders.value.unshift({ key: 'Content-Type', value: val })
+    }
+  } else {
+    if (idx >= 0) webhookHeaders.value.splice(idx, 1)
+  }
+})
 
 const notifyDialogTitle = computed(() => {
   const schema = currentTypeSchema.value
@@ -1044,6 +1182,22 @@ function getUpdate() {
       getUpdate()
     }, 2000)
     console.error('检查更新失败：', e)
+  })
+}
+
+function startMigration() {
+  if (migrationLoading.value) return
+  migrationLoading.value = true
+  migrationStart().then(({migrated}) => {
+    migrationLoading.value = false
+    if (migrated > 0) {
+      ElMessage.success(t('migrateSuccessMsg', {count: migrated}))
+    } else {
+      ElMessage.info(t('migrateNoEmailMsg'))
+    }
+  }).catch(e => {
+    migrationLoading.value = false
+    console.error('迁移失败：', e)
   })
 }
 
@@ -1467,6 +1621,11 @@ function openAddNotifyDialog(type) {
     defaults[field.key] = field.default !== undefined ? field.default : (field.type === 'switch' ? false : '')
   }
   resetNotifyForm(defaults)
+  if (type === 'webhook') {
+    webhookHeaders.value = [kvEmpty()]
+    webhookBodyRaw.value = ''
+    webhookContentType.value = ''
+  }
   notifyShow.value = true
 }
 
@@ -1478,6 +1637,13 @@ function openEditNotifyDialog(rule) {
     form[field.key] = config[field.key] ?? (field.default !== undefined ? field.default : (field.type === 'switch' ? false : ''))
   }
   resetNotifyForm(form)
+  if (rule.type === 'webhook') {
+    webhookHeaders.value = objToKvArray(config.headers)
+    webhookBodyRaw.value = typeof config.body === 'string' ? config.body : (config.body ? JSON.stringify(config.body, null, 2) : '')
+    const ctMap = { 'json': 'application/json', 'form-data': 'multipart/form-data', 'custom': '' }
+    webhookContentType.value = ctMap[config.contentType] ?? (config.contentType || '')
+    if (!webhookHeaders.value.length) webhookHeaders.value = [kvEmpty()]
+  }
   notifyShow.value = true
 }
 
@@ -1523,27 +1689,55 @@ function saveNotify(rule) {
 }
 
 function saveNotifyForm() {
+  const config = buildNotifyConfig()
+  saveNotify({ id: notifyForm.id, type: notifyForm.type, name: notifyForm.name, config, enabled: notifyForm.enabled })
+}
+
+function buildNotifyConfig() {
+  if (notifyForm.type === 'webhook') {
+    const config = {
+      url: notifyForm.url || '',
+      method: notifyForm.method || 'POST',
+    }
+    if (webhookContentType.value) {
+      config.contentType = webhookContentType.value
+    }
+    config.headers = kvArrayToObj(webhookHeaders.value)
+    if (webhookBodyRaw.value) {
+      try { config.body = JSON.parse(webhookBodyRaw.value) } catch { config.body = {} }
+    } else {
+      config.body = {}
+    }
+    return config
+  }
   const config = {}
   const fields = currentTypeSchema.value.fields || []
   for (const field of fields) {
-    let value = notifyForm[field.key]
-    if (field.key === 'headers' && notifyForm.type === 'webhook' && value) {
-      try { value = JSON.parse(value) } catch (e) { value = {} }
-    }
+    const value = notifyForm[field.key]
     if (value !== undefined && value !== '') {
       config[field.key] = value
     }
   }
-  saveNotify({ id: notifyForm.id, type: notifyForm.type, name: notifyForm.name, config, enabled: notifyForm.enabled })
+  return config
 }
 
-function testNotify(id) {
+async function testNotify() {
   loadingTest.value = true
-  notifyTest(id).then(() => {
-    ElMessage({ message: t('testSuccess'), type: 'success', plain: true })
-  }).catch(() => {
+  try {
+    const config = buildNotifyConfig()
+    const res = await notifyTestPreview(notifyForm.type, config)
+    const results = res.data || res
+    const first = Array.isArray(results) ? results[0] : results
+    if (first && first.success) {
+      ElMessage({ message: t('testSuccess'), type: 'success', plain: true })
+    } else {
+      ElMessage({ message: first?.error || t('testFailed'), type: 'error', plain: true })
+    }
+  } catch {
     ElMessage({ message: t('testFailed'), type: 'error', plain: true })
-  }).finally(() => { loadingTest.value = false })
+  } finally {
+    loadingTest.value = false
+  }
 }
 
 function editSetting(settingForm, refreshStatus = true) {
@@ -1902,6 +2096,46 @@ function editSetting(settingForm, refreshStatus = true) {
   > *:nth-child(-n+2) {
     margin-bottom: 15px;
   }
+}
+
+.kv-section {
+  margin-bottom: 15px;
+}
+
+.kv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #606266;
+}
+
+.kv-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.kv-colon {
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.config-preview {
+  background: #f5f5f5;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 12px;
+  font-size: 12px;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 500px;
+  overflow-y: auto;
+  margin: 0;
 }
 
 .forward {

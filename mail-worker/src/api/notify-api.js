@@ -72,6 +72,32 @@ app.post('/notify/test/:id', async (c) => {
 	return c.json(result.ok(results));
 });
 
+app.post('/notify/test-preview', async (c) => {
+	const { type, config } = await c.req.json();
+	const provider = providerList[type];
+	if (!provider) {
+		throw new BizError('Provider not found', 404);
+	}
+	const testEmail = {
+		emailId: 0,
+		subject: 'Test notification',
+		sendEmail: 'test@example.com',
+		toEmail: 'user@example.com',
+		name: 'Test Sender',
+		text: 'This is a test message from Cloud Mail notification system.',
+		content: '',
+		code: '',
+	};
+	const results = [];
+	try {
+		await provider.send(config, testEmail, c.env);
+		results.push({ name: type, success: true });
+	} catch (e) {
+		results.push({ name: type, success: false, error: e.message });
+	}
+	return c.json(result.ok(results));
+});
+
 app.post('/notify/re-notify/:emailId', async (c) => {
 	const emailId = Number(c.req.param('emailId'));
 	const emailRow = await orm({ env: c.env }).select().from(email)

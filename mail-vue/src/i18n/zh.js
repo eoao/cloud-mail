@@ -370,11 +370,17 @@ const zh = {
     webhookHeaders: '自定义请求头（JSON）',
     webhookBodyTemplate: '请求体模板',
     webhookBodyTemplateDesc: '支持 {{subject}} {{from}} {{to}} {{toAddress}} {{content}} {{timestamp}}',
+    webhookBodyTip: '使用 {{message}} 代替完整通知内容（主题、发件人、收件人、正文）',
     webhookContentType: 'Content Type',
     json: 'JSON',
     formData: 'Form Data',
     customBody: '自定义模板',
     addInstance: '添加实例',
-    editNotifyInstance: '编辑实例'
+    editNotifyInstance: '编辑实例',
+    dataMigration: '数据迁移',
+    manualMigration: '手动迁移',
+    migrateEmailDesc: '将未分配的旧邮件匹配到对应的邮箱',
+    migrateSuccessMsg: '迁移完成，共迁移 {{count}} 封邮件',
+    migrateNoEmailMsg: '没有需要迁移的邮件'
 }
 export default zh

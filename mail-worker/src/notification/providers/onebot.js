@@ -35,7 +35,7 @@ class OneBotProvider extends NotificationProvider {
 		const { url, token, targetIds, msgType } = notification;
 		if (!url || !targetIds) return;
 
-		const message = this.buildMessage(emailData);
+		const message = this.buildMessage(emailData, env);
 		const idList = targetIds.split(',').map(s => s.trim()).filter(Boolean);
 		const isGroup = (msgType || 'private') === 'group';
 
@@ -85,15 +85,19 @@ class OneBotProvider extends NotificationProvider {
 		}));
 	}
 
-	buildMessage(emailData) {
+	buildMessage(emailData, env) {
 		const from = emailData.name || '';
 		const recipient = getRecipientName(emailData);
+		const tz = env.TIMEZONE || 'Asia/Shanghai';
+		const ts = emailData.createTime ? new Date(emailData.createTime) : new Date();
+		const timestamp = ts.toLocaleString('zh-CN', { timeZone: tz, hour12: false });
 		const lines = [
 			`📧 新邮件`,
 			`━━━━━━━━━━━━━━`,
 			`发件人: ${from} <${emailData.sendEmail || ''}>`,
 			`收件人: ${recipient}`,
 			`主题: ${emailData.subject || '(无主题)'}`,
+			`时间: ${timestamp}`,
 		];
 		const text = emailData.text || emailUtils.htmlToText(emailData.content) || '';
 		if (text) {

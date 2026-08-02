@@ -32,21 +32,20 @@ class WebhookProvider extends NotificationProvider {
 				{ key: 'method', type: 'select', label: 'webhookMethod', default: 'POST', options: [
 					{ value: 'POST', label: 'POST' },
 					{ value: 'GET', label: 'GET' },
-					{ value: 'PUT', label: 'PUT' },
 				]},
 				{ key: 'contentType', type: 'select', label: 'webhookContentType', default: 'json', options: [
 					{ value: 'json', label: 'json' },
 					{ value: 'form-data', label: 'formData' },
 					{ value: 'custom', label: 'customBody' },
 				]},
-				{ key: 'headers', type: 'textarea', label: 'webhookHeaders', default: '' },
-				{ key: 'bodyTemplate', type: 'textarea', label: 'webhookBodyTemplate', desc: 'webhookBodyTemplateDesc', default: '' },
+				{ key: 'headers', type: 'input', label: 'webhookHeaders', default: '' },
+				{ key: 'bodyTemplate', type: 'input', label: 'webhookBodyTemplate', default: '' },
 			],
 		};
 	}
 
 	async send(notification, emailData, env) {
-		const { url, method, headers, bodyTemplate, contentType } = notification;
+		const { url, method, headers, contentType } = notification;
 		if (!url) return;
 
 		const httpMethod = (method || 'POST').toLowerCase();
@@ -57,64 +56,89 @@ class WebhookProvider extends NotificationProvider {
 		const to = getRecipientName(emailData);
 		const toAddress = getRecipientAddress(emailData);
 		const content = emailData.text || emailUtils.htmlToText(emailData.content) || '';
-		const message = `📧 新邮件\n发件人: ${from}\n收件人: ${to}\n主题: ${subject}\n内容: ${content}`;
-		const timestamp = emailData.createTime || new Date().toISOString();
+		const tz = env.TIMEZONE || 'Asia/Shanghai';
+		const ts = emailData.createTime ? new Date(emailData.createTime) : new Date();
+		const timestamp = ts.toLocaleString('zh-CN', { timeZone: tz, hour12: false });
+		const message = `📧 新邮件\n发件人: ${from}\n收件人: ${to}\n主题: ${subject}\n时间: ${timestamp}\n内容: ${content}`;
 
-		let data = { subject, from, to, toAddress, content, message, timestamp };
-		let config = { headers: {} };
+		const defaultData = { subject, from, to, toAddress, content, message, timestamp };
+
+		const requestHeaders = {};
+		if (headers) {
+			Object.assign(requestHeaders, this.parseHeaders(headers));
+		}
 
 		if (httpMethod === 'get') {
-			const params = { subject, from, to, toAddress, content, message, timestamp };
-			const searchParams = new URLSearchParams(params).toString();
+			const searchParams = new URLSearchParams(data).toString();
 			const separator = url.includes('?') ? '&' : '?';
 			const res = await fetch(`${url}${separator}${searchParams}`, {
 				method: 'GET',
-				...this.parseHeaders(headers, config.headers),
+				headers: requestHeaders,
 			});
 			if (!res.ok) {
 				console.error(`[Webhook] GET failed: ${res.status}`);
 			}
 			return;
-		} else if (contentType === 'form-data') {
-			const form = new FormData();
-			form.append('data', JSON.stringify(data));
-			config.headers = { ...config.headers, ...Object.fromEntries(form.headers) };
-			data = form;
-		} else if (contentType === 'custom') {
-			data = (bodyTemplate || '')
-				.replace(/\{\{subject\}\}/g, subject)
-				.replace(/\{\{from\}\}/g, from)
-				.replace(/\{\{to\}\}/g, to)
-				.replace(/\{\{toAddress\}\}/g, toAddress)
-				.replace(/\{\{content\}\}/g, content)
-				.replace(/\{\{message\}\}/g, message)
-				.replace(/\{\{timestamp\}\}/g, timestamp);
 		}
 
-		config.headers = this.parseHeaders(headers, config.headers);
+		let body;
+		const rawBody = notification.body || {};
+		const bodyObj = typeof rawBody === 'string' ? (() => { try { return JSON.parse(rawBody); } catch { return {}; } })() : rawBody;
 
-		if (contentType !== 'form-data') {
-			config.headers['Content-Type'] = contentType === 'custom' ? 'text/plain' : 'application/json';
+		if (contentType === 'multipart/form-data') {
+			const form = new FormData();
+			form.append('data', JSON.stringify(bodyObj));
+			Object.assign(requestHeaders, Object.fromEntries(form.headers));
+			body = form;
+		} else {
+			const rendered = this.renderObject(bodyObj, defaultData);
+			body = JSON.stringify(rendered);
+			if (!requestHeaders['Content-Type'] && !requestHeaders['content-type']) {
+				requestHeaders['Content-Type'] = 'application/json';
+			}
 		}
 
 		const res = await fetch(url, {
-			method: httpMethod.toUpperCase(),
-			headers: config.headers,
-			body: httpMethod === 'post' || httpMethod === 'put' ? data : undefined,
+			method: 'POST',
+			headers: requestHeaders,
+			body,
 		});
 
 		if (!res.ok) {
-			console.error(`[Webhook] ${httpMethod.toUpperCase()} failed: ${res.status}`);
+			console.error(`[Webhook] POST failed: ${res.status}`);
 		}
 	}
 
-	parseHeaders(headers, base = {}) {
-		if (!headers) return { ...base };
+	renderTemplate(template, data) {
+		return template
+			.replace(/\{\{subject\}\}/g, data.subject)
+			.replace(/\{\{from\}\}/g, data.from)
+			.replace(/\{\{to\}\}/g, data.to)
+			.replace(/\{\{toAddress\}\}/g, data.toAddress)
+			.replace(/\{\{content\}\}/g, data.content)
+			.replace(/\{\{message\}\}/g, data.message)
+			.replace(/\{\{timestamp\}\}/g, data.timestamp);
+	}
+
+	renderObject(obj, data) {
+		if (typeof obj === 'string') return this.renderTemplate(obj, data);
+		if (Array.isArray(obj)) return obj.map(item => this.renderObject(item, data));
+		if (obj && typeof obj === 'object') {
+			const result = {};
+			for (const [key, value] of Object.entries(obj)) {
+				result[key] = this.renderObject(value, data);
+			}
+			return result;
+		}
+		return obj;
+	}
+
+	parseHeaders(headers) {
+		if (!headers) return {};
 		try {
-			const parsed = typeof headers === 'string' ? JSON.parse(headers) : headers;
-			return { ...base, ...parsed };
+			return typeof headers === 'string' ? JSON.parse(headers) : headers;
 		} catch {
-			return { ...base };
+			return {};
 		}
 	}
 }

@@ -59,7 +59,7 @@ With only one domain, you can create multiple different email addresses, similar
 - **📢 Multi-Channel Notifications**: Support 7 notification channels, automatically push when emails arrive
   - OneBot
   - Telegram (HTML/MarkdownV2)
-  - Webhook (POST/GET/PUT)
+  - Webhook (POST/GET, custom Headers/Body/Content-Type)
   - Feishu (Card Message)
   - WeCom (Markdown)
   - ServerChan (Markdown)
@@ -96,6 +96,21 @@ With only one domain, you can create multiple different email addresses, similar
 - **Database**: [Cloudflare D1](https://developers.cloudflare.com/d1/)
 
 - **File Storage**: [Cloudflare R2](https://developers.cloudflare.com/r2/)
+
+## Environment Variables
+
+Configure in `wrangler.toml`, see [wrangler.example.toml](mail-worker/wrangler.example.toml)
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `domain` | ✅ | Email domain, supports multiple, e.g. `["example.com"]` |
+| `admin` | ✅ | Admin email address |
+| `jwt_secret` | ✅ | JWT secret key |
+| `timezone` | ❌ | Notification timestamp timezone, default `Asia/Shanghai`, e.g. `America/New_York` |
+| `project_link` | ❌ | Show project link, default `false` |
+| `ai_model` | ❌ | AI model, default `@cf/meta/llama-3.1-8b-instruct` |
+| `analysis_cache` | ❌ | Enable analytics data cache, default `false` |
+| `orm_log` | ❌ | Enable SQL logging, default `false` |
 
 ## Project Structure
 

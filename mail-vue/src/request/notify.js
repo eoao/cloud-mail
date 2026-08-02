@@ -24,6 +24,10 @@ export function notifyTest(id) {
 	return http.post(`/notify/test/${id}`)
 }
 
+export function notifyTestPreview(type, config) {
+	return http.post('/notify/test-preview', { type, config })
+}
+
 export function notifyReNotify(emailId) {
 	return http.post(`/notify/re-notify/${emailId}`)
 }

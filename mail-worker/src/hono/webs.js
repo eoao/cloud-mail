@@ -20,4 +20,5 @@ import '../api/reg-key-api'
 import '../api/public-api'
 import '../api/oauth-api'
 import '../api/notify-api'
+import '../api/migration-api'
 export default app;

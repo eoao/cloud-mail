@@ -59,7 +59,7 @@
 - **📢 多渠道通知**：支持 7 个通知渠道，邮件到达时自动推送
   - OneBot
   - Telegram (HTML/MarkdownV2)
-  - Webhook (POST/GET/PUT)
+  - Webhook (POST/GET, 自定义 Headers/Body/Content-Type)
   - 飞书 (卡片消息)
   - 企业微信 (Markdown)
   - Server酱 (Markdown)
@@ -96,6 +96,21 @@
 - **数据库**：[Cloudflare D1](https://developers.cloudflare.com/d1/)
 
 - **文件存储**：[Cloudflare R2](https://developers.cloudflare.com/r2/)
+
+## 环境变量
+
+在 `wrangler.toml` 中配置，详见 [wrangler.example.toml](mail-worker/wrangler.example.toml)
+
+| 变量 | 必填 | 说明 |
+| --- | --- | --- |
+| `domain` | ✅ | 邮件域名，支持多个，如 `["example.com"]` |
+| `admin` | ✅ | 管理员邮箱 |
+| `jwt_secret` | ✅ | JWT 密钥 |
+| `timezone` | ❌ | 通知时间戳时区，默认 `Asia/Shanghai`，如 `America/New_York` |
+| `project_link` | ❌ | 是否显示项目链接，默认 `false` |
+| `ai_model` | ❌ | AI 模型，默认使用 `@cf/meta/llama-3.1-8b-instruct` |
+| `analysis_cache` | ❌ | 是否开启分析数据缓存，默认 `false` |
+| `orm_log` | ❌ | 是否开启 SQL 日志，默认 `false` |
 
 ## 目录结构
 

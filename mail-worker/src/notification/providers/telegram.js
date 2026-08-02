@@ -72,7 +72,7 @@ class TelegramProvider extends NotificationProvider {
 
 		const chatIdList = chatIds.split(',').map(s => s.trim()).filter(Boolean);
 		const baseUrl = serverUrl || 'https://api.telegram.org';
-		const text = this.buildText(emailData, parseMode, msgFrom || 'only-name', msgTo || 'show', msgText || 'hide');
+		const text = this.buildText(emailData, parseMode, msgFrom || 'only-name', msgTo || 'show', msgText || 'hide', env);
 
 		await Promise.all(chatIdList.map(async chatId => {
 			try {
@@ -107,17 +107,21 @@ class TelegramProvider extends NotificationProvider {
 		}));
 	}
 
-	buildText(emailData, parseMode, msgFrom, msgTo, msgText) {
+	buildText(emailData, parseMode, msgFrom, msgTo, msgText, env) {
 		const from = this.formatFrom(emailData, msgFrom);
 		const to = getRecipientName(emailData);
 		const subject = emailData.subject || '';
 		const preview = emailData.text || emailUtils.htmlToText(emailData.content) || '';
+		const tz = env.TIMEZONE || 'Asia/Shanghai';
+		const ts = emailData.createTime ? new Date(emailData.createTime) : new Date();
+		const timestamp = ts.toLocaleString('zh-CN', { timeZone: tz, hour12: false });
 
 		if (parseMode === 'MarkdownV2') {
 			const lines = [`📧 *新邮件*`, `━━━━━━━━━━━━━━`];
 			if (from) lines.push(`*发件人:* ${escapeMarkdownV2(from)}`);
 			if (msgTo === 'show') lines.push(`*收件人:* ${escapeMarkdownV2(to)}`);
 			lines.push(`*主题:* ${escapeMarkdownV2(subject)}`);
+			lines.push(`*时间:* ${escapeMarkdownV2(timestamp)}`);
 			if (msgText === 'show' && preview) {
 				const text = preview.length > 500 ? preview.slice(0, 500) + '...' : preview;
 				lines.push(`*内容:* ${escapeMarkdownV2(text)}`);
@@ -130,6 +134,7 @@ class TelegramProvider extends NotificationProvider {
 			if (from) lines.push(`发件人: ${from}`);
 			if (msgTo === 'show') lines.push(`收件人: ${to}`);
 			lines.push(`主题: ${subject}`);
+			lines.push(`时间: ${timestamp}`);
 			if (msgText === 'show' && preview) {
 				const text = preview.length > 500 ? preview.slice(0, 500) + '...' : preview;
 				lines.push(`内容: ${text}`);
@@ -142,6 +147,7 @@ class TelegramProvider extends NotificationProvider {
 		if (from) lines.push(`<b>发件人:</b> ${escapeHtml(from)}`);
 		if (msgTo === 'show') lines.push(`<b>收件人:</b> ${escapeHtml(to)}`);
 		lines.push(`<b>主题:</b> ${escapeHtml(subject)}`);
+		lines.push(`<b>时间:</b> ${escapeHtml(timestamp)}`);
 		if (msgText === 'show' && preview) {
 			const text = preview.length > 500 ? preview.slice(0, 500) + '...' : preview;
 			lines.push(`<b>内容:</b> ${escapeHtml(text)}`);

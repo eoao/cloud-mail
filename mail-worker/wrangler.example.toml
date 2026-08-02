@@ -70,6 +70,7 @@ admin = "admin@example.com"                 # 管理员邮箱
 jwt_secret = "your-random-jwt-secret-here"  # JWT 密钥, 随便填一串字符串
 
 # --- 可选 ---
+timezone = "Asia/Shanghai"                  # 通知时间戳时区, 如 Asia/Shanghai, America/New_York
 project_link = "false"                      # 是否显示项目链接
 # ai_model = ""                             # AI 模型, 不填默认使用 @cf/meta/llama-3.1-8b-instruct
 # analysis_cache = false                    # 是否开启分析数据缓存

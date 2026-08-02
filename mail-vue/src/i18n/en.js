@@ -370,12 +370,18 @@ const en = {
     webhookHeaders: 'Custom Headers (JSON)',
     webhookBodyTemplate: 'Body Template',
     webhookBodyTemplateDesc: 'Supports {{subject}} {{from}} {{to}} {{toAddress}} {{content}} {{timestamp}}',
+    webhookBodyTip: 'Use message to insert full notification content (subject, sender, recipient, body)',
     webhookContentType: 'Content Type',
     json: 'JSON',
     formData: 'Form Data',
     customBody: 'Custom Template',
     addInstance: 'Add Instance',
-    editNotifyInstance: 'Edit Instance'
+    editNotifyInstance: 'Edit Instance',
+    dataMigration: 'Data Migration',
+    manualMigration: 'Manual Migration',
+    migrateEmailDesc: 'Match unassigned old emails to corresponding mailboxes',
+    migrateSuccessMsg: 'Migration complete, {{count}} emails migrated',
+    migrateNoEmailMsg: 'No emails to migrate'
 }
 
 export default en
