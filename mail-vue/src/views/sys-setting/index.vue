@@ -25,6 +25,13 @@
                 </div>
               </div>
               <div class="setting-item">
+                <div><span>{{ $t('passkeyLogin') }}</span></div>
+                <div>
+                  <el-switch @change="change" :before-change="beforeChange" :active-value="1" :inactive-value="0"
+                             v-model="setting.passkey"/>
+                </div>
+              </div>
+              <div class="setting-item">
                 <div><span>{{ $t('regKey') }}</span></div>
                 <div>
                   <el-select
@@ -943,6 +950,7 @@ function getSettings() {
   settingReady.value = false
   settingQuery().then(settingData => {
     setting.value = settingData
+    settingStore.settings.passkey = settingData.passkey
     settingStore.domainList = settingData.domainList;
     resendTokenForm.domain = setting.value.domainList[0]
     loginOpacity.value = setting.value.loginOpacity

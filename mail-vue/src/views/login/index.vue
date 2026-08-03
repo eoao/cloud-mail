@@ -14,8 +14,8 @@
         <span class="form-desc" v-if="show === 'login'">{{ $t('loginTitle') }}</span>
         <span class="form-desc" v-else>{{ $t('regTitle') }}</span>
         <div v-show="show === 'login'">
-          <el-input :class="!hideLoginDomain ? 'email-input' : ''" v-model="form.email"
-                    type="text" :placeholder="$t('emailAccount')" autocomplete="off">
+          <el-input ref="loginEmailInput" :class="!hideLoginDomain ? 'email-input' : ''" v-model="form.email"
+                    type="text" :placeholder="$t('emailAccount')" autocomplete="off" @keydown.tab="handleEmailTab">
             <template #append v-if="!hideLoginDomain">
               <div @click.stop="openSelect">
                 <el-select
@@ -39,11 +39,18 @@
               </div>
             </template>
           </el-input>
-          <el-input v-model="form.password" :placeholder="$t('password')" type="password" autocomplete="off">
+          <el-input ref="loginPasswordInput" v-model="form.password" :placeholder="$t('password')" type="password"
+                    autocomplete="off" @keydown.tab="handlePasswordTab" @keyup.enter="submit">
           </el-input>
-          <el-button class="btn" type="primary" @click="submit" :loading="loginLoading"
-          >{{ $t('loginBtn') }}
-          </el-button>
+          <div class="login-actions">
+            <el-button class="btn" type="primary" @click="submit" :loading="loginLoading"
+            >{{ $t('loginBtn') }}
+            </el-button>
+            <el-button v-if="settingStore.settings.passkey === 1" class="btn" @click="submitPasskey" :loading="passkeyLoading">
+              <Icon icon="material-symbols:passkey-outline-rounded" width="18" height="18"/>
+              {{ $t('passkeyLogin') }}
+            </el-button>
+          </div>
           <el-button class="btn" v-if="settingStore.settings.linuxdoSwitch"  style="margin-top: 10px"  @click="linuxDoLogin">
             <el-avatar src="/image/linuxdo.webp" :size="18" style="margin-right: 10px" />LinuxDo
           </el-button>
@@ -163,6 +170,8 @@ import {loginUserInfo} from "@/request/my.js";
 import {permsToRouter} from "@/perm/perm.js";
 import {useI18n} from "vue-i18n";
 import {oauthBindUser, oauthLinuxDoLogin} from "@/request/ouath.js";
+import {browserSupportsWebAuthn, startAuthentication} from "@simplewebauthn/browser";
+import {passkeyAuthOptions, passkeyAuthVerify} from "@/request/passkey.js";
 
 const {t} = useI18n();
 const accountStore = useAccountStore();
@@ -170,10 +179,13 @@ const userStore = useUserStore();
 const uiStore = useUiStore();
 const settingStore = useSettingStore();
 const loginLoading = ref(false)
+const passkeyLoading = ref(false)
 const bindLoading = ref(false)
 const oauthLoading = ref(false);
 const showBindForm = ref(false);
 const show = ref('login')
+const loginEmailInput = ref()
+const loginPasswordInput = ref()
 
 const bindForm = reactive({
   email: '',
@@ -199,6 +211,18 @@ const registerLoading = ref(false)
 suffix.value = domainList[0]
 const verifyShow = ref(false)
 let verifyToken = ''
+
+function handleEmailTab(event) {
+  if (event.shiftKey) return
+  event.preventDefault()
+  loginPasswordInput.value?.focus()
+}
+
+function handlePasswordTab(event) {
+  if (!event.shiftKey) return
+  event.preventDefault()
+  loginEmailInput.value?.focus()
+}
 let turnstileId = null
 let botJsError = ref(false)
 let verifyErrorCount = 0
@@ -398,6 +422,35 @@ const submit = () => {
   }).finally(() => {
     loginLoading.value = false
   })
+}
+
+async function submitPasskey() {
+  if (!browserSupportsWebAuthn()) {
+    ElMessage({
+      message: t('passkeyUnsupported'),
+      type: 'error',
+      plain: true,
+    })
+    return
+  }
+
+  passkeyLoading.value = true
+  try {
+    const {transactionId, options} = await passkeyAuthOptions()
+    const response = await startAuthentication({optionsJSON: options})
+    const data = await passkeyAuthVerify(transactionId, response)
+    await saveToken(data.token)
+  } catch (error) {
+    if (!error?.code) {
+      ElMessage({
+        message: t('passkeyLoginFailed'),
+        type: 'error',
+        plain: true,
+      })
+    }
+  } finally {
+    passkeyLoading.value = false
+  }
 }
 
 async function saveToken(token) {
@@ -635,6 +688,15 @@ function submitRegister() {
     height: 36px;
     width: 100%;
     border-radius: 6px;
+  }
+
+  .login-actions {
+    display: flex;
+    gap: 10px;
+
+    .btn {
+      flex: 1;
+    }
   }
 
   .form-desc {

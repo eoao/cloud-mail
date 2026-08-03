@@ -30,6 +30,25 @@
         </div>
       </div>
     </div>
+    <div class="passkey" v-if="settingStore.settings.passkey === 1">
+      <div class="title">{{$t('passkeySetting')}}</div>
+      <div class="passkey-status">
+        <div>
+          <div>{{ passkey.registered ? $t('passkeyConfigured') : $t('passkeyNotConfigured') }}</div>
+          <div class="passkey-time" v-if="passkey.registered && passkey.createTime">
+            {{$t('passkeyCreatedAt', {time: passkey.createTime})}}
+          </div>
+        </div>
+        <div class="passkey-actions">
+          <el-button type="primary" :loading="passkeyLoading" @click="openPasskeyAction('register')">
+            {{ passkey.registered ? $t('passkeyReplace') : $t('passkeyCreate') }}
+          </el-button>
+          <el-button v-if="passkey.registered" :loading="passkeyLoading" @click="openPasskeyAction('delete')">
+            {{$t('passkeyDelete')}}
+          </el-button>
+        </div>
+      </div>
+    </div>
     <div class="language">
       <div class="title">{{$t('language')}}</div>
       <el-select
@@ -58,6 +77,15 @@
         <el-button type="primary" :loading="setPwdLoading" @click="submitPwd">{{$t('save')}}</el-button>
       </div>
     </el-dialog>
+    <el-dialog v-model="passkeyPwdShow"
+               :title="passkeyAction === 'delete' ? $t('passkeyDelete') : $t('passkeySetting')" width="340">
+      <div class="update-pwd">
+        <div v-if="passkeyAction === 'delete'">{{$t('passkeyDeleteConfirm')}}</div>
+        <el-input type="password" :placeholder="$t('passkeyCurrentPassword')" v-model="passkeyPassword"
+                  autocomplete="current-password" @keyup.enter="submitPasskeyAction"/>
+        <el-button type="primary" :loading="passkeyLoading" @click="submitPasskeyAction">{{$t('confirm')}}</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 <script setup>
@@ -69,6 +97,13 @@ import {accountSetName} from "@/request/account.js";
 import {useAccountStore} from "@/store/account.js";
 import {useI18n} from "vue-i18n";
 import {useSettingStore} from "@/store/setting.js";
+import {browserSupportsWebAuthn, startRegistration} from "@simplewebauthn/browser";
+import {
+  passkeyDelete,
+  passkeyRegOptions,
+  passkeyRegVerify,
+  passkeyStatus
+} from "@/request/passkey.js";
 
 const { t } = useI18n()
 const accountStore = useAccountStore()
@@ -78,10 +113,79 @@ const setPwdLoading = ref(false)
 const setNameShow = ref(false)
 const accountName = ref(null)
 const langSelect = ref(settingStore.lang)
+const passkey = reactive({registered: false, createTime: null})
+const passkeyLoading = ref(false)
+const passkeyPwdShow = ref(false)
+const passkeyPassword = ref('')
+const passkeyAction = ref('register')
 
 defineOptions({
   name: 'setting'
 })
+
+if (settingStore.settings.passkey === 1) {
+  loadPasskeyStatus()
+}
+
+async function loadPasskeyStatus() {
+  try {
+    const status = await passkeyStatus()
+    passkey.registered = status.registered
+    passkey.createTime = status.createTime
+  } catch (_) {
+    // The shared HTTP interceptor already displays the server error.
+  }
+}
+
+function openPasskeyAction(action) {
+  if (action === 'register' && !browserSupportsWebAuthn()) {
+    ElMessage({
+      message: t('passkeyUnsupported'),
+      type: 'error',
+      plain: true,
+    })
+    return
+  }
+  passkeyAction.value = action
+  passkeyPassword.value = ''
+  passkeyPwdShow.value = true
+}
+
+async function submitPasskeyAction() {
+  if (!passkeyPassword.value) {
+    ElMessage({
+      message: t('emptyPwdMsg'),
+      type: 'error',
+      plain: true,
+    })
+    return
+  }
+
+  passkeyLoading.value = true
+  try {
+    if (passkeyAction.value === 'delete') {
+      await passkeyDelete(passkeyPassword.value)
+      passkey.registered = false
+      passkey.createTime = null
+      ElMessage({message: t('passkeyDeleteSuccess'), type: 'success', plain: true})
+    } else {
+      const {transactionId, options} = await passkeyRegOptions(passkeyPassword.value)
+      const response = await startRegistration({optionsJSON: options})
+      const status = await passkeyRegVerify(transactionId, response)
+      passkey.registered = status.registered
+      passkey.createTime = status.createTime
+      ElMessage({message: t('passkeyCreateSuccess'), type: 'success', plain: true})
+    }
+    passkeyPwdShow.value = false
+    passkeyPassword.value = ''
+  } catch (error) {
+    if (!error?.code) {
+      ElMessage({message: t('passkeyLoginFailed'), type: 'error', plain: true})
+    }
+  } finally {
+    passkeyLoading.value = false
+  }
+}
 
 function showSetName() {
   accountName.value = userStore.user.name
@@ -283,6 +387,34 @@ function submitPwd() {
 
     .language-select {
       width: 100px;
+    }
+  }
+
+  .passkey {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 40px;
+
+    .passkey-status {
+      display: block;
+    }
+
+    .passkey-time {
+      color: var(--regular-text-color);
+      font-size: 12px;
+      margin-top: 6px;
+    }
+
+    .passkey-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+
+      .el-button {
+        margin-left: 0;
+      }
     }
   }
 
