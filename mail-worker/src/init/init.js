@@ -29,8 +29,45 @@ const dbInit = {
 		await this.v2_8DB(c);
 		await this.v2_9DB(c);
 		await this.v3_0DB(c);
+		await this.v3_1DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v3_1DB(c) {
+		try {
+			await c.env.db.prepare(`ALTER TABLE setting ADD COLUMN passkey INTEGER NOT NULL DEFAULT 0;`).run();
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
+
+		await c.env.db.batch([
+			c.env.db.prepare(`
+				CREATE TABLE IF NOT EXISTS passkey_credential (
+					passkey_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL UNIQUE,
+					user_handle TEXT NOT NULL UNIQUE,
+					credential_id TEXT NOT NULL UNIQUE,
+					public_key TEXT NOT NULL,
+					counter INTEGER NOT NULL DEFAULT 0,
+					transports TEXT NOT NULL DEFAULT '[]',
+					create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)
+			`),
+			c.env.db.prepare(`
+				CREATE TABLE IF NOT EXISTS passkey_challenge (
+					challenge_id TEXT PRIMARY KEY,
+					type TEXT NOT NULL,
+					challenge TEXT NOT NULL,
+					user_id INTEGER NOT NULL DEFAULT 0,
+					user_handle TEXT NOT NULL DEFAULT '',
+					origin TEXT NOT NULL,
+					rp_id TEXT NOT NULL,
+					expires_at INTEGER NOT NULL
+				)
+			`),
+			c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_passkey_challenge_expires ON passkey_challenge(expires_at)`),
+		]);
 	},
 
 	async v3_0DB(c) {

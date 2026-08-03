@@ -213,16 +213,24 @@ const loginService = {
 			throw new BizError(t('notExistUser'));
 		}
 
+		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password) && !noVerifyPwd) {
+			throw new BizError(t('IncorrectPwd'));
+		}
+
+		return this.loginUser(c, userRow);
+	},
+
+	async loginUser(c, userRow) {
+		if (!userRow) {
+			throw new BizError(t('notExistUser'));
+		}
+
 		if(userRow.isDel === isDel.DELETE) {
 			throw new BizError(t('isDelUser'));
 		}
 
 		if(userRow.status === userConst.status.BAN) {
 			throw new BizError(t('isBanUser'));
-		}
-
-		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password) && !noVerifyPwd) {
-			throw new BizError(t('IncorrectPwd'));
 		}
 
 		const uuid = uuidv4();

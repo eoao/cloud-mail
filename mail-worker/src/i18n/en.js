@@ -1,4 +1,9 @@
 const en = {
+	passkeyDisabled: 'Passkey sign-in is disabled',
+	passkeyChallengeInvalid: 'The Passkey request expired. Please try again',
+	passkeyVerifyFailed: 'Passkey verification failed',
+	passkeyNotFound: 'No matching Passkey was found',
+	passkeyOriginInvalid: 'Passkeys are unavailable on this site',
 	IncorrectPwd: 'Incorrect password',
 	addAccountDisabled: 'Add Email Address feature is disabled',
 	regDisabled: 'Sign up is disabled',

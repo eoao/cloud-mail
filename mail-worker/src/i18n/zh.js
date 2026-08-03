@@ -1,4 +1,9 @@
 const zh = {
+	passkeyDisabled: 'Passkey 登录未启用',
+	passkeyChallengeInvalid: 'Passkey 请求已过期，请重试',
+	passkeyVerifyFailed: 'Passkey 验证失败',
+	passkeyNotFound: '未找到可用的 Passkey',
+	passkeyOriginInvalid: '当前站点无法使用 Passkey',
 	IncorrectPwd: '密码输入错误',
 	addAccountDisabled: '添加邮箱功能已关闭',
 	regDisabled: '注册功能已关闭',
