@@ -1,6 +1,7 @@
 name = "${NAME}"
 main = "src/index.js"
 compatibility_date = "2025-06-04"
+compatibility_flags = ["nodejs_compat"]
 
 [observability]
 enabled = true
