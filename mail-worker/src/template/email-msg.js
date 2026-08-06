@@ -4,7 +4,8 @@ const TELEGRAM_MESSAGE_LIMIT = 3500;
 const TRUNCATED_SUFFIX = '...';
 
 function escapeHtml(text = '') {
-	return text
+	return String(text)
+		.replace(/&/g, '&amp;')
 		.replace(/</g, '&lt;')
 		.replace(/>/g, '&gt;');
 }

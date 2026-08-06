@@ -6,7 +6,9 @@
 		"dev": "wrangler dev --config wrangler-dev.toml",
 		"test": "wrangler deploy --config wrangler-test.toml",
 		"deploy": "wrangler deploy",
-		"start": "wrangler dev"
+		"start": "wrangler dev",
+		"security:test": "node --experimental-default-type=module scripts/security-smoke-test.mjs",
+		"security:migration-test": "python3 scripts/security-migration-test.py"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.7.5",

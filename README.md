@@ -156,3 +156,16 @@ cloud-mail
 
 
 
+
+## 后端安全加固说明
+
+本版本已完成后端深度安全审计，覆盖鉴权与权限、OAuth、注册与 Turnstile、邮件与附件、D1/KV/R2/S3、Resend Webhook、APNs、初始化和敏感配置。
+
+部署前请务必阅读 [BACKEND_SECURITY_AUDIT.md](./BACKEND_SECURITY_AUDIT.md)。升级时需要：
+
+1. 轮换并通过 `wrangler secret put` 配置 `jwt_secret`、`init_secret`、`resend_webhook_secret` 等 Secret。
+2. 使用 `POST /api/init` 和 `X-Init-Secret` 执行最新数据库迁移。
+3. 重新构建并部署 `mail-vue`，以启用 OAuth state 和一次性绑定凭证。
+4. 在 staging 环境验证邮件收发、Webhook、对象存储和 APNs 后再切换生产流量。
+
+旧的 `GET /api/init/:secret` 和无签名 Resend Webhook 默认关闭，不建议重新开启。
