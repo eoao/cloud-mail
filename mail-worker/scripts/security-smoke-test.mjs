@@ -5,10 +5,12 @@ import { verifySvixWebhook } from '../src/utils/webhook-utils.js';
 
 const password = 'A-strong-test-password-123!';
 const { salt, hash } = await cryptoUtils.hashPassword(password);
-assert.match(hash, /^pbkdf2-sha256\$210000\$/);
+assert.match(hash, /^pbkdf2-sha256\$20000\$/);
 assert.equal(await cryptoUtils.verifyPassword(password, salt, hash), true);
 assert.equal(await cryptoUtils.verifyPassword(`${password}x`, salt, hash), false);
-assert.equal(cryptoUtils.needsRehash(hash), false);
+assert.equal(cryptoUtils.needsRehash(hash, 20_000), false);
+assert.equal(cryptoUtils.iterationsFromEnv({ password_pbkdf2_iterations: '50000' }), 50_000);
+assert.equal(cryptoUtils.iterationsFromEnv({ password_pbkdf2_iterations: '1' }), 10_000);
 assert.match(cryptoUtils.genRandomPwd(20), /^[A-Za-z0-9!@#$%*_\-]{20}$/);
 
 const context = { env: { jwt_secret: 'test-only-jwt-secret-that-is-longer-than-32-characters' } };

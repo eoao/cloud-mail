@@ -1,7 +1,9 @@
 const encoder = new TextEncoder();
 
 const PASSWORD_SCHEME = 'pbkdf2-sha256';
-const PBKDF2_ITERATIONS = 210_000;
+const DEFAULT_PBKDF2_ITERATIONS = 20_000;
+const MIN_PBKDF2_ITERATIONS = 10_000;
+const MAX_PBKDF2_ITERATIONS = 2_000_000;
 const KEY_LENGTH_BITS = 256;
 
 function bytesToBase64(bytes) {
@@ -40,13 +42,20 @@ const saltHashUtils = {
 		return bytesToBase64(array);
 	},
 
-	async hashPassword(password) {
+	iterationsFromEnv(env = {}) {
+		const raw = Number(env?.password_pbkdf2_iterations);
+		if (!Number.isSafeInteger(raw)) return DEFAULT_PBKDF2_ITERATIONS;
+		return Math.max(MIN_PBKDF2_ITERATIONS, Math.min(raw, MAX_PBKDF2_ITERATIONS));
+	},
+
+	async hashPassword(password, iterations = DEFAULT_PBKDF2_ITERATIONS) {
+		const safeIterations = Math.max(MIN_PBKDF2_ITERATIONS, Math.min(Number(iterations) || DEFAULT_PBKDF2_ITERATIONS, MAX_PBKDF2_ITERATIONS));
 		const salt = this.generateSalt(24);
-		const hash = await this.genHashPassword(password, salt);
+		const hash = await this.genHashPassword(password, salt, safeIterations);
 		return { salt, hash };
 	},
 
-	async genHashPassword(password, salt, iterations = PBKDF2_ITERATIONS) {
+	async genHashPassword(password, salt, iterations = DEFAULT_PBKDF2_ITERATIONS) {
 		const material = await crypto.subtle.importKey(
 			'raw',
 			encoder.encode(password),
@@ -76,7 +85,7 @@ const saltHashUtils = {
 			const parts = storedHash.split('$');
 			const iterations = Number(parts[1]);
 			const expected = base64ToBytes(parts[2] || '');
-			if (!Number.isSafeInteger(iterations) || iterations < 100_000 || iterations > 2_000_000 || !expected) {
+			if (!Number.isSafeInteger(iterations) || iterations < MIN_PBKDF2_ITERATIONS || iterations > MAX_PBKDF2_ITERATIONS || !expected) {
 				return false;
 			}
 			const actualHash = await this.genHashPassword(inputPassword, salt, iterations);
@@ -90,10 +99,11 @@ const saltHashUtils = {
 		return timingSafeEqual(actual, expected);
 	},
 
-	needsRehash(storedHash) {
+	needsRehash(storedHash, targetIterations = DEFAULT_PBKDF2_ITERATIONS) {
 		if (typeof storedHash !== 'string' || !storedHash.startsWith(`${PASSWORD_SCHEME}$`)) return true;
 		const iterations = Number(storedHash.split('$')[1]);
-		return !Number.isSafeInteger(iterations) || iterations < PBKDF2_ITERATIONS;
+		const target = Math.max(MIN_PBKDF2_ITERATIONS, Math.min(Number(targetIterations) || DEFAULT_PBKDF2_ITERATIONS, MAX_PBKDF2_ITERATIONS));
+		return !Number.isSafeInteger(iterations) || iterations < target;
 	},
 
 	genRandomPwd(length = 16) {

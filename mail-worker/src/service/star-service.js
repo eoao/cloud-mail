@@ -2,12 +2,13 @@ import orm from '../entity/orm';
 import { star } from '../entity/star';
 import emailService from './email-service';
 import BizError from '../error/biz-error';
-import { and, desc, eq, lt, sql, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, lt, sql, inArray } from 'drizzle-orm';
 import email from '../entity/email';
 import { isDel } from '../const/entity-const';
 import attService from './att-service';
 import { t } from '../i18n/i18n';
 import { toId, toPageSize } from '../utils/input-utils';
+import { normalizeEmailCursor } from '../utils/email-query-utils';
 
 const starService = {
 	async add(c, params = {}, userId) {
@@ -29,33 +30,42 @@ const starService = {
 	},
 
 	async list(c, params = {}, userId) {
-		const cursor = params.emailId === undefined || params.emailId === null || params.emailId === ''
-			? Number.MAX_SAFE_INTEGER
-			: toId(params.emailId, 'emailId');
+		// Starred 页面第一页也发送 0，按“最新一封之前”处理。
+		const cursor = normalizeEmailCursor(params.emailId, { timeSort: 0 });
 		const size = toPageSize(params.size, { defaultValue: 20, max: 50 });
+		const baseConditions = and(
+			eq(star.userId, userId),
+			eq(email.userId, userId),
+			eq(email.isDel, isDel.NORMAL)
+		);
 
-		const list = await orm(c).select({
-			isStar: sql`1`.as('isStar'),
-			starId: star.starId,
-			...email
-		}).from(star)
-			.innerJoin(email, eq(email.emailId, star.emailId))
-			.where(and(
-				eq(star.userId, userId),
-				eq(email.userId, userId),
-				eq(email.isDel, isDel.NORMAL),
-				lt(star.emailId, cursor)
-			))
-			.orderBy(desc(star.emailId))
-			.limit(size)
-			.all();
+		const [list, totalRow] = await Promise.all([
+			orm(c).select({
+				isStar: sql`1`.as('isStar'),
+				starId: star.starId,
+				...email
+			}).from(star)
+				.innerJoin(email, eq(email.emailId, star.emailId))
+				.where(and(baseConditions, lt(star.emailId, cursor)))
+				.orderBy(desc(star.emailId))
+				.limit(size)
+				.all(),
+			orm(c).select({ total: count() }).from(star)
+				.innerJoin(email, eq(email.emailId, star.emailId))
+				.where(baseConditions)
+				.get()
+		]);
 
 		const emailIds = list.map(item => item.emailId);
 		const attsList = emailIds.length ? await attService.selectByEmailIds(c, emailIds) : [];
 		for (const emailRow of list) {
 			emailRow.attList = attsList.filter(attRow => attRow.emailId === emailRow.emailId);
 		}
-		return { list };
+		return {
+			list,
+			total: Number(totalRow?.total || 0),
+			latestEmail: list[0] || { emailId: 0 }
+		};
 	},
 
 	async removeByEmailIds(c, emailIds = []) {

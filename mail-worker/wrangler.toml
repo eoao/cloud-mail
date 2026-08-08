@@ -43,7 +43,6 @@ crons = ["0 16 * * *"]	#每天晚上12点执行每日任务,刷新分析缓存
 #admin = ""				#管理员的邮箱	示例: admin@example.com
 #cors_origins = "https://mail.example.com" # 允许跨域的前端来源，多个使用逗号分隔
 #oauth_state_required = true
-#allow_legacy_init = false
 #allow_unsigned_resend_webhook = false
 #turnstile_hostnames = "mail.example.com"
 # jwt_secret、init_secret、resend_webhook_secret 等敏感值请使用 `wrangler secret put`，不要写入 [vars]

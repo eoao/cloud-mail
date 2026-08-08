@@ -18,13 +18,26 @@ import { t } from '../i18n/i18n.js';
 import verifyRecordService from './verify-record-service';
 import settingService from './setting-service';
 import rateLimitService from './rate-limit-service';
-import { normalizeEmail, toTrimmedString } from '../utils/input-utils';
+import { normalizeEmail, parseBooleanEnv, toTrimmedString } from '../utils/input-utils';
 
 function validatePassword(password) {
 	if (typeof password !== 'string') throw new BizError(t('emailAndPwdEmpty'), 400);
 	if (password.length < 6) throw new BizError(t('pwdMinLength'), 400);
 	if (password.length > 30) throw new BizError(t('pwdLengthLimit'), 400);
 	return password;
+}
+
+
+function assertLoginRuntime(c) {
+	if (!c?.env?.db || typeof c.env.db.prepare !== 'function') {
+		throw new BizError('D1 数据库未绑定，请检查 Worker 的 db binding', 503);
+	}
+	if (!c?.env?.kv || typeof c.env.kv.get !== 'function' || typeof c.env.kv.put !== 'function') {
+		throw new BizError('KV 数据库未绑定，请检查 Worker 的 kv binding', 503);
+	}
+	if (typeof c.env.jwt_secret !== 'string' || c.env.jwt_secret.length < 32) {
+		throw new BizError('JWT_SECRET 未配置或长度不足，请在 Cloudflare Worker Secrets 中设置 jwt_secret（至少32个字符）', 503);
+	}
 }
 
 function isAllowedDomain(setting, email) {
@@ -107,7 +120,7 @@ const loginService = {
 				consumedKey = true;
 			}
 
-			const { salt, hash } = await cryptoUtils.hashPassword(password);
+			const { salt, hash } = await cryptoUtils.hashPassword(password, cryptoUtils.iterationsFromEnv(c.env));
 			userId = await userService.insert(c, { email, regKeyId, password: hash, salt, type: roleId });
 			try {
 				await accountService.insert(c, { userId, email, name: prefix });
@@ -157,6 +170,7 @@ const loginService = {
 	},
 
 	async login(c, params = {}, noVerifyPwd = false) {
+		assertLoginRuntime(c);
 		await rateLimitService.check(c, noVerifyPwd ? 'oauth-login' : 'login', {
 			limit: Number(c.env.login_rate_limit) || 20,
 			windowSeconds: 900
@@ -172,11 +186,17 @@ const loginService = {
 		if (!noVerifyPwd) {
 			const valid = await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password);
 			if (!valid) throw new BizError(t('IncorrectPwd'), 401);
-			if (cryptoUtils.needsRehash(userRow.password)) {
-				const { salt, hash } = await cryptoUtils.hashPassword(password);
-				await userService.updatePasswordHash(c, userRow.userId, hash, salt);
-				userRow.password = hash;
-				userRow.salt = salt;
+			const targetIterations = cryptoUtils.iterationsFromEnv(c.env);
+			if (parseBooleanEnv(c.env.password_rehash_on_login, false)
+				&& cryptoUtils.needsRehash(userRow.password, targetIterations)) {
+				try {
+					const { salt, hash } = await cryptoUtils.hashPassword(password, targetIterations);
+					await userService.updatePasswordHash(c, userRow.userId, hash, salt);
+					userRow.password = hash;
+					userRow.salt = salt;
+				} catch (error) {
+					console.warn(`[${c.get('requestId') || 'login'}] 密码哈希升级失败，保留旧哈希继续登录`, error?.message || error);
+				}
 			}
 		}
 

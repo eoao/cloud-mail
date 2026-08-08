@@ -57,8 +57,9 @@ const userService = {
 		user.permKeys = permKeys;
 		user.role = roleRow;
 		user.type = userRow.type;
+		user.isAdmin = isAdminEmail(c, userRow.email);
 
-		if (isAdminEmail(c, userRow.email)) {
+		if (user.isAdmin) {
 			user.role = constant.ADMIN_ROLE
 			user.type = 0;
 		}
@@ -71,7 +72,7 @@ const userService = {
 		const password = params?.password;
 		if (typeof password !== 'string' || password.length < 6) throw new BizError(t('pwdMinLength'), 400);
 		if (password.length > 30) throw new BizError(t('pwdLengthLimit'), 400);
-		const { salt, hash } = await cryptoUtils.hashPassword(password);
+		const { salt, hash } = await cryptoUtils.hashPassword(password, cryptoUtils.iterationsFromEnv(c.env));
 		const uid = toId(userId, 'userId');
 		await this.updatePasswordHash(c, uid, hash, salt);
 		await c.env.kv.delete(KvConst.AUTH_INFO + uid);
@@ -366,7 +367,7 @@ const userService = {
 		if (!role) throw new BizError(t('roleNotExist'));
 		if (!roleService.hasAvailDomainPerm(role.availDomain, email)) throw new BizError(t('noDomainPermAdd'), 403);
 
-		const { salt, hash } = await saltHashUtils.hashPassword(password);
+		const { salt, hash } = await saltHashUtils.hashPassword(password, saltHashUtils.iterationsFromEnv(c.env));
 		const userId = await this.insert(c, { email, password: hash, salt, type });
 		try {
 			await accountService.insert(c, { userId, email, name: emailUtils.getName(email) });

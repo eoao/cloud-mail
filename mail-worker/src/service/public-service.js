@@ -107,7 +107,7 @@ const publicService = {
 			if (!roleService.hasAvailDomainPerm(selectedRole.availDomain, normalizedEmail)) {
 				throw new BizError(`角色无权使用域名: ${normalizedEmail}`, 403);
 			}
-			const { salt, hash } = await cryptoUtils.hashPassword(password);
+			const { salt, hash } = await cryptoUtils.hashPassword(password, cryptoUtils.iterationsFromEnv(c.env));
 			preparedRows.push({ email: normalizedEmail, salt, hash, roleId: selectedRole.roleId });
 		}
 

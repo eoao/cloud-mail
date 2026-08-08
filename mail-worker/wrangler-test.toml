@@ -41,7 +41,6 @@ domain = ["example.com"]				#邮件域名可可配置多个 示例: ["example1.c
 admin = "admin@example.com"
 cors_origins = "http://localhost:5173"
 oauth_state_required = true
-allow_legacy_init = false
 allow_unsigned_resend_webhook = false				#管理员的邮箱	示例: admin@example.com
 
 [build]

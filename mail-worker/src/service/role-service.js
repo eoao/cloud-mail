@@ -88,9 +88,9 @@ const roleService = {
 				.where(eq(perm.type, permConst.type.BUTTON)).all()
 		]);
 		for (const item of roleList) {
-			item.banEmail = String(item.banEmail || '').split(',').filter(Boolean);
-			item.availDomain = String(item.availDomain || '').split(',').filter(Boolean);
-			item.permIds = permList.filter(row => row.roleId === item.roleId).map(row => row.permId);
+			item.banEmail = String(item.banEmail || '').split(',').map(value => value.trim()).filter(Boolean);
+			item.availDomain = String(item.availDomain || '').split(',').map(value => value.trim().replace(/^@/, '').toLowerCase()).filter(Boolean);
+			item.permIds = [...new Set(permList.filter(row => row.roleId === item.roleId).map(row => row.permId))];
 		}
 		return roleList;
 	},
@@ -124,6 +124,10 @@ const roleService = {
 		if (!defaultRole || defaultRole.roleId === roleId) throw new BizError('默认身份不可用，无法删除', 409);
 		await c.env.db.batch([
 			c.env.db.prepare('UPDATE user SET type = ? WHERE type = ?').bind(defaultRole.roleId, roleId),
+			// Invite codes encode a specific role grant. Keeping them after that role
+			// disappears creates broken registrations with a blank/invalid role. Remove
+			// those codes rather than silently changing their authorization semantics.
+			c.env.db.prepare('DELETE FROM reg_key WHERE role_id = ?').bind(roleId),
 			c.env.db.prepare('DELETE FROM role_perm WHERE role_id = ?').bind(roleId),
 			c.env.db.prepare('DELETE FROM role WHERE role_id = ? AND is_default = 0').bind(roleId)
 		]);

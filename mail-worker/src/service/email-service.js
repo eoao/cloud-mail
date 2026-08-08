@@ -23,26 +23,20 @@ import account from "../entity/account";
 import { att } from '../entity/att';
 import { sanitizeEmailHtml } from '../utils/html-utils';
 import { normalizeEmailList, toId, toIdList, toInteger, toPageSize, toTrimmedString } from '../utils/input-utils';
+import { normalizeEmailCursor, normalizeEmailLatestQuery, normalizeEmailListQuery } from '../utils/email-query-utils';
 
 const emailService = {
 
 	async list(c, params = {}, userId) {
 		const uid = toId(userId, 'userId');
-		const accountId = toId(params.accountId, 'accountId');
-		const size = toPageSize(params.size, { defaultValue: 20, max: 50 });
-		const timeSort = toInteger(params.timeSort, { defaultValue: 0, min: 0, max: 1 });
-		const type = toInteger(params.type, { name: 'type', required: true, min: 0, max: 1 });
-		const emailId = toInteger(params.emailId, {
-			name: 'emailId',
-			defaultValue: timeSort ? 0 : 9_999_999_999,
-			min: 0,
-			max: Number.MAX_SAFE_INTEGER
-		});
-		const accountRow = await accountService.selectById(c, accountId);
-		if (!accountRow || accountRow.userId !== uid) throw new BizError(t('noUserAccount'), 404);
-		const allReceive = params.allReceive === undefined || params.allReceive === ''
-			? Number(accountRow.allReceive || 0)
-			: toInteger(params.allReceive, { name: 'allReceive', min: 0, max: 1 });
+		const { accountId, size, timeSort, type, emailId, allReceive: requestedAllReceive } = normalizeEmailListQuery(params);
+
+		let accountRow = null;
+		if (accountId > 0) {
+			accountRow = await accountService.selectById(c, accountId);
+			if (!accountRow || accountRow.userId !== uid) throw new BizError(t('noUserAccount'), 404);
+		}
+		const allReceive = requestedAllReceive ?? Number(accountRow?.allReceive || 0);
 
 		const baseConditions = [
 			allReceive ? eq(1, 1) : eq(email.accountId, accountId),
@@ -512,13 +506,13 @@ const emailService = {
 
 	async latest(c, params = {}, userId) {
 		const uid = toId(userId, 'userId');
-		const accountId = toId(params.accountId, 'accountId');
-		const emailId = toInteger(params.emailId, { name: 'emailId', defaultValue: 0, min: 0, max: Number.MAX_SAFE_INTEGER });
-		const accountRow = await accountService.selectById(c, accountId);
-		if (!accountRow || accountRow.userId !== uid) throw new BizError(t('noUserAccount'), 404);
-		const allReceive = params.allReceive === undefined || params.allReceive === ''
-			? Number(accountRow.allReceive || 0)
-			: toInteger(params.allReceive, { name: 'allReceive', min: 0, max: 1 });
+		const { accountId, emailId, allReceive: requestedAllReceive } = normalizeEmailLatestQuery(params);
+		let accountRow = null;
+		if (accountId > 0) {
+			accountRow = await accountService.selectById(c, accountId);
+			if (!accountRow || accountRow.userId !== uid) throw new BizError(t('noUserAccount'), 404);
+		}
+		const allReceive = requestedAllReceive ?? Number(accountRow?.allReceive || 0);
 		const list = await orm(c).select({ ...email }).from(email)
 			.leftJoin(account, eq(account.accountId, email.accountId))
 			.where(and(
@@ -587,11 +581,11 @@ const emailService = {
 	async allList(c, params = {}) {
 		const timeSort = toInteger(params.timeSort, { defaultValue: 0, min: 0, max: 1 });
 		const size = toPageSize(params.size, { defaultValue: 20, max: 50 });
-		const emailId = toInteger(params.emailId, {
-			name: 'emailId', defaultValue: timeSort ? 0 : 9_999_999_999, min: 0, max: Number.MAX_SAFE_INTEGER
-		});
+		// Web 的 /all-mail 第一页历史上固定发送 emailId=0。降序查询时
+		// 这个 0 是“从最新一封开始”的哨兵，不是实际数据库游标。
+		const emailId = normalizeEmailCursor(params.emailId, { timeSort });
 		const type = toTrimmedString(params.type, { name: 'type', max: 16 });
-		if (type && !['send', 'receive', 'delete', 'noone'].includes(type)) throw new BizError('type取值无效', 400);
+		if (type && !['all', 'send', 'receive', 'delete', 'noone'].includes(type)) throw new BizError('type取值无效', 400);
 		const name = toTrimmedString(params.name, { name: 'name', max: 200 });
 		const subject = toTrimmedString(params.subject, { name: 'subject', max: 200 });
 		const accountEmail = toTrimmedString(params.accountEmail, { name: 'accountEmail', max: 254 });

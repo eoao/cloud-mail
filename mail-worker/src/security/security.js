@@ -9,6 +9,7 @@ import { t } from '../i18n/i18n';
 import app from '../hono/hono';
 
 const publicRoutes = [
+	['GET', '/health'],
 	['POST', '/login'],
 	['POST', '/register'],
 	['GET', '/setting/websiteConfig'],
@@ -35,16 +36,16 @@ const permissionPaths = {
 	],
 	'account:delete': [['DELETE', '/account/delete']],
 	'my:delete': [['DELETE', '/my/delete']],
-	'role:add': [['POST', '/role/add']],
-	'role:set': [['PUT', '/role/set'], ['PUT', '/role/setDefault']],
+	'role:add': [['POST', '/role/add'], ['GET', '/role/tree']],
+	'role:set': [['PUT', '/role/set'], ['PUT', '/role/setDefault'], ['GET', '/role/tree']],
 	'role:query': [['GET', '/role/list'], ['GET', '/role/tree'], ['GET', '/role/selectUse']],
 	'role:delete': [['DELETE', '/role/delete']],
-	'user:query': [['GET', '/user/list'], ['GET', '/user/allAccount']],
-	'user:add': [['POST', '/user/add']],
+	'user:query': [['GET', '/user/list'], ['GET', '/user/allAccount'], ['GET', '/role/selectUse']],
+	'user:add': [['POST', '/user/add'], ['GET', '/role/selectUse']],
 	'user:reset-send': [['PUT', '/user/resetSendCount']],
 	'user:set-pwd': [['PUT', '/user/setPwd']],
 	'user:set-status': [['PUT', '/user/setStatus'], ['PUT', '/user/restore']],
-	'user:set-type': [['PUT', '/user/setType']],
+	'user:set-type': [['PUT', '/user/setType'], ['GET', '/role/selectUse']],
 	'user:delete': [['DELETE', '/user/delete'], ['DELETE', '/user/deleteAccount']],
 	'all-email:query': [['GET', '/allEmail/list'], ['GET', '/allEmail/latest']],
 	'all-email:delete': [['DELETE', '/allEmail/delete'], ['DELETE', '/allEmail/batchDelete']],
@@ -53,11 +54,12 @@ const permissionPaths = {
 		['PUT', '/setting/set'],
 		['PUT', '/setting/setBackground'],
 		['DELETE', '/setting/deleteBackground'],
-		['PUT', '/setting/setBlacklist']
+		['PUT', '/setting/setBlacklist'],
+		['POST', '/setting/testTelegram']
 	],
 	'analysis:query': [['GET', '/analysis/echarts']],
-	'reg-key:add': [['POST', '/regKey/add']],
-	'reg-key:query': [['GET', '/regKey/list'], ['GET', '/regKey/history']],
+	'reg-key:add': [['POST', '/regKey/add'], ['GET', '/role/selectUse']],
+	'reg-key:query': [['GET', '/regKey/list'], ['GET', '/regKey/history'], ['GET', '/role/selectUse']],
 	'reg-key:delete': [['DELETE', '/regKey/delete'], ['DELETE', '/regKey/clearNotUse']]
 };
 

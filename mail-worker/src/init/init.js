@@ -1,20 +1,21 @@
 import settingService from '../service/setting-service';
 import emailUtils from '../utils/email-utils';
 import { emailConst } from '../const/entity-const';
-import { parseBooleanEnv } from '../utils/input-utils';
 import rateLimitService from '../service/rate-limit-service';
 
 const dbInit = {
 	async init(c, suppliedSecret, legacy = false) {
-		await rateLimitService.check(c, 'database-init', { limit: 5, windowSeconds: 3600 });
-		if (legacy && !parseBooleanEnv(c.env.allow_legacy_init, false)) {
-			return c.text('Legacy init endpoint is disabled', 404);
-		}
-		const expectedSecret = legacy ? (c.env.init_secret || c.env.jwt_secret) : c.env.init_secret;
+		// GET /init/:secret 与 POST /init 共用同一个独立初始化密钥。
+		// 不再回退使用 JWT 密钥，避免扩大 JWT_SECRET 的暴露范围。
+		const expectedSecret = c.env.init_secret;
 		if (typeof expectedSecret !== 'string' || expectedSecret.length < 32) {
 			return c.text('Init secret is missing or too short', 503);
 		}
+
+		// 只有无效认证尝试才消耗公开 IP 限流。CI 使用正确密钥执行幂等迁移时，
+		// 不应被之前的失败探测或连续部署锁死。
 		if (!this.safeEqual(String(suppliedSecret || ''), expectedSecret)) {
+			await rateLimitService.check(c, 'database-init-invalid-secret', { limit: 5, windowSeconds: 3600 });
 			return c.text('Init secret mismatch', 401);
 		}
 
@@ -61,12 +62,14 @@ const dbInit = {
 			`DELETE FROM role_perm WHERE id NOT IN (SELECT MIN(id) FROM role_perm GROUP BY role_id, perm_id)`,
 			`CREATE UNIQUE INDEX IF NOT EXISTS idx_role_perm_unique ON role_perm(role_id, perm_id)`,
 			`UPDATE role SET is_default = 0 WHERE is_default = 1 AND role_id NOT IN (SELECT MIN(role_id) FROM role WHERE is_default = 1)`,
+			`UPDATE role SET is_default = 1 WHERE role_id = (SELECT MIN(role_id) FROM role) AND NOT EXISTS (SELECT 1 FROM role WHERE is_default = 1)`,
 			`CREATE UNIQUE INDEX IF NOT EXISTS idx_role_single_default ON role(is_default) WHERE is_default = 1`,
 			`CREATE INDEX IF NOT EXISTS idx_device_token_user_created ON device_token(user_id, create_time DESC)`,
 			`CREATE INDEX IF NOT EXISTS idx_user_role_state ON user(type, is_del, status)`,
 			`CREATE INDEX IF NOT EXISTS idx_verify_record_updated ON verify_record(update_time)`,
 			`DELETE FROM star WHERE NOT EXISTS (SELECT 1 FROM email WHERE email.email_id = star.email_id)`,
-			`DELETE FROM role_perm WHERE NOT EXISTS (SELECT 1 FROM role WHERE role.role_id = role_perm.role_id) OR NOT EXISTS (SELECT 1 FROM perm WHERE perm.perm_id = role_perm.perm_id)`
+			`DELETE FROM role_perm WHERE NOT EXISTS (SELECT 1 FROM role WHERE role.role_id = role_perm.role_id) OR NOT EXISTS (SELECT 1 FROM perm WHERE perm.perm_id = role_perm.perm_id)`,
+			`DELETE FROM reg_key WHERE NOT EXISTS (SELECT 1 FROM role WHERE role.role_id = reg_key.role_id)`
 		];
 		for (const statement of statements) {
 			try { await c.env.db.prepare(statement).run(); }

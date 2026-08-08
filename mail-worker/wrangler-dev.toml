@@ -43,5 +43,4 @@ domain = ["example.com", "example2.com", "example3.com", "example4.com"]
 admin = "admin@example.com"
 cors_origins = "http://localhost:5173"
 oauth_state_required = true
-allow_legacy_init = false
 allow_unsigned_resend_webhook = false
