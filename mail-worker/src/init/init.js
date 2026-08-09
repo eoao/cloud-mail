@@ -40,6 +40,8 @@ const dbInit = {
 		await this.v3_1DB(c);
 		await this.v3_2DB(c);
 		await this.v3_3DB(c);
+		await this.v3_4DB(c);
+		await this.v3_5DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
 	},
@@ -51,20 +53,50 @@ const dbInit = {
 		return diff === 0;
 	},
 
+
+	async v3_5DB(c) {
+		// CF Mail Push Gateway split: CloudMail no longer stores APNs device tokens or Apple
+		// credentials. Keep only scoped webhook subscriptions issued by the independent gateway.
+		const statements = [
+			`CREATE TABLE IF NOT EXISTS push_subscription (
+				push_id INTEGER PRIMARY KEY AUTOINCREMENT,
+				user_id INTEGER NOT NULL,
+				subscription_id TEXT NOT NULL,
+				push_secret TEXT NOT NULL,
+				account_ref TEXT NOT NULL DEFAULT '',
+				create_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`,
+			`DELETE FROM push_subscription WHERE push_id NOT IN (SELECT MAX(push_id) FROM push_subscription GROUP BY user_id, subscription_id)`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS idx_push_subscription_user_id_unique ON push_subscription(user_id, subscription_id)`,
+			`CREATE INDEX IF NOT EXISTS idx_push_subscription_user_created ON push_subscription(user_id, create_time DESC)`,
+			// Privacy cleanup from the pre-gateway implementation. The legacy table remains empty so
+			// older idempotent migrations can still run without a hard failure during rollback windows.
+			`DELETE FROM device_token`
+		];
+		for (const statement of statements) {
+			try { await c.env.db.prepare(statement).run(); }
+			catch (error) { console.warn(`跳过 Push Gateway 迁移：${error.message}`); }
+		}
+	},
+
+
+	async v3_4DB(c) {
+		// Legacy cleanup only. v3.5 replaces direct device-token storage with scoped Gateway
+		// subscriptions. Do not add new indexes or ownership semantics to this deprecated table.
+		try { await c.env.db.prepare(`DELETE FROM device_token`).run(); }
+		catch { /* clean installs/upgrades without the legacy table are fine */ }
+	},
+
 	async v3_3DB(c) {
 		const statements = [
 			`DELETE FROM oauth WHERE user_id = 0 AND EXISTS (SELECT 1 FROM oauth o2 WHERE o2.oauth_user_id = oauth.oauth_user_id AND o2.user_id > 0)`,
 			`DELETE FROM oauth WHERE oauth_id NOT IN (SELECT MIN(oauth_id) FROM oauth GROUP BY oauth_user_id)`,
 			`CREATE UNIQUE INDEX IF NOT EXISTS idx_oauth_user_id_unique ON oauth(oauth_user_id) WHERE oauth_user_id IS NOT NULL AND oauth_user_id != ''`,
-			`DELETE FROM device_token WHERE token_id NOT IN (SELECT MAX(token_id) FROM device_token GROUP BY device_token)`,
-			`DROP INDEX IF EXISTS idx_device_token_unique`,
-			`CREATE UNIQUE INDEX IF NOT EXISTS idx_device_token_global_unique ON device_token(device_token)`,
 			`DELETE FROM role_perm WHERE id NOT IN (SELECT MIN(id) FROM role_perm GROUP BY role_id, perm_id)`,
 			`CREATE UNIQUE INDEX IF NOT EXISTS idx_role_perm_unique ON role_perm(role_id, perm_id)`,
 			`UPDATE role SET is_default = 0 WHERE is_default = 1 AND role_id NOT IN (SELECT MIN(role_id) FROM role WHERE is_default = 1)`,
 			`UPDATE role SET is_default = 1 WHERE role_id = (SELECT MIN(role_id) FROM role) AND NOT EXISTS (SELECT 1 FROM role WHERE is_default = 1)`,
 			`CREATE UNIQUE INDEX IF NOT EXISTS idx_role_single_default ON role(is_default) WHERE is_default = 1`,
-			`CREATE INDEX IF NOT EXISTS idx_device_token_user_created ON device_token(user_id, create_time DESC)`,
 			`CREATE INDEX IF NOT EXISTS idx_user_role_state ON user(type, is_del, status)`,
 			`CREATE INDEX IF NOT EXISTS idx_verify_record_updated ON verify_record(update_time)`,
 			`DELETE FROM star WHERE NOT EXISTS (SELECT 1 FROM email WHERE email.email_id = star.email_id)`,

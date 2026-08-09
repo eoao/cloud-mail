@@ -36,6 +36,8 @@ run_worker_first = true
 
 
 [vars]
+# CF Mail iOS remote push: point at the independent Push Gateway; leave unset/blank to disable.
+# cfmail_push_gateway_url = "https://push.readori.com"
 ai_model = ""
 analysis_cache = false
 orm_log = false

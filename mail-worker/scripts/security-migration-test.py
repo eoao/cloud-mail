@@ -51,14 +51,10 @@ v33 = [
 "DELETE FROM oauth WHERE user_id = 0 AND EXISTS (SELECT 1 FROM oauth o2 WHERE o2.oauth_user_id = oauth.oauth_user_id AND o2.user_id > 0)",
 "DELETE FROM oauth WHERE oauth_id NOT IN (SELECT MIN(oauth_id) FROM oauth GROUP BY oauth_user_id)",
 "CREATE UNIQUE INDEX IF NOT EXISTS idx_oauth_user_id_unique ON oauth(oauth_user_id) WHERE oauth_user_id IS NOT NULL AND oauth_user_id != ''",
-"DELETE FROM device_token WHERE token_id NOT IN (SELECT MAX(token_id) FROM device_token GROUP BY device_token)",
-"DROP INDEX IF EXISTS idx_device_token_unique",
-"CREATE UNIQUE INDEX IF NOT EXISTS idx_device_token_global_unique ON device_token(device_token)",
 "DELETE FROM role_perm WHERE id NOT IN (SELECT MIN(id) FROM role_perm GROUP BY role_id, perm_id)",
 "CREATE UNIQUE INDEX IF NOT EXISTS idx_role_perm_unique ON role_perm(role_id, perm_id)",
 "UPDATE role SET is_default = 0 WHERE is_default = 1 AND role_id NOT IN (SELECT MIN(role_id) FROM role WHERE is_default = 1)",
 "CREATE UNIQUE INDEX IF NOT EXISTS idx_role_single_default ON role(is_default) WHERE is_default = 1",
-"CREATE INDEX IF NOT EXISTS idx_device_token_user_created ON device_token(user_id, create_time DESC)",
 "CREATE INDEX IF NOT EXISTS idx_user_role_state ON user(type, is_del, status)",
 "CREATE INDEX IF NOT EXISTS idx_verify_record_updated ON verify_record(update_time)",
 "DELETE FROM star WHERE NOT EXISTS (SELECT 1 FROM email WHERE email.email_id = star.email_id)",
@@ -71,7 +67,7 @@ assert cur.execute('select count(*), count(distinct user_id||":"||email_id) from
 assert cur.execute('select count,update_time from verify_record').fetchone() == (5,'2026-01-02')
 assert cur.execute("select user_id from oauth where oauth_user_id='u1'").fetchone() == (10,)
 assert cur.execute("select count(*) from oauth where oauth_user_id='u2'").fetchone() == (1,)
-assert cur.execute("select user_id from device_token where device_token='aa'").fetchone() == (2,)
+assert cur.execute("select count(*) from device_token where device_token='aa'").fetchone() == (2,)
 assert cur.execute('select count(*) from role_perm').fetchone() == (1,)
 assert cur.execute('select count(*) from role where is_default=1').fetchone() == (1,)
 print('security migrations: PASS')

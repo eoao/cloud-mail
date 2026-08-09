@@ -11,8 +11,8 @@ import roleService from '../service/role-service';
 import userService from '../service/user-service';
 import telegramService from '../service/telegram-service';
 import aiService from '../service/ai-service';
-import deviceTokenService from '../service/device-token-service';
-import apnsService from '../service/apns-service';
+import pushSubscriptionService from '../service/push-subscription-service';
+import pushWebhookService from '../service/push-webhook-service';
 import verifyUtils from '../utils/verify-utils';
 
 const MAX_RAW_BYTES = 35 * 1024 * 1024;
@@ -220,8 +220,8 @@ export async function email(message, env, ctx) {
 		}
 		if (emailRow.userId) {
 			backgroundTasks.push((async () => {
-				const tokens = await deviceTokenService.listByUserId(context, emailRow.userId);
-				if (tokens.length) await apnsService.pushNewMail(context, tokens.map(item => item.deviceToken), emailRow);
+				const subscriptions = await pushSubscriptionService.listByUserId(context, emailRow.userId);
+				if (subscriptions.length) await pushWebhookService.pushNewMail(context, subscriptions, emailRow);
 			})());
 		}
 		if (backgroundTasks.length) ctx.waitUntil(Promise.allSettled(backgroundTasks));

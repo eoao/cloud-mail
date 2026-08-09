@@ -48,14 +48,7 @@ jobs:
       LINUXDO_CALLBACK_URL: ${{ secrets.LINUXDO_CALLBACK_URL || vars.LINUXDO_CALLBACK_URL }}
       LINUXDO_SWITCH: ${{ secrets.LINUXDO_SWITCH || vars.LINUXDO_SWITCH || 'false' }}
       RESEND_WEBHOOK_SECRET: ${{ secrets.RESEND_WEBHOOK_SECRET }}
-      # GitHub Repository secrets use upper-case names. The Worker bindings are
-      # intentionally written as lower-case names later because apns-service.js
-      # reads c.env.apns_*.
-      APNS_BUNDLE_ID: ${{ secrets.APNS_BUNDLE_ID }}
-      APNS_ENVIRONMENT: ${{ secrets.APNS_ENVIRONMENT }}
-      APNS_KEY_ID: ${{ secrets.APNS_KEY_ID }}
-      APNS_PRIVATE_KEY: ${{ secrets.APNS_PRIVATE_KEY }}
-      APNS_TEAM_ID: ${{ secrets.APNS_TEAM_ID }}
+      CFMAIL_PUSH_GATEWAY_URL: ${{ secrets.CFMAIL_PUSH_GATEWAY_URL || vars.CFMAIL_PUSH_GATEWAY_URL || '' }}
 
     steps:
       - name: Checkout repository without external actions
@@ -168,20 +161,6 @@ jobs:
           admin = os.environ["ADMIN"].strip()
           if "@" not in admin or len(admin) > 320:
               raise SystemExit("::error::ADMIN must be a valid administrator email address")
-
-          apns_names = [
-              "APNS_BUNDLE_ID", "APNS_ENVIRONMENT", "APNS_KEY_ID",
-              "APNS_PRIVATE_KEY", "APNS_TEAM_ID"
-          ]
-          apns_missing = [name for name in apns_names if not os.environ.get(name, "").strip()]
-          if apns_missing:
-              raise SystemExit(
-                  "::error::Missing APNs Repository secrets: " + ", ".join(apns_missing)
-              )
-          if os.environ["APNS_ENVIRONMENT"].strip().lower() not in {"production", "sandbox"}:
-              raise SystemExit("::error::APNS_ENVIRONMENT must be production or sandbox")
-          if "BEGIN PRIVATE KEY" not in os.environ["APNS_PRIVATE_KEY"]:
-              raise SystemExit("::error::APNS_PRIVATE_KEY does not look like an Apple .p8 private key")
 
           print("✅ Environment validation completed")
           PY
@@ -349,6 +328,7 @@ jobs:
               f'linuxdo_client_id = {toml_string(os.environ.get("LINUXDO_CLIENT_ID", "").strip())}',
               f'linuxdo_callback_url = {toml_string(os.environ.get("LINUXDO_CALLBACK_URL", "").strip())}',
               f'linuxdo_switch = {str(as_bool("LINUXDO_SWITCH")).lower()}',
+              f'cfmail_push_gateway_url = {toml_string(os.environ.get("CFMAIL_PUSH_GATEWAY_URL", "").strip())}',
               '',
           ]
           Path("wrangler-ci.toml").write_text("\n".join(lines), encoding="utf-8")
@@ -370,16 +350,11 @@ jobs:
           import os
           from pathlib import Path
 
-          # GitHub Repository secrets are mapped to the exact lower-case Worker
-          # binding names consumed by mail-worker/src/service/apns-service.js.
+          # CloudMail itself holds only application secrets. Apple APNs provider credentials
+          # live exclusively in the independent CF Mail Push Gateway deployment.
           required = {
               "jwt_secret": os.environ["JWT_SECRET"],
               "init_secret": os.environ["INIT_SECRET"],
-              "apns_bundle_id": os.environ["APNS_BUNDLE_ID"],
-              "apns_environment": os.environ["APNS_ENVIRONMENT"].strip().lower(),
-              "apns_key_id": os.environ["APNS_KEY_ID"],
-              "apns_private_key": os.environ["APNS_PRIVATE_KEY"],
-              "apns_team_id": os.environ["APNS_TEAM_ID"],
           }
           optional = {
               "linuxdo_client_secret": os.environ.get("LINUXDO_CLIENT_SECRET", ""),
@@ -439,7 +414,12 @@ jobs:
 
           # 自定义域名绑定在刚发布后可能需要几十秒传播。不要只依赖 CUSTOM_DOMAIN；
           # 优先使用 workers.dev，失败后再回退到自定义域名，并对传播延迟进行重试。
-          mapfile -t BASE_URLS < <(python3 <<'PY'
+          # Do not use mapfile/readarray here: macOS runners still ship Bash 3.2.
+          BASE_URLS=()
+          while IFS= read -r base_url; do
+            [ -n "$base_url" ] || continue
+            BASE_URLS[${#BASE_URLS[@]}]="$base_url"
+          done < <(python3 <<'PY'
           import os
           from urllib.parse import urlsplit
 

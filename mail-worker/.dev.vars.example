@@ -5,11 +5,9 @@ init_secret="replace-with-a-different-32-character-secret"
 resend_webhook_secret="whsec_replace-me"
 linuxdo_client_secret="replace-me"
 
-# Optional APNs secrets
-apns_key_id=""
-apns_team_id=""
-apns_bundle_id=""
-apns_private_key=""
+# Optional CF Mail Push Gateway. Leave blank to disable remote push for this CloudMail server.
+# The self-hosted CloudMail server never needs APNs keys or device tokens.
+cfmail_push_gateway_url="https://push.readori.com"
 
 # Optional Turnstile response constraints
 turnstile_hostnames="localhost"
