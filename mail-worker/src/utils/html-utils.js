@@ -1,7 +1,9 @@
 import { parseHTML } from 'linkedom';
 
+// Keep <style> blocks: modern HTML email relies heavily on class selectors and media queries.
+// Active/interactive elements remain blocked, while CSS itself is reduced to a safe subset below.
 const BLOCKED_TAGS = [
-	'script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'textarea',
+	'script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'textarea',
 	'select', 'option', 'meta', 'base', 'link', 'frame', 'frameset', 'applet'
 ];
 const URL_ATTRS = ['href', 'src', 'action', 'formaction', 'xlink:href'];
@@ -18,6 +20,23 @@ function isUnsafeUrl(value = '', { allowCid = true, allowDataImage = true } = {}
 	return false;
 }
 
+/**
+ * Preserve the parts of email CSS needed by real-world newsletters/transactional mail while
+ * removing mechanisms that can execute legacy expressions or import arbitrary styles/fonts.
+ * Network images referenced by CSS remain possible; clients still apply their remote-content
+ * privacy policy at render time.
+ */
+export function sanitizeEmailCss(css = '') {
+	return String(css)
+		.replace(/\/\*[\s\S]*?\*\//g, '')
+		.replace(/@charset\s+[^;]+;/gi, '')
+		.replace(/@import\s+(?:url\s*\([^)]*\)|['"][^'"]*['"]|[^;]+)\s*;?/gi, '')
+		.replace(/@font-face\s*\{[\s\S]*?\}/gi, '')
+		.replace(/expression\s*\([^)]*\)/gi, '')
+		.replace(/(?:behavior|-moz-binding)\s*:\s*[^;}]+[;}]?/gi, '')
+		.replace(/url\s*\(\s*(['"]?)\s*(?:javascript|vbscript):[\s\S]*?\1\s*\)/gi, 'none');
+}
+
 export function sanitizeEmailHtml(html) {
 	if (!html || typeof html !== 'string') return '';
 
@@ -27,6 +46,14 @@ export function sanitizeEmailHtml(html) {
 	const { document } = parseHTML(wrapped);
 
 	document.querySelectorAll(BLOCKED_TAGS.join(',')).forEach(element => element.remove());
+
+	// Do not throw away legitimate email styling. Sanitize the CSS text and keep media queries,
+	// selectors, colors, table layout and responsive rules intact.
+	document.querySelectorAll('style').forEach(element => {
+		const cleaned = sanitizeEmailCss(element.textContent || '');
+		if (cleaned.trim()) element.textContent = cleaned;
+		else element.remove();
+	});
 
 	document.querySelectorAll('*').forEach(element => {
 		for (const attribute of [...element.attributes]) {
@@ -44,10 +71,7 @@ export function sanitizeEmailHtml(html) {
 			}
 
 			if (name === 'style') {
-				const cleaned = value
-					.replace(/expression\s*\([^)]*\)/gi, '')
-					.replace(/url\s*\(\s*['"]?\s*javascript:[^)]*\)/gi, '')
-					.replace(/@import/gi, '');
+				const cleaned = sanitizeEmailCss(value);
 				if (cleaned.trim()) element.setAttribute('style', cleaned);
 				else element.removeAttribute('style');
 			}

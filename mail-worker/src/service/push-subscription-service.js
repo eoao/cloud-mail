@@ -5,6 +5,7 @@ import BizError from '../error/biz-error';
 import { toId, toTrimmedString } from '../utils/input-utils';
 
 const MAX_SUBSCRIPTIONS_PER_USER = 10;
+const PREVIEW_MODES = new Set(['privateOnly', 'sender', 'senderAndSubject', 'fullPreview']);
 
 function normalizeSubscriptionId(value) {
 	const subscriptionId = toTrimmedString(value, { name: '推送订阅 ID', required: true, max: 128 });
@@ -27,21 +28,78 @@ function normalizeAccountRef(value) {
 	return accountRef.toLowerCase();
 }
 
+function normalizeBoolean(value, fallback) {
+	if (value === undefined || value === null) return fallback;
+	if (typeof value === 'boolean') return value;
+	if (value === 1 || value === '1' || value === 'true') return true;
+	if (value === 0 || value === '0' || value === 'false') return false;
+	return fallback;
+}
+
+function normalizeMinute(value, fallback) {
+	const number = Number(value);
+	return Number.isInteger(number) && number >= 0 && number <= 1439 ? number : fallback;
+}
+
+function normalizePreviewMode(value) {
+	const mode = String(value || 'privateOnly').trim();
+	return PREVIEW_MODES.has(mode) ? mode : 'privateOnly';
+}
+
+function normalizeTimeZone(value) {
+	const zone = String(value || 'UTC').trim().slice(0, 64) || 'UTC';
+	try {
+		new Intl.DateTimeFormat('en-US', { timeZone: zone }).format(new Date());
+		return zone;
+	} catch {
+		return 'UTC';
+	}
+}
+
+function normalizePreferences(input = {}) {
+	return {
+		previewMode: normalizePreviewMode(input.previewMode),
+		soundEnabled: normalizeBoolean(input.soundEnabled, true),
+		badgeEnabled: normalizeBoolean(input.badgeEnabled, true),
+		quietHoursEnabled: normalizeBoolean(input.quietHoursEnabled, false),
+		quietStartMinutes: normalizeMinute(input.quietStartMinutes, 22 * 60),
+		quietEndMinutes: normalizeMinute(input.quietEndMinutes, 7 * 60),
+		timeZone: normalizeTimeZone(input.timeZone)
+	};
+}
+
 const pushSubscriptionService = {
-	async register(c, userId, subscriptionIdValue, pushSecretValue, accountRefValue = '') {
+	async register(c, userId, subscriptionIdValue, pushSecretValue, accountRefValue = '', preferenceInput = {}) {
 		const uid = toId(userId, 'userId');
 		const subscriptionId = normalizeSubscriptionId(subscriptionIdValue);
 		const pushSecret = normalizePushSecret(pushSecretValue);
 		const accountRef = normalizeAccountRef(accountRefValue);
+		const prefs = normalizePreferences(preferenceInput);
 
 		await c.env.db.prepare(`
-			INSERT INTO push_subscription (user_id, subscription_id, push_secret, account_ref, create_time)
-			VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+			INSERT INTO push_subscription (
+				user_id, subscription_id, push_secret, account_ref,
+				preview_mode, sound_enabled, badge_enabled,
+				quiet_hours_enabled, quiet_start_minutes, quiet_end_minutes, time_zone,
+				create_time
+			)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 			ON CONFLICT(user_id, subscription_id) DO UPDATE SET
 				push_secret = excluded.push_secret,
 				account_ref = excluded.account_ref,
+				preview_mode = excluded.preview_mode,
+				sound_enabled = excluded.sound_enabled,
+				badge_enabled = excluded.badge_enabled,
+				quiet_hours_enabled = excluded.quiet_hours_enabled,
+				quiet_start_minutes = excluded.quiet_start_minutes,
+				quiet_end_minutes = excluded.quiet_end_minutes,
+				time_zone = excluded.time_zone,
 				create_time = CURRENT_TIMESTAMP
-		`).bind(uid, subscriptionId, pushSecret, accountRef).run();
+		`).bind(
+			uid, subscriptionId, pushSecret, accountRef,
+			prefs.previewMode, prefs.soundEnabled ? 1 : 0, prefs.badgeEnabled ? 1 : 0,
+			prefs.quietHoursEnabled ? 1 : 0, prefs.quietStartMinutes, prefs.quietEndMinutes, prefs.timeZone
+		).run();
 
 		const current = await orm(c).select({ pushId: pushSubscription.pushId }).from(pushSubscription)
 			.where(eq(pushSubscription.userId, uid)).orderBy(desc(pushSubscription.pushId)).all();

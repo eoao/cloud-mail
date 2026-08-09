@@ -64,7 +64,8 @@ export const attConst = {
 	},
 	type: {
 		ATT: 0,
-		EMBED: 1
+		EMBED: 1,
+		RAW: 2
 	}
 }
 

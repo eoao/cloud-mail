@@ -42,6 +42,7 @@ const dbInit = {
 		await this.v3_3DB(c);
 		await this.v3_4DB(c);
 		await this.v3_5DB(c);
+		await this.v3_6DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
 	},
@@ -51,6 +52,29 @@ const dbInit = {
 		let diff = 0;
 		for (let index = 0; index < left.length; index += 1) diff |= left.charCodeAt(index) ^ right.charCodeAt(index);
 		return diff === 0;
+	},
+
+
+	async v3_6DB(c) {
+		// CF MAIL per-device notification preferences. Every ALTER is independently idempotent
+		// so older self-hosted databases can upgrade without a destructive rebuild.
+		const statements = [
+			`ALTER TABLE push_subscription ADD COLUMN preview_mode TEXT NOT NULL DEFAULT 'privateOnly'`,
+			`ALTER TABLE push_subscription ADD COLUMN sound_enabled INTEGER NOT NULL DEFAULT 1`,
+			`ALTER TABLE push_subscription ADD COLUMN badge_enabled INTEGER NOT NULL DEFAULT 1`,
+			`ALTER TABLE push_subscription ADD COLUMN quiet_hours_enabled INTEGER NOT NULL DEFAULT 0`,
+			`ALTER TABLE push_subscription ADD COLUMN quiet_start_minutes INTEGER NOT NULL DEFAULT 1320`,
+			`ALTER TABLE push_subscription ADD COLUMN quiet_end_minutes INTEGER NOT NULL DEFAULT 420`,
+			`ALTER TABLE push_subscription ADD COLUMN time_zone TEXT NOT NULL DEFAULT 'UTC'`
+		];
+		for (const statement of statements) {
+			try { await c.env.db.prepare(statement).run(); }
+			catch (error) {
+				if (!String(error?.message || '').toLowerCase().includes('duplicate column')) {
+					console.warn(`跳过通知偏好迁移：${error.message}`);
+				}
+			}
+		}
 	},
 
 

@@ -11,7 +11,8 @@
     "security:migration-test": "python3 scripts/security-migration-test.py && python3 scripts/push-gateway-migration-test.py",
     "email:list:test": "node --experimental-default-type=module scripts/email-list-contract-test.mjs",
     "telegram:test": "node --experimental-default-type=module scripts/telegram-forward-contract-test.mjs",
-    "push:contract-test": "node scripts/push-webhook-contract-test.mjs"
+    "push:contract-test": "node scripts/push-webhook-contract-test.mjs",
+    "rich-email:test": "node scripts/rich-email-sanitizer-contract-test.mjs"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.7.5",

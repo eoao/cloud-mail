@@ -217,6 +217,41 @@ const attService = {
 		if (rows.length) await orm(c).insert(att).values(rows).run();
 	},
 
+	async saveRawSource(c, emailRow, raw) {
+		if (!emailRow?.emailId || !emailRow?.userId || !raw) return null;
+		const bytes = raw instanceof ArrayBuffer
+			? new Uint8Array(raw)
+			: (ArrayBuffer.isView(raw) ? new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength) : null);
+		if (!bytes?.byteLength || bytes.byteLength > 35 * 1024 * 1024) return null;
+		const key = constant.ATTACHMENT_PREFIX + 'raw-' + await fileUtils.getBuffHash(bytes) + '.eml';
+		const filename = `message-${emailRow.emailId}.eml`;
+		await r2Service.putObj(c, key, bytes, {
+			contentType: 'message/rfc822',
+			contentDisposition: contentDisposition('inline', filename)
+		});
+		await orm(c).insert(att).values({
+			userId: emailRow.userId,
+			emailId: emailRow.emailId,
+			accountId: emailRow.accountId,
+			key,
+			filename,
+			mimeType: 'message/rfc822',
+			size: bytes.byteLength,
+			type: attConst.type.RAW
+		}).run();
+		return key;
+	},
+
+	async rawSourceResponse(c, emailId, userId) {
+		const row = await orm(c).select().from(att).where(and(
+			eq(att.emailId, toId(emailId, 'emailId')),
+			eq(att.userId, toId(userId, 'userId')),
+			eq(att.type, attConst.type.RAW)
+		)).get();
+		if (!row?.key) return null;
+		return await r2Service.response(c, row.key);
+	},
+
 	async removeByUserIds(c, userIds) { await this.removeAttByField(c, 'user_id', userIds); },
 	async removeByEmailIds(c, emailIds) { await this.removeAttByField(c, 'email_id', emailIds); },
 

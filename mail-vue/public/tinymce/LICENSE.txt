@@ -1,0 +1,6 @@
+TinyMCE
+Copyright (c) 2024, Ephox Corporation DBA Tiny Technologies, Inc.
+
+Licensed under the GNU General Public License, version 2 or later.
+Project source: https://github.com/tinymce/tinymce
+License: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html

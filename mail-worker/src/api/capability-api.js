@@ -11,6 +11,7 @@ app.get('/capabilities', async (c) => {
 		emailDetail: true,
 		extendedRecipients: true,
 		pushRegistration: pushWebhookService.isConfigured(c),
-		telegramTest: true
+		telegramTest: true,
+		rawMessageSource: true
 	}));
 });

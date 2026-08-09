@@ -203,6 +203,12 @@ export async function email(message, env, ctx) {
 			message.setReject('Attachment storage failed');
 			return;
 		}
+		// Enhanced CF MAIL keeps the original RFC822 source out of D1 and in object storage.
+		// Failure is non-fatal: core mail delivery must never depend on the optional source viewer.
+		if (emailRow.userId) {
+			try { await attService.saveRawSource(context, emailRow, raw); }
+			catch (error) { console.warn('原始邮件源保存失败', error); }
+		}
 		emailRow = await emailService.completeReceive(context, accountRow ? emailConst.status.RECEIVE : emailConst.status.NOONE, emailRow.emailId);
 
 		const ruleRecipients = String(ruleEmail || '').split(',').map(normalizeAddress).filter(Boolean);
@@ -220,8 +226,11 @@ export async function email(message, env, ctx) {
 		}
 		if (emailRow.userId) {
 			backgroundTasks.push((async () => {
-				const subscriptions = await pushSubscriptionService.listByUserId(context, emailRow.userId);
-				if (subscriptions.length) await pushWebhookService.pushNewMail(context, subscriptions, emailRow);
+				const [subscriptions, unreadCount] = await Promise.all([
+					pushSubscriptionService.listByUserId(context, emailRow.userId),
+					emailService.unreadCount(context, emailRow.userId)
+				]);
+				if (subscriptions.length) await pushWebhookService.pushNewMail(context, subscriptions, emailRow, unreadCount);
 			})());
 		}
 		if (backgroundTasks.length) ctx.waitUntil(Promise.allSettled(backgroundTasks));

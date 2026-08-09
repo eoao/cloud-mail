@@ -27,6 +27,20 @@ import { normalizeEmailCursor, normalizeEmailLatestQuery, normalizeEmailListQuer
 
 const emailService = {
 
+	async unreadCount(c, userId) {
+		const uid = toId(userId, 'userId');
+		const row = await orm(c).select({ total: count() }).from(email)
+			.leftJoin(account, eq(account.accountId, email.accountId))
+			.where(and(
+				eq(email.userId, uid),
+				eq(email.type, emailConst.type.RECEIVE),
+				eq(email.unread, emailConst.unread.UNREAD),
+				eq(email.isDel, isDel.NORMAL),
+				eq(account.isDel, isDel.NORMAL)
+			)).get();
+		return Math.max(0, Number(row?.total || 0));
+	},
+
 	async list(c, params = {}, userId) {
 		const uid = toId(userId, 'userId');
 		const { accountId, size, timeSort, type, emailId, allReceive: requestedAllReceive } = normalizeEmailListQuery(params);
@@ -721,7 +735,7 @@ const emailService = {
 	},
 
 	// 原来的接口都是列表查询，没有"按 id 查单封邮件"的能力。iOS App 点了推送通知
-	// 跳转到具体那封邮件时需要这个（对应 CLOUD_MAIL_PUSH_PATCH.md 的第五步）。
+	// 跳转到具体那封邮件时需要这个。
 	// star 表照 list() 的写法一起 join 一下，保证返回的字段跟 /email/list 完全一致，
 	// 不然从推送点进来的这一封邮件会在 App 里显示成"没加星标"，跟列表页不一致。
 	async detail(c, params = {}, userId) {

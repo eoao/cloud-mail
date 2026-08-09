@@ -7,6 +7,8 @@ linuxdo_client_secret="replace-me"
 
 # Optional CF Mail Push Gateway. Leave blank to disable remote push for this CloudMail server.
 # The self-hosted CloudMail server never needs APNs keys or device tokens.
+# Optional. Omit to use the official CF MAIL gateway automatically.
+# Set to "disabled" to turn remote CloudMail push off.
 cfmail_push_gateway_url="https://push.readori.com"
 
 # Optional Turnstile response constraints
