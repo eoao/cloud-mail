@@ -34,9 +34,6 @@ const oauthService = {
 
 		const { code } = params;
 
-		let token = '';
-		let userInfo = {}
-
 		const reqParams = new URLSearchParams()
 		reqParams.append('client_id', c.env.linuxdo_client_id)
 		reqParams.append('client_secret', c.env.linuxdo_client_secret)
@@ -54,7 +51,7 @@ const oauthService = {
 			throw new BizError(tokenRes.statusText)
 		}
 
-		token = await tokenRes.json()
+		const token = await tokenRes.json()
 
 		const userRes = await fetch('https://connect.linux.do/api/user', {
 			headers: {
@@ -66,23 +63,166 @@ const oauthService = {
 			throw new BizError(userRes.statusText)
 		}
 
-		userInfo = await userRes.json();
+		const userInfo = await userRes.json();
 
 		userInfo.oauthUserId = String(userInfo.id);
 		userInfo.active = userInfo.active ? 0 : 1;
 		userInfo.silenced = userInfo.silenced ? 0 : 1;
 		userInfo.trustLevel = userInfo.trust_level;
 		userInfo.avatar = userInfo.avatar_url;
+		userInfo.platform = 'linuxdo';
 
-		const  oauthRow = await this.saveUser(c, userInfo);
+		return await this.saveAndLogin(c, userInfo)
+	},
+
+	async githubLogin(c, params) {
+
+		const { code } = params;
+
+		const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"Accept": "application/json"
+			},
+			body: JSON.stringify({
+				client_id: c.env.github_client_id,
+				client_secret: c.env.github_client_secret,
+				code: code,
+				redirect_uri: c.env.github_callback_url
+			})
+		});
+
+		if (!tokenRes.ok) {
+			throw new BizError(tokenRes.statusText);
+		}
+
+		const token = await tokenRes.json();
+
+		if (token.error) {
+			throw new BizError(token.error_description || token.error);
+		}
+
+		const userRes = await fetch('https://api.github.com/user', {
+			headers: {
+				Authorization: 'Bearer ' + token.access_token,
+				'User-Agent': 'cloud-mail'
+			}
+		});
+
+		if (!userRes.ok) {
+			throw new BizError(userRes.statusText);
+		}
+
+		const userInfo = await userRes.json();
+
+		userInfo.oauthUserId = String(userInfo.id);
+		userInfo.username = userInfo.login;
+		userInfo.avatar = userInfo.avatar_url;
+		userInfo.platform = 'github';
+
+		return await this.saveAndLogin(c, userInfo);
+	},
+
+	async gitlabLogin(c, params) {
+
+		const { code } = params;
+
+		const reqParams = new URLSearchParams()
+		reqParams.append('client_id', c.env.gitlab_client_id)
+		reqParams.append('client_secret', c.env.gitlab_client_secret)
+		reqParams.append('code', code)
+		reqParams.append('redirect_uri', c.env.gitlab_callback_url)
+		reqParams.append('grant_type', 'authorization_code')
+
+		const tokenRes = await fetch("https://gitlab.com/oauth/token", {
+			method: "POST",
+			headers: { "Content-Type": "application/x-www-form-urlencoded" },
+			body: reqParams.toString()
+		});
+
+		if (!tokenRes.ok) {
+			throw new BizError(tokenRes.statusText);
+		}
+
+		const token = await tokenRes.json();
+
+		const userRes = await fetch('https://gitlab.com/api/v4/user', {
+			headers: {
+				Authorization: 'Bearer ' + token.access_token
+			}
+		});
+
+		if (!userRes.ok) {
+			throw new BizError(userRes.statusText);
+		}
+
+		const userInfo = await userRes.json();
+
+		userInfo.oauthUserId = String(userInfo.id);
+		userInfo.username = userInfo.username;
+		userInfo.name = userInfo.name;
+		userInfo.avatar = userInfo.avatar_url;
+		userInfo.platform = 'gitlab';
+
+		return await this.saveAndLogin(c, userInfo);
+	},
+
+	async googleLogin(c, params) {
+
+		const { code } = params;
+
+		const reqParams = new URLSearchParams()
+		reqParams.append('client_id', c.env.google_client_id)
+		reqParams.append('client_secret', c.env.google_client_secret)
+		reqParams.append('code', code)
+		reqParams.append('redirect_uri', c.env.google_callback_url)
+		reqParams.append('grant_type', 'authorization_code')
+
+		const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+			method: "POST",
+			headers: { "Content-Type": "application/x-www-form-urlencoded" },
+			body: reqParams.toString()
+		});
+
+		if (!tokenRes.ok) {
+			throw new BizError(tokenRes.statusText);
+		}
+
+		const token = await tokenRes.json();
+
+		const userRes = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+			headers: {
+				Authorization: 'Bearer ' + token.access_token
+			}
+		});
+
+		if (!userRes.ok) {
+			throw new BizError(userRes.statusText);
+		}
+
+		const userInfo = await userRes.json();
+
+		userInfo.oauthUserId = String(userInfo.sub);
+		userInfo.username = userInfo.email;
+		userInfo.name = userInfo.name;
+		userInfo.avatar = userInfo.picture;
+		userInfo.platform = 'google';
+
+		return await this.saveAndLogin(c, userInfo);
+	},
+
+	async saveAndLogin(c, userInfo) {
+
+		const oauthRow = await this.saveUser(c, userInfo);
 		const userRow = await userService.selectByIdIncludeDel(c, oauthRow.userId);
 
 		if (!userRow) {
-			return { userInfo: oauthRow, token: null }
+			return { userInfo: oauthRow, token: null };
 		}
 
 		const JwtToken = await loginService.login(c, { email: userRow.email, password: null }, true);
-		return { userInfo: oauthRow, token: JwtToken }
+		return { userInfo: oauthRow, token: JwtToken };
 	},
 
 	async saveUser(c, userInfo) {

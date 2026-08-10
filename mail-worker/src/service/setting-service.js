@@ -74,6 +74,18 @@ const settingService = {
 		setting.linuxdoCallbackUrl = c.env.linuxdo_callback_url;
 		setting.linuxdoSwitch = linuxdoSwitch;
 
+		setting.githubClientId = c.env.github_client_id;
+		setting.githubCallbackUrl = c.env.github_callback_url;
+		setting.githubSwitch = this.parseBoolean(c.env.github_switch);
+
+		setting.gitlabClientId = c.env.gitlab_client_id;
+		setting.gitlabCallbackUrl = c.env.gitlab_callback_url;
+		setting.gitlabSwitch = this.parseBoolean(c.env.gitlab_switch);
+
+		setting.googleClientId = c.env.google_client_id;
+		setting.googleCallbackUrl = c.env.google_callback_url;
+		setting.googleSwitch = this.parseBoolean(c.env.google_switch);
+
 		setting.emailPrefixFilter = setting.emailPrefixFilter.split(",").filter(Boolean);
 
 		c.set?.('setting', setting);
@@ -231,9 +243,24 @@ const settingService = {
 			linuxdoClientId: settingRow.linuxdoClientId,
 			linuxdoCallbackUrl: settingRow.linuxdoCallbackUrl,
 			linuxdoSwitch: settingRow.linuxdoSwitch,
+			githubClientId: settingRow.githubClientId,
+			githubCallbackUrl: settingRow.githubCallbackUrl,
+			githubSwitch: settingRow.githubSwitch,
+			gitlabClientId: settingRow.gitlabClientId,
+			gitlabCallbackUrl: settingRow.gitlabCallbackUrl,
+			gitlabSwitch: settingRow.gitlabSwitch,
+			googleClientId: settingRow.googleClientId,
+			googleCallbackUrl: settingRow.googleCallbackUrl,
+			googleSwitch: settingRow.googleSwitch,
 			minEmailPrefix: settingRow.minEmailPrefix,
 			projectLink: settingRow.projectLink
 		};
+	},
+
+	parseBoolean(value) {
+		if (typeof value === 'string' && value === 'true') return true;
+		if (value === true) return true;
+		return false;
 	},
 
 };

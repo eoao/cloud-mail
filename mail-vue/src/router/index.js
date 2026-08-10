@@ -60,6 +60,26 @@ const routes = [
         component: () => import('@/views/login/index.vue')
     },
     {
+        path: '/login/github',
+        name: 'loginGithub',
+        component: () => import('@/views/login/index.vue')
+    },
+    {
+        path: '/login/gitlab',
+        name: 'loginGitlab',
+        component: () => import('@/views/login/index.vue')
+    },
+    {
+        path: '/login/google',
+        name: 'loginGoogle',
+        component: () => import('@/views/login/index.vue')
+    },
+    {
+        path: '/login/linuxdo',
+        name: 'loginLinuxdo',
+        component: () => import('@/views/login/index.vue')
+    },
+    {
         path: '/test',
         name: 'test',
         component: () => import('@/views/test/index.vue')
@@ -100,16 +120,16 @@ router.beforeEach((to, from, next) => {
 
     const token = localStorage.getItem('token')
 
-    if (!token && to.name !== 'login') {
+    if (!token && !to.path.startsWith('/login')) {
         return next({name: 'login'})
     }
 
-    if (!token && to.name === 'login') {
+    if (!token && to.path.startsWith('/login')) {
         loadBackground(next)
         return
     }
 
-    if (token && to.name === 'login') {
+    if (token && to.path.startsWith('/login')) {
         return next(from.path)
     }
 
