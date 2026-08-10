@@ -336,7 +336,8 @@ const en = {
     searchUser: 'Search by user',
     searchEmail: 'Search by Email',
     searchSender: 'Search by Sender',
-    userEmail: 'Email Address'
+    userEmail: 'Email Address',
+    notOwner: 'Base email does not belong to you',
 }
 
 export default en

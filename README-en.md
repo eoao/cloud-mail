@@ -65,6 +65,8 @@ With only one domain, you can create multiple different email addresses, similar
 
 - **🤖 CAPTCHA**: Integrated with Turnstile CAPTCHA to prevent automated registration.
 
+- **✉️ Plus Addressing**: Support `user+tag@domain.com` sub-addressing — unregistered sub-addresses auto-fallback to the base address for delivery, and creating a sub-address requires base address ownership.
+
 - **📜 More Features**: Under development...
 
 ## Tech Stack
