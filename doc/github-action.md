@@ -7,17 +7,22 @@
 3. 转到 Settings → Secrets and variables → Actions → New Repository secrets
 4. 添加以下 Secrets：
 
-| Secret 名称             | 必需 | 用途                                                  |
-| ----------------------- | :--: | ----------------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`  |  ✅  | Cloudflare API 令牌（需要 Workers 和相关资源权限）    |
-| `CLOUDFLARE_ACCOUNT_ID` |  ✅  | Cloudflare 账户 ID                                    |
-| `D1_DATABASE_ID`        |  ✅  | 您的 D1 数据库的 ID                                     |
-| `KV_NAMESPACE_ID`       |  ✅  | 您的 KV 命名空间的 ID                                   |
-| `R2_BUCKET_NAME`        |  ✅  | 您的 R2 存储桶的名称                                    |
-| `DOMAIN`                |  ✅  | 您要用于邮件服务的域名（例如 `["xx.xx"]，多域名用,分隔`）        |
-| `ADMIN`                 |  ✅  | 您的管理员邮箱地址（例如 `admin@example.com`）      |
-| `JWT_SECRET`            |  ✅  | 用于生成和验证 JWT 的随机长字符串                     |
-| `INIT_URL`              |  ❌  | （可选）部署后用于初始化数据库的 Worker URL（格式参考下述手动初始化）           |
+| Secret 名称             | 必需 | 用途                                                                  |
+|-------------------------|:----:|-----------------------------------------------------------------------|
+| `CLOUDFLARE_API_TOKEN`  |  ✅  | Cloudflare API 令牌（需要 Workers 和相关资源权限）                    |
+| `CLOUDFLARE_ACCOUNT_ID` |  ✅  | Cloudflare 账户 ID                                                    |
+| `D1_DATABASE_ID`        |  ✅  | 您的 D1 数据库的 ID                                                   |
+| `KV_NAMESPACE_ID`       |  ✅  | 您的 KV 命名空间的 ID                                                 |
+| `R2_BUCKET_NAME`        |  ✅  | 您的 R2 存储桶的名称                                                  |
+| `DOMAIN`                |  ✅  | 您要用于邮件服务的域名（例如 `["xx.xx"]，多域名用,分隔`）             |
+| `ADMIN`                 |  ✅  | 您的管理员邮箱地址（例如 `admin@example.com`）                        |
+| `JWT_SECRET`            |  ✅  | 用于生成和验证 JWT 的随机长字符串                                     |
+| `PROJECT_LINK`          |  ❌  | （可选）是否在登录页显示 GitHub 项目链接（`true` / `false`）          |                           |
+| `LINUXDO_SWITCH`        |  ❌  | LinuxDo OAuth 启用开关（`true` / `false`）                            |                                 |
+| `GITHUB_SWITCH`         |  ❌  | GitHub OAuth 启用开关(`true` / `false`)                               |                               |
+| `GITLAB_SWITCH`         |  ❌  | GitLab OAuth 启用开关(`true` / `false`)                               |                            |
+| `GOOGLE_SWITCH`         |  ❌  | Google OAuth 启用开关(`true` / `false`)                               |
+| `INIT_URL`              |  ❌  | （可选）部署后用于初始化数据库的 Worker URL（格式参考下述手动初始化） |
 
 ---
 

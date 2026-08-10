@@ -28,10 +28,10 @@ jobs:
       AI_MODEL: ${{ secrets.AI_MODEL || vars.AI_MODEL || '@cf/meta/llama-3.1-8b-instruct' }}
       CLOUDFLARE_EMAIL: ${{ secrets.CF_EMAIL || vars.CF_EMAIL || false }}
       ANALYSIS_CACHE: ${{ secrets.ANALYSIS_CACHE || vars.ANALYSIS_CACHE || false }}
-      LINUXDO_CLIENT_ID: ${{ secrets.LINUXDO_CLIENT_ID || vars.LINUXDO_CLIENT_ID }}
-      LINUXDO_CLIENT_SECRET: ${{ secrets.LINUXDO_CLIENT_SECRET || vars.LINUXDO_CLIENT_SECRET }}
-      LINUXDO_CALLBACK_URL: ${{ secrets.LINUXDO_CALLBACK_URL || vars.LINUXDO_CALLBACK_URL }}
       LINUXDO_SWITCH: ${{ secrets.LINUXDO_SWITCH || vars.LINUXDO_SWITCH }}
+      GITHUB_SWITCH: ${{ secrets.GITHUB_SWITCH || vars.GITHUB_SWITCH }}
+      GITLAB_SWITCH: ${{ secrets.GITLAB_SWITCH || vars.GITLAB_SWITCH }}
+      GOOGLE_SWITCH: ${{ secrets.GOOGLE_SWITCH || vars.GOOGLE_SWITCH }}
 
 
     outputs:
