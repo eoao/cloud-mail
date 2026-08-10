@@ -130,6 +130,16 @@ const settingService = {
 		}
 
 		params.resendTokens = JSON.stringify(resendTokens);
+
+		const callbackPlatforms = ['linuxdo', 'github', 'gitlab', 'google'];
+		for (const platform of callbackPlatforms) {
+			const key = platform + 'CallbackUrl';
+			const expectedSuffix = '/login/' + platform;
+			if (params[key] && !params[key].endsWith(expectedSuffix)) {
+				throw new BizError(`Invalid callback URL for ${platform}: must end with ${expectedSuffix}`);
+			}
+		}
+
 		await orm(c).update(setting).set({ ...params }).returning().get();
 		await this.refresh(c);
 	},

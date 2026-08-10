@@ -337,6 +337,10 @@ const zh = {
     searchUser: '搜索用户',
     searchEmail: '搜索邮箱',
     searchSender: '搜索发件人',
-    userEmail: '用户邮箱'
+    userEmail: '用户邮箱',
+    oauthSetting: 'OAuth',
+    clientId: '客户端 ID',
+    clientSecret: '客户端密钥',
+    callbackBase: 'https://domain',
 }
 export default zh

@@ -36,12 +36,16 @@ crons = ["0 16 * * *"]	#每天晚上12点执行每日任务,刷新分析缓存
 
 
 [vars]
-#ai_model = ""			#ai模型,不填默认使用@cf/meta/llama-3.1-8b-instruct
-#analysis_cache = false			#是否开启分析数据缓存
+#ai_model = ""				#ai模型,不填默认使用@cf/meta/llama-3.1-8b-instruct
+#analysis_cache = false		#是否开启分析数据缓存
 #orm_log = false			#是否sql日志
 #domain = []				#邮件域名可可配置多个 示例: ["example1.com","example2.com"]
-#admin = ""				#管理员的邮箱	示例: admin@example.com
+#admin = ""					#管理员的邮箱	示例: admin@example.com
 #jwt_secret = ""			#jwt令牌的密钥,随便填一串字符串
+#linuxdo_switch = ""		#LinuxDo OAuth 开关
+#github_switch = ""			#GitHub OAuth 开关
+#gitlab_switch = ""			#GitLab OAuth 开关
+#google_switch = ""			#Google OAuth 开关
 
 [build]
 command = "pnpm --prefix ../mail-vue install && pnpm --prefix ../mail-vue run build"

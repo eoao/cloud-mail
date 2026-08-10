@@ -337,7 +337,11 @@ const en = {
     searchUser: 'Search by user',
     searchEmail: 'Search by Email',
     searchSender: 'Search by Sender',
-    userEmail: 'Email Address'
+    userEmail: 'Email Address',
+    oauthSetting: 'OAuth',
+    clientId: 'Client ID',
+    clientSecret: 'Client Secret',
+    callbackBase: 'https://domain',
 }
 
 export default en

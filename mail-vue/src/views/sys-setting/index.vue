@@ -492,11 +492,13 @@
         </form>
       </el-dialog>
       <el-dialog v-model="oauthSettingShow" :title="$t('oauthSetting') + ' - ' + oauthForm.label" width="340"
-                 @closed="oauthForm.clientId = ''; oauthForm.clientSecret = ''; oauthForm.callbackUrl = ''">
+                 @closed="oauthForm.clientId = ''; oauthForm.clientSecret = ''; oauthForm.callbackBase = ''">
         <div class="dialog-content">
           <el-input type="text" :placeholder="$t('clientId')" v-model="oauthForm.clientId"/>
           <el-input type="text" style="margin-top: 15px" :placeholder="$t('clientSecret')" v-model="oauthForm.clientSecret"/>
-          <el-input type="text" style="margin-top: 15px" :placeholder="$t('callbackUrl')" v-model="oauthForm.callbackUrl"/>
+          <el-input type="text" style="margin-top: 15px" :placeholder="$t('callbackBase')" v-model="oauthForm.callbackBase">
+            <template #append>/login/{{ oauthForm.key }}</template>
+          </el-input>
           <div style="display: flex; justify-content: flex-end; margin-top: 15px;">
             <el-button type="primary" @click="saveOauth">{{ $t('save') }}</el-button>
           </div>
@@ -914,7 +916,7 @@ const oauthForm = reactive({
   label: '',
   clientId: '',
   clientSecret: '',
-  callbackUrl: '',
+  callbackBase: '',
 })
 
 const s3 = reactive({
@@ -1379,7 +1381,9 @@ function openOauthSetting(p) {
   oauthForm.label = p.label
   oauthForm.clientId = setting.value[p.key + 'ClientId'] || ''
   oauthForm.clientSecret = setting.value[p.key + 'ClientSecret'] || ''
-  oauthForm.callbackUrl = setting.value[p.key + 'CallbackUrl'] || ''
+  const suffix = '/login/' + p.key
+  const fullUrl = setting.value[p.key + 'CallbackUrl'] || ''
+  oauthForm.callbackBase = fullUrl.endsWith(suffix) ? fullUrl.slice(0, -suffix.length) : fullUrl
   oauthSettingShow.value = true
 }
 
@@ -1387,7 +1391,7 @@ function saveOauth() {
   const form = {}
   form[oauthForm.key + 'ClientId'] = oauthForm.clientId
   form[oauthForm.key + 'ClientSecret'] = oauthForm.clientSecret
-  form[oauthForm.key + 'CallbackUrl'] = oauthForm.callbackUrl
+  form[oauthForm.key + 'CallbackUrl'] = oauthForm.callbackBase + '/login/' + oauthForm.key
   editSetting(form)
   oauthSettingShow.value = false
 }
