@@ -272,6 +272,7 @@ const zh = {
     rulesVerify: '规则',
     rulesVerifyTitle: 'IP 每天使用 {count} 次后触发',
     botVerifyMsg: '请完成人机验证',
+    oauthLogin: 'OAuth2',
     noticeTitle: '网站公告',
     noticePopup: '登录弹窗',
     icon: '图标',

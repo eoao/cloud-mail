@@ -341,6 +341,22 @@
             </div>
           </div>
 
+          <!-- OAuth Login Card -->
+          <div class="settings-card">
+            <div class="card-title">{{ $t('oauthLogin') }}</div>
+            <div class="card-content">
+              <div class="setting-item" v-for="p in oauthPlatforms" :key="p.key">
+                <div><span>{{ p.label }}</span></div>
+                <div class="forward">
+                  <span>{{ setting[p.key + 'Switch'] ? $t('enabled') : $t('disabled') }}</span>
+                  <el-button class="opt-button" size="small" type="primary" :disabled="!setting[p.key + 'Switch']" @click="openOauthSetting(p)">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="settings-card">
             <div class="card-title">{{ $t('noticeTitle') }}</div>
             <div class="card-content">
@@ -474,6 +490,17 @@
           <el-input type="text" style="margin-top: 15px" placeholder="Secret Key" v-model="turnstileForm.secretKey"/>
           <el-button type="primary" :loading="settingLoading" @click="saveTurnstileKey">{{ $t('save') }}</el-button>
         </form>
+      </el-dialog>
+      <el-dialog v-model="oauthSettingShow" :title="$t('oauthSetting') + ' - ' + oauthForm.label" width="340"
+                 @closed="oauthForm.clientId = ''; oauthForm.clientSecret = ''; oauthForm.callbackUrl = ''">
+        <div class="dialog-content">
+          <el-input type="text" :placeholder="$t('clientId')" v-model="oauthForm.clientId"/>
+          <el-input type="text" style="margin-top: 15px" :placeholder="$t('clientSecret')" v-model="oauthForm.clientSecret"/>
+          <el-input type="text" style="margin-top: 15px" :placeholder="$t('callbackUrl')" v-model="oauthForm.callbackUrl"/>
+          <div style="display: flex; justify-content: flex-end; margin-top: 15px;">
+            <el-button type="primary" @click="saveOauth">{{ $t('save') }}</el-button>
+          </div>
+        </div>
       </el-dialog>
       <el-dialog
           v-model="showSetBackground"
@@ -873,6 +900,21 @@ const resendTokenForm = reactive({
 const turnstileForm = reactive({
   siteKey: '',
   secretKey: ''
+})
+
+const oauthPlatforms = [
+  { key: 'linuxdo', label: 'LinuxDo' },
+  { key: 'github', label: 'GitHub' },
+  { key: 'gitlab', label: 'GitLab' },
+  { key: 'google', label: 'Google' },
+]
+const oauthSettingShow = ref(false)
+const oauthForm = reactive({
+  key: '',
+  label: '',
+  clientId: '',
+  clientSecret: '',
+  callbackUrl: '',
 })
 
 const s3 = reactive({
@@ -1330,6 +1372,24 @@ function delBackground() {
       })
     })
   })
+}
+
+function openOauthSetting(p) {
+  oauthForm.key = p.key
+  oauthForm.label = p.label
+  oauthForm.clientId = setting.value[p.key + 'ClientId'] || ''
+  oauthForm.clientSecret = setting.value[p.key + 'ClientSecret'] || ''
+  oauthForm.callbackUrl = setting.value[p.key + 'CallbackUrl'] || ''
+  oauthSettingShow.value = true
+}
+
+function saveOauth() {
+  const form = {}
+  form[oauthForm.key + 'ClientId'] = oauthForm.clientId
+  form[oauthForm.key + 'ClientSecret'] = oauthForm.clientSecret
+  form[oauthForm.key + 'CallbackUrl'] = oauthForm.callbackUrl
+  editSetting(form)
+  oauthSettingShow.value = false
 }
 
 function saveTurnstileKey() {

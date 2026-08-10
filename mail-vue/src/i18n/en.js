@@ -272,6 +272,7 @@ const en = {
     rulesVerify: 'Rules',
     rulesVerifyTitle: 'Trigger After {count} Daily Uses per IP',
     botVerifyMsg: 'Please verify that you are human',
+    oauthLogin: 'OAuth2',
     noticeTitle: 'Notice',
     noticePopup: 'Sign-In Popup',
     icon: 'Icon',

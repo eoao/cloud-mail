@@ -5,6 +5,7 @@ import { eq, inArray } from 'drizzle-orm';
 import userService from "./user-service";
 import loginService from "./login-service";
 import cryptoUtils from "../utils/crypto-utils";
+import settingService from "./setting-service";
 
 const oauthService = {
 
@@ -34,11 +35,13 @@ const oauthService = {
 
 		const { code } = params;
 
+		const setting = await settingService.query(c);
+
 		const reqParams = new URLSearchParams()
-		reqParams.append('client_id', c.env.linuxdo_client_id)
-		reqParams.append('client_secret', c.env.linuxdo_client_secret)
+		reqParams.append('client_id', setting.linuxdoClientId)
+		reqParams.append('client_secret', setting.linuxdoClientSecret)
 		reqParams.append('code', code)
-		reqParams.append('redirect_uri', c.env.linuxdo_callback_url)
+		reqParams.append('redirect_uri', setting.linuxdoCallbackUrl)
 		reqParams.append('grant_type', 'authorization_code')
 
 		const tokenRes = await fetch("https://connect.linux.do/oauth2/token", {
@@ -79,6 +82,8 @@ const oauthService = {
 
 		const { code } = params;
 
+		const setting = await settingService.query(c);
+
 		const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
 			method: "POST",
 			headers: {
@@ -86,10 +91,10 @@ const oauthService = {
 				"Accept": "application/json"
 			},
 			body: JSON.stringify({
-				client_id: c.env.github_client_id,
-				client_secret: c.env.github_client_secret,
+				client_id: setting.githubClientId,
+				client_secret: setting.githubClientSecret,
 				code: code,
-				redirect_uri: c.env.github_callback_url
+				redirect_uri: setting.githubCallbackUrl
 			})
 		});
 
@@ -128,11 +133,13 @@ const oauthService = {
 
 		const { code } = params;
 
+		const setting = await settingService.query(c);
+
 		const reqParams = new URLSearchParams()
-		reqParams.append('client_id', c.env.gitlab_client_id)
-		reqParams.append('client_secret', c.env.gitlab_client_secret)
+		reqParams.append('client_id', setting.gitlabClientId)
+		reqParams.append('client_secret', setting.gitlabClientSecret)
 		reqParams.append('code', code)
-		reqParams.append('redirect_uri', c.env.gitlab_callback_url)
+		reqParams.append('redirect_uri', setting.gitlabCallbackUrl)
 		reqParams.append('grant_type', 'authorization_code')
 
 		const tokenRes = await fetch("https://gitlab.com/oauth/token", {
@@ -172,11 +179,13 @@ const oauthService = {
 
 		const { code } = params;
 
+		const setting = await settingService.query(c);
+
 		const reqParams = new URLSearchParams()
-		reqParams.append('client_id', c.env.google_client_id)
-		reqParams.append('client_secret', c.env.google_client_secret)
+		reqParams.append('client_id', setting.googleClientId)
+		reqParams.append('client_secret', setting.googleClientSecret)
 		reqParams.append('code', code)
-		reqParams.append('redirect_uri', c.env.google_callback_url)
+		reqParams.append('redirect_uri', setting.googleCallbackUrl)
 		reqParams.append('grant_type', 'authorization_code')
 
 		const tokenRes = await fetch("https://oauth2.googleapis.com/token", {

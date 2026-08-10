@@ -48,18 +48,7 @@ const settingService = {
 		domainList = domainList.map(item => '@' + item);
 		setting.domainList = domainList;
 
-
-		let linuxdoSwitch = c.env.linuxdo_switch;
 		let projectLink = c.env.project_link;
-
-		if (typeof linuxdoSwitch === 'string' && linuxdoSwitch === 'true') {
-			linuxdoSwitch = true
-		} else if (linuxdoSwitch === true) {
-			linuxdoSwitch = true
-		} else {
-			linuxdoSwitch = false
-		}
-
 		if (typeof projectLink === 'string' && projectLink === 'false') {
 			projectLink = false
 		} else if (projectLink === false) {
@@ -70,20 +59,9 @@ const settingService = {
 
 		setting.projectLink = projectLink;
 
-		setting.linuxdoClientId = c.env.linuxdo_client_id;
-		setting.linuxdoCallbackUrl = c.env.linuxdo_callback_url;
-		setting.linuxdoSwitch = linuxdoSwitch;
-
-		setting.githubClientId = c.env.github_client_id;
-		setting.githubCallbackUrl = c.env.github_callback_url;
+		setting.linuxdoSwitch = this.parseBoolean(c.env.linuxdo_switch);
 		setting.githubSwitch = this.parseBoolean(c.env.github_switch);
-
-		setting.gitlabClientId = c.env.gitlab_client_id;
-		setting.gitlabCallbackUrl = c.env.gitlab_callback_url;
 		setting.gitlabSwitch = this.parseBoolean(c.env.gitlab_switch);
-
-		setting.googleClientId = c.env.google_client_id;
-		setting.googleCallbackUrl = c.env.google_callback_url;
 		setting.googleSwitch = this.parseBoolean(c.env.google_switch);
 
 		setting.emailPrefixFilter = setting.emailPrefixFilter.split(",").filter(Boolean);

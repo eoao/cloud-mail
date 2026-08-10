@@ -29,8 +29,25 @@ const dbInit = {
 		await this.v2_8DB(c);
 		await this.v2_9DB(c);
 		await this.v3_0DB(c);
+		await this.v3_1DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v3_1DB(c) {
+		const oauthFields = [
+			'linuxdo_client_id', 'linuxdo_client_secret', 'linuxdo_callback_url',
+			'github_client_id', 'github_client_secret', 'github_callback_url',
+			'gitlab_client_id', 'gitlab_client_secret', 'gitlab_callback_url',
+			'google_client_id', 'google_client_secret', 'google_callback_url',
+		];
+		for (const field of oauthFields) {
+			try {
+				await c.env.db.prepare(`ALTER TABLE setting ADD COLUMN ${field} TEXT NOT NULL DEFAULT '';`).run();
+			} catch (e) {
+				console.warn(`跳过字段：${e.message}`);
+			}
+		}
 	},
 
 	async v3_0DB(c) {
