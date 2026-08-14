@@ -243,10 +243,9 @@ jobs:
       - name: ♻️ 初始化数据库 / Initialize database
         run: |
           echo "🛠️ Starting database initialization..."
-          sleep 15
+              sleep 30
           
-          WORKER_URL="${CUSTOM_DOMAIN:+https://$CUSTOM_DOMAIN}"
-          WORKER_URL="${WORKER_URL:-${{ steps.deploy.outputs.worker_url }}}"
+                         WORKER_URL="${{ steps.deploy.outputs.worker_url }}"
           
           if [ -z "$WORKER_URL" ]; then
             echo "❌ Preview URL not available. Please set CUSTOM_DOMAIN."
