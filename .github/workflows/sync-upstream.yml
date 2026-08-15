@@ -1,53 +1,48 @@
-name: Sync Upstream and Trigger Deploy
-
-on:
-  schedule:
-    - cron: '0 0 * * *'   # 每天 UTC 0:00 运行
-  workflow_dispatch:
+name: Upstream Sync
 
 permissions:
   contents: write
-  actions: write
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # 每天 UTC 时间 0:00 运行
+  workflow_dispatch: # 允许手动触发
 
 jobs:
-  sync:
-连续的：Ubuntu-最新
+  sync_latest_from_upstream:
+    name: Sync latest commits from upstream repo
+    runs-on: ubuntu-latest
+    if: ${{ github.event.repository.fork }} # 仅在 fork 仓库中运行
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      # Step 1: 检出当前仓库代码
+      - name: Checkout target repo
+        uses: actions/checkout@v6
+
+      # Step 2: 同步上游仓库的更新
+      - name: Sync upstream changes
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
+          upstream_sync_repo: maillab/cloud-mail
+          upstream_sync_branch: main
+          target_sync_branch: main
+          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
+          test_mode: false
 
-      - name: Add upstream
-        run: git远程添加上游https://github.com/maillab/cloud-mail.git
-
-      - name: Fetch upstream
-        run: git fetch upstream main
-
--姓名: Check changes
-        id: check
+      # Step 3: 同步失败时的错误提示（适用于一般冲突场景）
+      - name: Sync check
+        if: failure()
         run: |
-        if["$(git rev-parse HEAD)"！="$(git rev-parse上游/主)"]；则
-echo"changes=true">>$GITHUB_OUTPUT
-          fi
-
-      - name: Merge and push
-        if: steps.check.outputs.changes == 'true'
-        run: |
-git配置user.name"github操作[bot]"
-git配置user.email"41898282+github-action[bot]@users。nore reply。GitHub。com"
-git合并上游/主要--no-ff-m"合并上游更新"
-          git push origin main
-
-      - name: 触发器部署
-        if: steps.check.outputs.changes == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-等待github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-workflow_id：'deploy-cloudflare.yml'，
-参考：'main'
-            });
+          echo "[Error] 自动同步失败，可能是因为："
+          echo "  1. 您的 fork 仓库与上游仓库存在代码冲突"
+          echo "  2. 网络或权限问题"
+          echo ""
+          echo "[Solution] 请手动解决冲突："
+          echo "  1. 在 GitHub 上点击 'Sync fork' 按钮"
+          echo "  2. 或使用命令行："
+          echo "     git remote add upstream https://github.com/maillab/cloud-mail.git"
+          echo "     git fetch upstream"
+          echo "     git merge upstream/main"
+          echo "     解决冲突后 git push"
+          exit 1
