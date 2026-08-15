@@ -1,0 +1,53 @@
+name: Sync Upstream and Trigger Deploy
+
+on:
+  schedule:
+    - cron: '0 0 * * *'   # 每天 UTC 0:00 运行
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  sync:
+连续的：Ubuntu-最新
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Add upstream
+        run: git远程添加上游https://github.com/maillab/cloud-mail.git
+
+      - name: Fetch upstream
+        run: git fetch upstream main
+
+-姓名: Check changes
+        id: check
+        run: |
+        if["$(git rev-parse HEAD)"！="$(git rev-parse上游/主)"]；则
+echo"changes=true">>$GITHUB_OUTPUT
+          fi
+
+      - name: Merge and push
+        if: steps.check.outputs.changes == 'true'
+        run: |
+git配置user.name"github操作[bot]"
+git配置user.email"41898282+github-action[bot]@users。nore reply。GitHub。com"
+git合并上游/主要--no-ff-m"合并上游更新"
+          git push origin main
+
+      - name: 触发器部署
+        if: steps.check.outputs.changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+等待github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+workflow_id：'deploy-cloudflare.yml'，
+参考：'main'
+            });
