@@ -2,24 +2,23 @@ name: Upstream Sync
 
 permissions:
   contents: write
+  actions: write   # 触发其他工作流需要
 
 on:
   schedule:
-    - cron: "0 0 * * *" # 每天 UTC 时间 0:00 运行
-  workflow_dispatch: # 允许手动触发
+    - cron: "0 0 * * *"
+  workflow_dispatch:
 
 jobs:
   sync_latest_from_upstream:
     name: Sync latest commits from upstream repo
     runs-on: ubuntu-latest
-    if: ${{ github.event.repository.fork }} # 仅在 fork 仓库中运行
+    if: ${{ github.event.repository.fork }}   # 如果是 fork 则保留，否则删除
 
     steps:
-      # Step 1: 检出当前仓库代码
       - name: Checkout target repo
         uses: actions/checkout@v6
 
-      # Step 2: 同步上游仓库的更新
       - name: Sync upstream changes
         id: sync
         uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
@@ -30,7 +29,20 @@ jobs:
           target_repo_token: ${{ secrets.GITHUB_TOKEN }}
           test_mode: false
 
-      # Step 3: 同步失败时的错误提示（适用于一般冲突场景）
+      # 新增：如果同步有变更，触发部署工作流
+      - name: Trigger deploy-cloudflare.yml
+        if: steps.sync.outputs.has_changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy-cloudflare.yml',
+              ref: 'main'
+            });
+
+      # 同步失败时的错误提示（保留你的原逻辑）
       - name: Sync check
         if: failure()
         run: |
