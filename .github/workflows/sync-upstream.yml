@@ -26,7 +26,7 @@ jobs:
           upstream_sync_repo: maillab/cloud-mail
           upstream_sync_branch: main
           target_sync_branch: main
-          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
+          target_repo_token: ${{ secrets.PAT }}
           test_mode: false
 
       # 新增：如果同步有变更，触发部署工作流
