@@ -77,7 +77,7 @@
     </el-scrollbar>
     <el-dialog v-model="showAdd" :title="$t('addAccount')">
       <div class="container">
-        <el-input v-model="addForm.email" ref="addRef" type="text" :placeholder="$t('emailAccount')" autocomplete="off">
+        <el-input v-model="addForm.email" ref="addRef" type="text" :placeholder="$t('emailAccount')" autocomplete="off" @keyup.enter="submit">
           <template #append>
             <div @click.stop="openSelect">
               <el-select
@@ -116,7 +116,7 @@
     </el-dialog>
     <el-dialog v-model="setNameShow" :title="$t('changeUserName')">
       <div class="container">
-        <el-input v-model="accountName" type="text" :placeholder="$t('username')" autocomplete="off">
+        <el-input v-model="accountName" type="text" :placeholder="$t('username')" autocomplete="off" @keyup.enter="setName">
         </el-input>
         <el-button class="btn" type="primary" @click="setName" :loading="setNameLoading"
         >{{ $t('save') }}
@@ -228,6 +228,8 @@ function getSkeletonRows() {
 }
 
 function setName() {
+
+  if (setNameLoading.value) return
 
   let name = accountName.value
 
@@ -427,6 +429,8 @@ function getAccountList() {
 
 function submit() {
 
+  if (addLoading.value) return
+
   if (!addForm.email) {
     ElMessage({
       message: t('emptyEmailMsg'),
@@ -482,7 +486,6 @@ function submit() {
   addLoading.value = true
   accountAdd(addForm.email + addForm.suffix, verifyToken).then(account => {
     addLoading.value = false
-    showAdd.value = false
     addForm.email = ''
     accounts.push(account)
     verifyToken = ''
@@ -494,6 +497,9 @@ function submit() {
     })
     verifyShow.value = false
     userStore.refreshUserInfo()
+    nextTick(() => {
+      addRef.value.focus()
+    })
   }).catch(res => {
     if (res.code === 400) {
       verifyToken = ''

@@ -137,6 +137,8 @@ const zh = {
     websiteSetting: '网站设置',
     websiteReg: '用户注册',
     loginDomain: '隐藏登录域名',
+    syncDelete: '同步删除',
+    syncDeleteDesc: '开启后收件箱和邮箱不再假删',
     multipleEmail: '多号模式',
     multipleEmailDesc: '开启后账号栏出现一个用户可以添加多个邮箱',
     customization: '个性化设置',

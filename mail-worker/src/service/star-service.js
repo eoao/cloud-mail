@@ -77,6 +77,10 @@ const starService = {
 	},
 	async removeByEmailIds(c, emailIds) {
 		await orm(c).delete(star).where(inArray(star.emailId, emailIds)).run();
+	},
+
+	async removeByUserIds(c, userIds) {
+		await orm(c).delete(star).where(inArray(star.userId, userIds)).run();
 	}
 };
 
