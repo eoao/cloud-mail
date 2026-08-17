@@ -1,4 +1,4 @@
-const zh = {
+const zhcn = {
     inbox: '收件箱',
     drafts: '草稿箱',
     sent: '已发送',
@@ -340,4 +340,4 @@ const zh = {
     searchSender: '搜索发件人',
     userEmail: '用户邮箱'
 }
-export default zh
+export default zhcn

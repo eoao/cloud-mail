@@ -1,5 +1,6 @@
 import i18next from 'i18next';
-import zh from './zh.js'
+import zh_cn from './zh_cn.js'
+import zh_tw from './zh_tw.js'
 import en from './en.js'
 import app from '../hono/hono';
 
@@ -15,9 +16,12 @@ const resources = {
 	en: {
 		translation: en
 	},
-	zh: {
-		translation: zh,
+	zh_cn: {
+		translation: zh_cn,
 	},
+	zh_tw: {
+		translation: zh_tw,
+	}
 };
 
 i18next.init({
