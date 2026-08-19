@@ -21,6 +21,20 @@ import oauthService from "./oauth-service";
 import settingService from './setting-service';
 import starService from './star-service';
 
+const BATCH_USER_LIMIT = 100;
+
+function normalizeDomainList(domain) {
+	let domainList = domain;
+	if (typeof domainList === 'string') {
+		try {
+			domainList = JSON.parse(domainList);
+		} catch (e) {
+			domainList = [domainList];
+		}
+	}
+	return Array.isArray(domainList) ? domainList.filter(Boolean) : [];
+}
+
 const userService = {
 
 	async loginUserInfo(c, userId) {
@@ -333,7 +347,7 @@ const userService = {
 			throw new BizError(t('isRegAccount'));
 		}
 
-		const role = roleService.selectById(c, type);
+		const role = await roleService.selectById(c, type);
 
 		if (!role) {
 			throw new BizError(t('roleNotExist'));
@@ -346,6 +360,75 @@ const userService = {
 		await userService.updateUserInfo(c, userId, true);
 
 		await accountService.insert(c, { userId: userId, email, type, name: emailUtils.getName(email) });
+		return { userId, email };
+	},
+
+	async batchCreate(c, params) {
+		const count = Number(params.count);
+		if (!Number.isInteger(count) || count < 1 || count > BATCH_USER_LIMIT) {
+			throw new BizError(`The number of users must be between 1 and ${BATCH_USER_LIMIT}.`);
+		}
+
+		const domains = normalizeDomainList(c.env.domain);
+		if (!domains.length) {
+			throw new BizError(t('noDomainVariable'));
+		}
+
+		const prefix = String(params.prefix || 'user').trim().replace(/[^A-Za-z0-9._-]/g, '') || 'user';
+		const type = Number(params.type);
+		const timestamp = Date.now().toString(36);
+		const users = Array.from({ length: count }, (_, index) => ({
+			email: `${prefix}${timestamp}${index + 1}${saltHashUtils.genRandomPwd(4).toLowerCase()}@${domains[index % domains.length]}`,
+			password: params.password || saltHashUtils.genRandomPwd(12),
+			type
+		}));
+		return this.batchAdd(c, users);
+	},
+
+	async batchImport(c, params) {
+		if (!Array.isArray(params.users) || !params.users.length) {
+			throw new BizError('No users were provided for import.');
+		}
+		if (params.users.length > BATCH_USER_LIMIT) {
+			throw new BizError(`A maximum of ${BATCH_USER_LIMIT} users can be imported at once.`);
+		}
+		const defaultType = Number(params.type);
+		const users = params.users.map((item) => ({
+			email: String(item.email || '').trim(),
+			password: item.password ? String(item.password) : saltHashUtils.genRandomPwd(12),
+			type: item.type === undefined || item.type === '' ? defaultType : Number(item.type)
+		}));
+		return this.batchAdd(c, users);
+	},
+
+	async batchAdd(c, users) {
+		const created = [];
+		const failed = [];
+		const seenEmails = new Set();
+		for (const [index, item] of users.entries()) {
+			const email = item.email.toLowerCase();
+			if (!email || seenEmails.has(email)) {
+				failed.push({ index: index + 1, email: item.email, message: email ? 'Duplicate email in this batch.' : 'Email is required.' });
+				continue;
+			}
+			seenEmails.add(email);
+			try {
+				const createdUser = await this.add(c, { ...item, email });
+				created.push({ email: createdUser.email, password: item.password, userId: createdUser.userId });
+			} catch (error) {
+				failed.push({ index: index + 1, email: item.email, message: error.message || 'Unable to create user.' });
+			}
+		}
+		return { created, failed };
+	},
+
+	async exportEmails(c, params) {
+		const userIds = String(params.userIds || '').split(',').map(Number).filter(Number.isInteger);
+		if (!userIds.length || userIds.length > BATCH_USER_LIMIT) {
+			throw new BizError(`Select between 1 and ${BATCH_USER_LIMIT} users to export.`);
+		}
+		return orm(c).select({ email: user.email }).from(user)
+			.where(inArray(user.userId, userIds)).orderBy(asc(user.email)).all();
 	},
 
 	async resetDaySendCount(c) {

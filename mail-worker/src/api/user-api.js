@@ -34,6 +34,21 @@ app.post('/user/add', async (c) => {
 	return c.json(result.ok());
 });
 
+app.post('/user/batchCreate', async (c) => {
+	const data = await userService.batchCreate(c, await c.req.json());
+	return c.json(result.ok(data));
+});
+
+app.post('/user/batchImport', async (c) => {
+	const data = await userService.batchImport(c, await c.req.json());
+	return c.json(result.ok(data));
+});
+
+app.get('/user/export', async (c) => {
+	const data = await userService.exportEmails(c, c.req.query());
+	return c.json(result.ok(data));
+});
+
 app.put('/user/resetSendCount', async (c) => {
 	await userService.resetSendCount(c, await c.req.json());
 	return c.json(result.ok());
