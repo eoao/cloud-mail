@@ -396,7 +396,7 @@ const userService = {
 		const users = params.users.map((item) => ({
 			email: String(item.email || '').trim(),
 			password: item.password ? String(item.password) : saltHashUtils.genRandomPwd(12),
-			type: item.type === undefined || item.type === '' ? defaultType : Number(item.type)
+			type: defaultType
 		}));
 		return this.batchAdd(c, users);
 	},
@@ -427,8 +427,13 @@ const userService = {
 		if (!userIds.length || userIds.length > BATCH_USER_LIMIT) {
 			throw new BizError(`Select between 1 and ${BATCH_USER_LIMIT} users to export.`);
 		}
-		return orm(c).select({ email: user.email }).from(user)
+		const users = await orm(c).select({ email: user.email }).from(user)
 			.where(inArray(user.userId, userIds)).orderBy(asc(user.email)).all();
+		return users.map(({ email }) => ({
+			email,
+			password: '',
+			passwordStatus: 'not_stored_one_way_hash'
+		}));
 	},
 
 	async resetDaySendCount(c) {

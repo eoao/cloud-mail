@@ -14,25 +14,25 @@ function asFile(name, type, bytes) {
   };
 }
 
-test('parses a CSV user import with optional password and role', async () => {
+test('parses a CSV user import with an optional password and ignores role columns', async () => {
   const bytes = new TextEncoder().encode('email,password,type\nalice@example.com,Password123,1\nbob@example.com,,2\n');
   const users = await parseUserImportFile(asFile('users.csv', 'text/csv', bytes));
   assert.deepEqual(users, [
-    { email: 'alice@example.com', password: 'Password123', type: '1' },
-    { email: 'bob@example.com', password: '', type: '2' }
+    { email: 'alice@example.com', password: 'Password123' },
+    { email: 'bob@example.com', password: '' }
   ]);
 });
 
 test('parses an XLSX user import', async () => {
   const worksheet = XLSX.utils.aoa_to_sheet([
-    ['email', 'password', 'type'],
-    ['carol@example.com', 'Password456', 3]
+    ['email', 'password'],
+    ['carol@example.com', 'Password456']
   ]);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Users');
   const bytes = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
   const users = await parseUserImportFile(asFile('users.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', bytes));
   assert.deepEqual(users, [
-    { email: 'carol@example.com', password: 'Password456', type: '3' }
+    { email: 'carol@example.com', password: 'Password456' }
   ]);
 });

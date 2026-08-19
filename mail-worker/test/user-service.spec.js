@@ -23,4 +23,19 @@ describe('userService.batchAdd', () => {
 			{ index: 3, email: 'fail@example.com', message: 'Role does not exist.' }
 		]);
 	});
+
+	it('uses the selected default role for every imported row', async () => {
+		let capturedUsers = [];
+		const batchAdd = async (_context, users) => {
+			capturedUsers = users;
+			return { created: [], failed: [] };
+		};
+		await userService.batchImport.call({ batchAdd }, {}, {
+			type: 7,
+			users: [{ email: 'alice@example.com', password: 'Password123', type: 99 }]
+		});
+		expect(capturedUsers).toEqual([
+			{ email: 'alice@example.com', password: 'Password123', type: 7 }
+		]);
+	});
 });

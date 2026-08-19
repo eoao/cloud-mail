@@ -17,8 +17,8 @@ export function downloadUserCsv(fileName, rows) {
 
 export function downloadImportTemplate(format = 'csv') {
   const rows = [
-    ['email', 'password', 'type'],
-    ['alice@example.com', 'Password123', '1'],
+    ['email', 'password'],
+    ['alice@example.com', 'Password123'],
   ];
   if (format === 'xlsx') {
     const worksheet = XLSX.utils.aoa_to_sheet(rows);
@@ -48,13 +48,11 @@ export async function parseUserImportFile(file) {
   const headers = table[0].map(normalizeHeader);
   const emailIndex = headers.indexOf('email');
   const passwordIndex = headers.indexOf('password');
-  const typeIndex = headers.indexOf('type');
   if (emailIndex < 0) {
     throw new Error('Import file must include an email column.');
   }
   return table.slice(1).map((row) => ({
     email: String(row[emailIndex] || '').trim(),
     password: passwordIndex >= 0 ? String(row[passwordIndex] || '') : '',
-    type: typeIndex >= 0 ? String(row[typeIndex] || '') : '',
-  })).filter((row) => row.email || row.password || row.type);
+  })).filter((row) => row.email || row.password);
 }

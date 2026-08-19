@@ -2,9 +2,9 @@
   <div class="user-box">
     <div class="header-actions">
       <Icon class="icon" icon="ion:add-outline" width="23" height="23" @click="openAdd"/>
-      <el-button size="small" type="primary" plain @click="openBatchCreate">{{ t('batchCreateUsers') }}</el-button>
-      <el-button size="small" plain @click="openBatchImport">{{ t('importUsers') }}</el-button>
-      <el-button size="small" plain @click="exportSelectedUsers">{{ t('exportUsers') }}</el-button>
+      <el-button v-perm="'user:batch-create'" size="small" type="primary" plain @click="openBatchCreate">{{ t('batchCreateUsers') }}</el-button>
+      <el-button v-perm="'user:batch-import'" size="small" plain @click="openBatchImport">{{ t('importUsers') }}</el-button>
+      <el-button v-perm="'user:export'" size="small" plain @click="exportSelectedUsers">{{ t('exportUsers') }}</el-button>
       <div class="search">
         <el-input
             v-model="params.email"
@@ -860,9 +860,9 @@ function exportSelectedUsers() {
     return
   }
   userExport(rows.map((row) => row.userId)).then((data) => {
-    downloadUserCsv('cloud-mail-user-emails.csv', [
-      ['email'],
-      ...data.map((item) => [item.email])
+    downloadUserCsv('cloud-mail-user-credentials.csv', [
+      ['email', 'password', 'password_status'],
+      ...data.map((item) => [item.email, item.password || '', item.passwordStatus || t('passwordNotStored')])
     ])
     ElMessage({ message: t('existingPasswordNotExportable'), type: 'warning', plain: true })
   })
