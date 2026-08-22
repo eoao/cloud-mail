@@ -155,6 +155,12 @@ const accountService = {
 			throw new BizError(t('noUserAccount'));
 		}
 
+		const { syncDelete } = await settingService.query(c);
+		if (syncDelete === settingConst.syncDelete.OPEN) {
+			await this.physicsDelete(c, { accountId });
+			return;
+		}
+
 		await orm(c).update(account).set({ isDel: isDel.DELETE }).where(
 			and(eq(account.userId, userId),
 				eq(account.accountId, accountId)))

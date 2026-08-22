@@ -62,7 +62,7 @@
     </el-scrollbar>
     <el-dialog v-model="showAdd" :title="$t('addRegKey')">
       <div class="container">
-        <el-input v-model="addForm.code" :placeholder="$t('regKey')">
+        <el-input v-model="addForm.code" :placeholder="$t('regKey')" @keyup.enter="submit">
           <template #suffix>
             <Icon @click.stop="genCode" class="gen-code" icon="bitcoin-icons:refresh-filled" width="24" height="24"/>
           </template>
@@ -75,7 +75,7 @@
             type="date"
             :placeholder="$t('validUntil')"
         />
-        <el-input-number v-model="addForm.count" :min="1" :max="99999"/>
+        <el-input-number v-model="addForm.count" :min="1" :max="99999" @keyup.enter="submit"/>
         <el-button class="btn" type="primary" @click="submit" :loading="addLoading"
         >{{ $t('add') }}
         </el-button>
@@ -307,6 +307,8 @@ function clearNotUse() {
 }
 
 function submit() {
+
+  if (addLoading.value) return
 
   if (!addForm.code) {
     ElMessage({

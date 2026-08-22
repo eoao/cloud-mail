@@ -30,11 +30,12 @@ const dbInit = {
 		await this.v2_9DB(c);
 		await this.v3_0DB(c);
 		await this.v3_1DB(c);
+		await this.v3_2DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
 	},
 
-	async v3_1DB(c) {
+	async v3_2DB(c) {
 		const oauthFields = [
 			'linuxdo_client_id', 'linuxdo_client_secret', 'linuxdo_callback_url',
 			'github_client_id', 'github_client_secret', 'github_callback_url',
@@ -49,6 +50,15 @@ const dbInit = {
 			}
 		}
 	},
+
+	async v3_1DB(c) {
+		try {
+			await c.env.db.prepare(`ALTER TABLE setting ADD COLUMN sync_delete INTEGER NOT NULL DEFAULT 0;`).run();
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
+	},
+
 
 	async v3_0DB(c) {
 		try {

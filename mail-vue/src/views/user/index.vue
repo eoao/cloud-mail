@@ -135,7 +135,7 @@
     </el-scrollbar>
     <el-dialog class="dialog" v-model="setPwdShow" :title="$t('changePassword')" @closed="resetUserForm">
       <div class="dialog-box">
-        <el-input v-model="userForm.password" type="password" :placeholder="$t('newPassword')" autocomplete="off">
+        <el-input v-model="userForm.password" type="password" :placeholder="$t('newPassword')" autocomplete="off" @keyup.enter="updatePwd">
         </el-input>
         <el-button class="btn" type="primary" :loading="settingLoading" @click="updatePwd"
         >{{ $t('save') }}
@@ -155,7 +155,7 @@
     </el-dialog>
     <el-dialog v-model="showAdd" :title="$t('addUser')" @closed="resetAddForm">
       <div class="container">
-        <el-input v-model="addForm.email" type="text" :placeholder="$t('emailAccount')" autocomplete="off">
+        <el-input v-model="addForm.email" type="text" :placeholder="$t('emailAccount')" autocomplete="off" @keyup.enter="submit">
           <template #append>
             <div @click.stop="openSelect">
               <el-select
@@ -178,7 +178,7 @@
             </div>
           </template>
         </el-input>
-        <el-input type="password" v-model="addForm.password" :placeholder="$t('password')"/>
+        <el-input type="password" v-model="addForm.password" :placeholder="$t('password')" @keyup.enter="submit"/>
         <el-select v-model="addForm.type" :placeholder="$t('perm')">
           <el-option v-for="item in roleList" :label="item.name" :value="item.roleId" :key="item.roleId"/>
         </el-select>
@@ -693,6 +693,8 @@ function openAdd() {
 
 function submit() {
 
+  if (addLoading.value) return
+
   if (!addForm.email) {
     ElMessage({
       message: t('emptyEmailMsg'),
@@ -895,6 +897,7 @@ function httpSetStatus(user) {
 }
 
 function setType() {
+  if (settingLoading.value) return
   settingLoading.value = true
   userSetType({type: userForm.type, userId: userForm.userId}).then(() => {
     chooseUser.type = userForm.type
@@ -922,6 +925,8 @@ function search() {
 }
 
 function updatePwd() {
+
+  if (settingLoading.value) return
 
   if (!userForm.password) {
     ElMessage({
