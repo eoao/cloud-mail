@@ -14,6 +14,13 @@ const emailUtils = {
 		return parts.length === 2 ? parts[0] : '';
 	},
 
+	getBaseEmail(email) {
+		const parts = email.split('@');
+		if (parts.length !== 2) return '';
+		const localPart = parts[0].split('+')[0];
+		return localPart + '@' + parts[1];
+	},
+
 	formatText(text) {
 		if (!text) return ''
 		return text

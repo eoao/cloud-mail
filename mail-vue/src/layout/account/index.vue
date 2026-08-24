@@ -496,10 +496,8 @@ function submit() {
       plain: true
     })
     verifyShow.value = false
+    showAdd.value = false
     userStore.refreshUserInfo()
-    nextTick(() => {
-      addRef.value.focus()
-    })
   }).catch(res => {
     if (res.code === 400) {
       verifyToken = ''

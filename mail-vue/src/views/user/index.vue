@@ -158,19 +158,21 @@
         <el-input v-model="addForm.email" type="text" :placeholder="$t('emailAccount')" autocomplete="off" @keyup.enter="submit">
           <template #append>
             <div @click.stop="openSelect">
-              <el-select
-                  ref="mySelect"
-                  v-model="addForm.suffix"
-                  :placeholder="$t('select')"
-                  class="select"
-              >
-                <el-option
-                    v-for="item in domainList"
-                    :key="item"
-                    :label="item"
-                    :value="item"
-                />
-              </el-select>
+              <div inert>
+                <el-select
+                    ref="mySelect"
+                    v-model="addForm.suffix"
+                    :placeholder="$t('select')"
+                    class="select"
+                >
+                  <el-option
+                      v-for="item in domainList"
+                      :key="item"
+                      :label="item"
+                      :value="item"
+                  />
+                </el-select>
+              </div>
               <div>
                 <span>{{ addForm.suffix }}</span>
                 <Icon class="setting-icon" icon="mingcute:down-small-fill" width="20" height="20"/>
@@ -682,8 +684,6 @@ const openSelect = () => {
 
 function resetAddForm() {
   addForm.email = ''
-  addForm.suffix = settingStore.domainList[0]
-  addForm.type = null
   addForm.password = ''
 }
 
@@ -745,7 +745,7 @@ function submit() {
   form.email = form.email + form.suffix
   userAdd(form).then(() => {
     addLoading.value = false
-    addForm.email = ''
+    showAdd.value = false
     ElMessage({
       message: t('addSuccessMsg'),
       type: "success",

@@ -344,6 +344,7 @@ const en = {
     clientId: 'Client ID',
     clientSecret: 'Client Secret',
     callbackBase: 'https://domain',
+    notOwner: 'Base email does not belong to you',
 }
 
 export default en
