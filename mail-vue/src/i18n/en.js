@@ -30,6 +30,7 @@ const en = {
     change: 'Change',
     changePwdBtn: 'Change',
     username: 'Username',
+    trustLevel: 'Level',
     password: 'Password',
     delAccount: 'Delete Account',
     delAccountMsg: 'This will permanently delete your account and data. It cannot be reactivated',

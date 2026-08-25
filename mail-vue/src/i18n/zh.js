@@ -30,6 +30,7 @@ const zh = {
     change: '修改',
     changePwdBtn: '修改密码',
     username: '用户名',
+    trustLevel: '等级',
     password: '密码',
     delAccount: '删除账户',
     delAccountMsg: '此操作将永久删除您的账户及其所有数据，无法恢复',
