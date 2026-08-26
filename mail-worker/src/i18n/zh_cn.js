@@ -1,4 +1,4 @@
-const zh = {
+const zh_cn = {
 	IncorrectPwd: '密码输入错误',
 	addAccountDisabled: '添加邮箱功能已关闭',
 	regDisabled: '注册功能已关闭',
@@ -104,4 +104,4 @@ const zh = {
 	}
 }
 
-export default zh
+export default zh_cn

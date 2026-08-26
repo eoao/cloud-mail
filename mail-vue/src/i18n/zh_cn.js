@@ -1,4 +1,4 @@
-const zh = {
+const zhcn = {
     inbox: '收件箱',
     drafts: '草稿箱',
     sent: '已发送',
@@ -346,4 +346,4 @@ const zh = {
     clientSecret: '客户端密钥',
     notOwner: '基础邮箱不属于您',
 }
-export default zh
+export default zhcn
