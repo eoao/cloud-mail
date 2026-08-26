@@ -503,14 +503,31 @@ const dbInit = {
         (25, '用户添加', 'user:add', 6, 2, 1),
         (26, '发件重置', 'user:reset-send', 6, 2, 6),
         (27, '邮件列表', '', 0, 1, 4),
-        (28, '邮件查看', 'all-email:query', 27, 2, 0),
+                (28, '邮件查看', 'all-email:query', 27, 2, 0),
         (29, '邮件删除', 'all-email:delete', 27, 2, 0),
-				(30, '身份添加', 'role:add', 13, 2, -1)
+					(30, '身份添加', 'role:add', 13, 2, -1),
+					(31, '批量创建用户', 'user:batch-create', 6, 2, 8),
+					(32, '批量导入用户', 'user:batch-import', 6, 2, 9),
+					(33, '导出用户', 'user:export', 6, 2, 10)
+
       `).run();
 		}
 
-		await c.env.db.prepare(`UPDATE perm SET perm_key = 'setting:clean' WHERE perm_key = 'seting:clear'`).run();
-		await c.env.db.prepare(`DELETE FROM perm WHERE perm_key = 'user:star'`).run();
+					await c.env.db.prepare(`UPDATE perm SET perm_key = 'setting:clean' WHERE perm_key = 'seting:clear'`).run();
+			await c.env.db.prepare(`DELETE FROM perm WHERE perm_key = 'user:star'`).run();
+			const batchUserPerms = [
+				['批量创建用户', 'user:batch-create', 6, 2, 8],
+				['批量导入用户', 'user:batch-import', 6, 2, 9],
+				['导出用户', 'user:export', 6, 2, 10]
+			];
+			for (const [name, permKey, pid, type, sort] of batchUserPerms) {
+				await c.env.db.prepare(`
+					INSERT INTO perm (name, perm_key, pid, type, sort)
+					SELECT ?, ?, ?, ?, ?
+					WHERE NOT EXISTS (SELECT 1 FROM perm WHERE perm_key = ?)
+				`).bind(name, permKey, pid, type, sort, permKey).run();
+			}
+
 		// 创建 role 表并插入默认身份
 		await c.env.db.prepare(`
       CREATE TABLE IF NOT EXISTS role (

@@ -2,6 +2,9 @@
   <div class="user-box">
     <div class="header-actions">
       <Icon class="icon" icon="ion:add-outline" width="23" height="23" @click="openAdd"/>
+      <el-button v-perm="'user:batch-create'" size="small" type="primary" plain @click="openBatchCreate">{{ t('batchCreateUsers') }}</el-button>
+      <el-button v-perm="'user:batch-import'" size="small" plain @click="openBatchImport">{{ t('importUsers') }}</el-button>
+      <el-button v-perm="'user:export'" size="small" plain @click="exportSelectedUsers">{{ t('exportUsers') }}</el-button>
       <div class="search">
         <el-input
             v-model="params.email"
@@ -199,6 +202,41 @@
         </el-button>
       </div>
     </el-dialog>
+    <el-dialog v-model="batchCreateShow" :title="t('batchCreateUsers')" @closed="resetBatchCreateForm">
+      <div class="container">
+        <el-input-number v-model="batchCreateForm.count" :min="1" :max="100" :label="t('userCount')"/>
+        <el-input v-model="batchCreateForm.prefix" :placeholder="t('usernamePrefixHint')"/>
+        <el-input v-model="batchCreateForm.password" type="password" show-password :placeholder="t('optionalPasswordHint')"/>
+        <el-select v-model="batchCreateForm.type" :placeholder="t('perm')">
+          <el-option v-for="item in roleList" :label="item.name" :value="item.roleId" :key="item.roleId"/>
+        </el-select>
+        <el-button class="btn" type="primary" :loading="batchLoading" @click="submitBatchCreate">{{ t('createAndExport') }}</el-button>
+      </div>
+    </el-dialog>
+    <el-dialog v-model="batchImportShow" :title="t('importUsers')" @closed="resetBatchImportForm">
+      <div class="container">
+        <div class="template-actions">
+          <el-button size="small" @click="downloadImportTemplate('csv')">{{ t('downloadCsvTemplate') }}</el-button>
+          <el-button size="small" @click="downloadImportTemplate('xlsx')">{{ t('downloadXlsxTemplate') }}</el-button>
+        </div>
+        <input ref="importFileRef" class="file-input" type="file" accept=".csv,.xlsx,.xls" @change="readImportFile"/>
+        <el-button @click="importFileRef?.click()">{{ importFileName || t('selectImportFile') }}</el-button>
+        <el-select v-model="batchImportForm.type" :placeholder="t('defaultRole')">
+          <el-option v-for="item in roleList" :label="item.name" :value="item.roleId" :key="item.roleId"/>
+        </el-select>
+        <div class="import-hint">{{ t('importRows', { count: importRows.length }) }}</div>
+        <el-button class="btn" type="primary" :loading="batchLoading" @click="submitBatchImport">{{ t('importAndExport') }}</el-button>
+      </div>
+    </el-dialog>
+    <el-dialog class="credentials-dialog" v-model="credentialsShow" :title="t('generatedCredentials')" @closed="clearCredentials">
+      <p class="credentials-tip">{{ t('credentialsSecurityTip') }}</p>
+      <el-input type="textarea" :rows="10" :model-value="credentialText" readonly/>
+      <div class="template-actions">
+        <el-button @click="copyCredentials">{{ t('copy') }}</el-button>
+        <el-button type="primary" @click="downloadCredentials">{{ t('downloadCredentials') }}</el-button>
+      </div>
+      <el-alert v-if="batchFailures.length" type="warning" :closable="false" :title="t('batchFailureCount', { count: batchFailures.length })" show-icon/>
+    </el-dialog>
     <el-dialog class="account-dialog" v-model="accountShow" :title="t('userAccount')" @closed="resetAccountList" >
       <el-table :data="accountList" style="height: 480px" v-loading="accountLoading" element-loading-background="transparent" :empty-text="accountLoading ? '' : null">
         <el-table-column property="email" :label="t('emailAccount')" >
@@ -377,7 +415,7 @@
 </template>
 
 <script setup>
-import {defineOptions, h, reactive, ref, watch} from 'vue'
+import {computed, defineOptions, h, reactive, ref, watch} from 'vue'
 import {
   userList,
   userDelete,
@@ -385,6 +423,9 @@ import {
   userSetStatus,
   userSetType,
   userAdd,
+  userBatchCreate,
+  userBatchImport,
+  userExport,
   userRestSendCount,
   userRestore,
   userDeleteAccount,
@@ -399,6 +440,7 @@ import {isEmail} from "@/utils/verify-utils.js";
 import {useRoleStore} from "@/store/role.js";
 import {useUserStore} from "@/store/user.js";
 import {useI18n} from 'vue-i18n';
+import {downloadImportTemplate as downloadTemplateFile, downloadUserCsv, parseUserImportFile} from '@/utils/user-batch-file-utils.js';
 
 defineOptions({
   name: 'user'
@@ -483,6 +525,18 @@ const userForm = reactive({
 })
 
 const showAdd = ref(false)
+const batchCreateShow = ref(false)
+const batchImportShow = ref(false)
+const credentialsShow = ref(false)
+const batchLoading = ref(false)
+const importFileRef = ref(null)
+const importFileName = ref('')
+const importRows = ref([])
+const generatedCredentials = ref([])
+const batchFailures = ref([])
+const batchCreateForm = reactive({ count: 1, prefix: '', password: '', type: null })
+const batchImportForm = reactive({ type: null })
+const credentialText = computed(() => generatedCredentials.value.map(({email, password}) => `${email},${password}`).join('\n'))
 const accountShow = ref(false)
 const addLoading = ref(false);
 const setTypeShow = ref(false)
@@ -712,6 +766,129 @@ function resetAddForm() {
 
 function openAdd() {
   showAdd.value = true
+}
+
+function openBatchCreate() {
+  batchCreateShow.value = true
+}
+
+function openBatchImport() {
+  batchImportShow.value = true
+}
+
+function resetBatchCreateForm() {
+  batchCreateForm.count = 1
+  batchCreateForm.prefix = ''
+  batchCreateForm.password = ''
+  batchCreateForm.type = null
+}
+
+function resetBatchImportForm() {
+  batchImportForm.type = null
+  importRows.value = []
+  importFileName.value = ''
+  if (importFileRef.value) importFileRef.value.value = ''
+}
+
+function clearCredentials() {
+  generatedCredentials.value = []
+  batchFailures.value = []
+}
+
+function downloadImportTemplate(format) {
+  downloadTemplateFile(format)
+}
+
+async function readImportFile(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  try {
+    const rows = await parseUserImportFile(file)
+    if (!rows.length) throw new Error(t('importEmptyFile'))
+    if (rows.length > 100) throw new Error(t('batchMaxUsers', { count: 100 }))
+    importRows.value = rows
+    importFileName.value = file.name
+  } catch (error) {
+    importRows.value = []
+    importFileName.value = ''
+    ElMessage({ message: error.message || t('importParseFailed'), type: 'error', plain: true })
+  }
+}
+
+function showBatchResult(data) {
+  generatedCredentials.value = data.created || []
+  batchFailures.value = data.failed || []
+  if (generatedCredentials.value.length) {
+    credentialsShow.value = true
+    ElMessage({ message: t('batchCreatedCount', { count: generatedCredentials.value.length }), type: 'success', plain: true })
+  }
+  if (batchFailures.value.length) {
+    ElMessage({ message: t('batchFailureCount', { count: batchFailures.value.length }), type: 'warning', plain: true })
+  }
+  getUserList(false)
+}
+
+function submitBatchCreate() {
+  if (!batchCreateForm.type) {
+    ElMessage({ message: t('emptyRole'), type: 'error', plain: true })
+    return
+  }
+  batchLoading.value = true
+  userBatchCreate({...batchCreateForm}).then((data) => {
+    batchCreateShow.value = false
+    showBatchResult(data)
+  }).finally(() => {
+    batchLoading.value = false
+  })
+}
+
+function submitBatchImport() {
+  if (!batchImportForm.type) {
+    ElMessage({ message: t('emptyRole'), type: 'error', plain: true })
+    return
+  }
+  if (!importRows.value.length) {
+    ElMessage({ message: t('selectImportFile'), type: 'error', plain: true })
+    return
+  }
+  batchLoading.value = true
+  userBatchImport({users: importRows.value, type: batchImportForm.type}).then((data) => {
+    batchImportShow.value = false
+    showBatchResult(data)
+  }).finally(() => {
+    batchLoading.value = false
+  })
+}
+
+async function copyCredentials() {
+  try {
+    await navigator.clipboard.writeText(credentialText.value)
+    ElMessage({ message: t('copySuccess'), type: 'success', plain: true })
+  } catch (error) {
+    ElMessage({ message: t('copyFailed'), type: 'error', plain: true })
+  }
+}
+
+function downloadCredentials() {
+  downloadUserCsv('cloud-mail-new-user-credentials.csv', [
+    ['email', 'password'],
+    ...generatedCredentials.value.map((item) => [item.email, item.password])
+  ])
+}
+
+function exportSelectedUsers() {
+  const rows = tableRef.value.getSelectionRows()
+  if (!rows.length) {
+    ElMessage({ message: t('selectUsersToExport'), type: 'error', plain: true })
+    return
+  }
+  userExport(rows.map((row) => row.userId)).then((data) => {
+    downloadUserCsv('cloud-mail-user-credentials.csv', [
+      ['email', 'password', 'password_status'],
+      ...data.map((item) => [item.email, item.password || '', item.passwordStatus || t('passwordNotStored')])
+    ])
+    ElMessage({ message: t('existingPasswordNotExportable'), type: 'warning', plain: true })
+  })
 }
 
 function submit() {
@@ -1142,6 +1319,28 @@ function adjustWidth() {
   display: grid;
   grid-template-columns: 1fr;
   gap: 15px;
+}
+
+.template-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.file-input {
+  display: none;
+}
+
+.import-hint,
+.credentials-tip {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.credentials-dialog :deep(.el-textarea__inner) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .type {
