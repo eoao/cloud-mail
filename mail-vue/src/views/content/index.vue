@@ -34,11 +34,11 @@
             <el-alert v-if="email.status === 4" :closable="false" :title="$t('complained')" class="email-msg" type="warning" show-icon />
             <el-alert v-if="email.status === 5" :closable="false" :title="$t('delayed')" class="email-msg" type="warning" show-icon />
           </div>
-          <el-scrollbar class="htm-scrollbar" :class="email.attList.length === 0 ? 'bottom-distance' : ''">
+          <el-scrollbar class="htm-scrollbar" :class="!email.attList?.length ? 'bottom-distance' : ''">
             <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
             <pre v-else class="email-text" >{{email.text}}</pre>
           </el-scrollbar>
-          <div class="att" v-if="email.attList.length > 0">
+          <div class="att" v-if="email.attList?.length > 0">
             <div class="att-title">
               <span>{{$t('attachments')}}</span>
               <span>{{$t('attCount',{total: email.attList.length})}}</span>
@@ -75,7 +75,7 @@
 </template>
 <script setup>
 import ShadowHtml from '@/components/shadow-html/index.vue'
-import {reactive, ref, watch, onMounted, onUnmounted} from "vue";
+import {computed, reactive, ref, watch, onMounted, onUnmounted} from "vue";
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {emailDelete, emailRead} from "@/request/email.js";
@@ -98,7 +98,13 @@ const settingStore = useSettingStore();
 const accountStore = useAccountStore();
 const emailStore = useEmailStore();
 const router = useRouter()
-const email = emailStore.contentData.email
+const email = computed(() => emailStore.contentData.email || {
+  emailId: 0,
+  attList: [],
+  content: '',
+  text: '',
+  recipient: '[]',
+})
 const showPreview = ref(false)
 const srcList = reactive([])
 
@@ -108,9 +114,9 @@ watch(() => accountStore.currentAccountId, () => {
 })
 
 onMounted(() => {
-  if (emailStore.contentData.showUnread && email.unread === EmailUnreadEnum.UNREAD) {
-    email.unread = EmailUnreadEnum.READ;
-    emailRead([email.emailId]);
+  if (emailStore.contentData.showUnread && email.value.unread === EmailUnreadEnum.UNREAD && email.value.emailId) {
+    email.value.unread = EmailUnreadEnum.READ;
+    emailRead([email.value.emailId]);
   }
   window.addEventListener('keydown', handleKeyDown);
 })
@@ -130,11 +136,11 @@ function handleKeyDown(event) {
 }
 
 function openReply() {
-  uiStore.writerRef.openReply(email)
+  uiStore.writerRef.openReply(email.value)
 }
 
 function openForward() {
-  uiStore.writerRef.openForward(email)
+  uiStore.writerRef.openForward(email.value)
 }
 
 function toMessage(message) {
@@ -160,32 +166,33 @@ function isImage(filename) {
 }
 
 function formateReceive(recipient) {
+  if (!recipient) return ''
   recipient = JSON.parse(recipient)
   return recipient.map(item => item.address).join(', ')
 }
 
 function changeStar() {
-  if (email.isStar) {
-    email.isStar = 0;
-    starCancel(email.emailId).then(() => {
-      email.isStar = 0;
-      emailStore.cancelStarEmailId = email.emailId
+  if (email.value.isStar) {
+    email.value.isStar = 0;
+    starCancel(email.value.emailId).then(() => {
+      email.value.isStar = 0;
+      emailStore.cancelStarEmailId = email.value.emailId
       setTimeout(() => emailStore.cancelStarEmailId = 0)
-      emailStore.starScroll?.deleteEmail([email.emailId])
+      emailStore.starScroll?.deleteEmail([email.value.emailId])
     }).catch((e) => {
       console.error(e)
-      email.isStar = 1;
+      email.value.isStar = 1;
     })
   } else {
-    email.isStar = 1;
-    starAdd(email.emailId).then(() => {
-      email.isStar = 1;
-      emailStore.addStarEmailId = email.emailId
+    email.value.isStar = 1;
+    starAdd(email.value.emailId).then(() => {
+      email.value.isStar = 1;
+      emailStore.addStarEmailId = email.value.emailId
       setTimeout(() => emailStore.addStarEmailId = 0)
-      emailStore.starScroll?.addItem(email)
+      emailStore.starScroll?.addItem(email.value)
     }).catch((e) => {
       console.error(e)
-      email.isStar = 0;
+      email.value.isStar = 0;
     })
   }
 }
@@ -201,23 +208,23 @@ const handleDelete = () => {
     type: 'warning'
   }).then(() => {
     if (emailStore.contentData.delType === 'logic') {
-      emailDelete(email.emailId).then(() => {
+      emailDelete(email.value.emailId).then(() => {
         ElMessage({
           message: t('delSuccessMsg'),
           type: 'success',
           plain: true,
         })
-        emailStore.deleteIds = [email.emailId]
+        emailStore.deleteIds = [email.value.emailId]
       })
     } else  {
 
-      allEmailDelete(email.emailId).then(() => {
+      allEmailDelete(email.value.emailId).then(() => {
         ElMessage({
           message: t('delSuccessMsg'),
           type: 'success',
           plain: true,
         })
-        emailStore.deleteIds = [email.emailId]
+        emailStore.deleteIds = [email.value.emailId]
       })
     }
 

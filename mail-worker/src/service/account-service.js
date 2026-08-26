@@ -57,6 +57,14 @@ const accountService = {
 			throw new BizError(t('isRegAccount'));
 		}
 
+		if (email.includes('+')) {
+			const baseEmail = emailUtils.getBaseEmail(email);
+			const baseAccount = await this.selectByEmailIncludeDel(c, baseEmail);
+			if (!baseAccount || baseAccount.userId !== userId) {
+				throw new BizError(t('notOwner'));
+			}
+		}
+
 		const userRow = await userService.selectById(c, userId);
 		const roleRow = await roleService.selectById(c, userRow.type);
 

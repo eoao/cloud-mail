@@ -1,5 +1,3 @@
-import { emailConst } from '../const/entity-const';
-
 const analysisDao = {
 	async numberCount(c) {
 		const { results } = await c.env.db.prepare(`
@@ -26,7 +24,7 @@ const analysisDao = {
                         SUM(CASE WHEN type = 0 AND is_del = 0 THEN 1 ELSE 0 END) AS normalReceiveTotal,
                         SUM(CASE WHEN type = 1 AND is_del = 0 THEN 1 ELSE 0 END) AS normalSendTotal
                     FROM
-                        email where status != ${emailConst.status.SAVING}
+                        email
                 ) e
             CROSS JOIN (
                 SELECT
