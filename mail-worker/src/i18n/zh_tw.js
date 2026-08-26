@@ -15,6 +15,7 @@ const zh_tw = {
 	noOsDomainSendAtt: '物件儲存網域未設定，無法傳送附件',
 	noOsSendAtt: '物件儲存未設定，無法傳送附件',
 	disabledSend: '郵件寄送功能已停用',
+	oauthDisabled: '該 OAuth2 功能未啟用',
 	daySendLimit: '寄送次數已達每日限制',
 	totalSendLimit: '寄送次數已達限制',
 	daySendLack: '當日剩餘寄送次數不足',

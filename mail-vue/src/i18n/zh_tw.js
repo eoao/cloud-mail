@@ -30,6 +30,7 @@ const zhtw = {
     change: '修改',
     changePwdBtn: '修改密碼',
     username: '使用者名稱',
+    trustLevel: '等級',
     password: '密碼',
     delAccount: '刪除帳號',
     delAccountMsg: '此操作將永久刪除您的帳號及其所有資料，且無法復原',
@@ -274,6 +275,7 @@ const zhtw = {
     rulesVerify: '規則',
     rulesVerifyTitle: 'IP 每天使用 {count} 次後觸發',
     botVerifyMsg: '請完成人機驗證',
+    oauthLogin: 'OAuth2',
     noticeTitle: '網站公告',
     noticePopup: '登入彈窗',
     icon: '圖示',
@@ -338,7 +340,11 @@ const zhtw = {
     searchUser: '搜尋使用者',
     searchEmail: '搜尋信箱',
     searchSender: '搜尋寄件人',
-    userEmail: '使用者信箱'
+    userEmail: '使用者信箱',
+    oauthSetting: 'OAuth',
+    clientId: '客戶端 ID',
+    clientSecret: '客戶端密鑰',
+    notOwner: '基礎信箱不屬於您',
 }
 
 export default zhtw
