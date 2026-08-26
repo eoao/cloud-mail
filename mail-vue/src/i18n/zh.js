@@ -345,5 +345,14 @@ const zh = {
     clientId: '客户端 ID',
     clientSecret: '客户端密钥',
     notOwner: '基础邮箱不属于您',
+    barkPush: 'Bark 推送',
+    barkUrl: 'Bark URL',
+    barkUrlPlaceholder: 'https://api.day.app/your_key',
+    barkUrlDesc: '填写 Bark 推送 URL，收到邮件时推送通知到手机',
+    barkUrlHelp: '如何获取？',
+    barkTestSuccess: '测试推送已发送',
+    barkTestFail: '测试推送失败，请检查 URL',
+    barkUrlSaved: 'Bark URL 已保存',
+    barkUrlEmpty: '请先填写 Bark URL',
 }
 export default zh

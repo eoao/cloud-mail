@@ -30,6 +30,21 @@
         </div>
       </div>
     </div>
+    <div class="bark-section">
+      <div class="title">{{$t('barkPush')}}</div>
+      <div class="bark-desc">
+        {{$t('barkUrlDesc')}}
+        <a href="https://bark.day.app/" target="_blank" class="bark-help">{{$t('barkUrlHelp')}}</a>
+      </div>
+      <div class="bark-input-row">
+        <el-input
+            v-model="barkUrl"
+            :placeholder="$t('barkUrlPlaceholder')"
+            clearable
+        />
+        <el-button type="primary" :loading="barkSaveLoading" @click="saveBarkUrl">{{$t('save')}}</el-button>
+      </div>
+    </div>
     <div class="language">
       <div class="title">{{$t('language')}}</div>
       <el-select
@@ -62,13 +77,14 @@
 </template>
 <script setup>
 import {reactive, ref, defineOptions} from 'vue'
-import {resetPassword, userDelete} from "@/request/my.js";
+import {resetPassword, userDelete, getBarkUrl, setBarkUrl} from "@/request/my.js";
 import {useUserStore} from "@/store/user.js";
 import router from "@/router/index.js";
 import {accountSetName} from "@/request/account.js";
 import {useAccountStore} from "@/store/account.js";
 import {useI18n} from "vue-i18n";
 import {useSettingStore} from "@/store/setting.js";
+import {onMounted} from "vue";
 
 const { t } = useI18n()
 const accountStore = useAccountStore()
@@ -78,6 +94,8 @@ const setPwdLoading = ref(false)
 const setNameShow = ref(false)
 const accountName = ref(null)
 const langSelect = ref(settingStore.lang)
+const barkUrl = ref('')
+const barkSaveLoading = ref(false)
 
 defineOptions({
   name: 'setting'
@@ -132,6 +150,27 @@ function changeLang(lang) {
   localStorage.setItem('setting', JSON.stringify({...setting, lang}))
   window.location.reload()
 }
+
+function saveBarkUrl() {
+  if (barkSaveLoading.value) return
+  barkSaveLoading.value = true
+  setBarkUrl(barkUrl.value).then(() => {
+    ElMessage({
+      message: t('barkUrlSaved'),
+      type: 'success',
+      plain: true,
+    })
+    barkSaveLoading.value = false
+  }).catch(() => {
+    barkSaveLoading.value = false
+  })
+}
+
+onMounted(() => {
+  getBarkUrl().then(res => {
+    barkUrl.value = res.barkUrl || ''
+  })
+})
 
 const pwdShow = ref(false)
 const form = reactive({
@@ -273,6 +312,40 @@ function submitPwd() {
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
+      }
+    }
+  }
+
+  .bark-section {
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 40px;
+
+    .title {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .bark-desc {
+      color: var(--regular-text-color);
+      line-height: 1.6;
+
+      .bark-help {
+        color: #4dabff;
+        text-decoration: none;
+        margin-left: 4px;
+      }
+    }
+
+    .bark-input-row {
+      display: flex;
+      gap: 10px;
+      max-width: 600px;
+
+      .el-input {
+        flex: 1;
       }
     }
   }
