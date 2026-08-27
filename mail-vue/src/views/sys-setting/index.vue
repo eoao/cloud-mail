@@ -213,6 +213,21 @@
                   </el-button>
                 </div>
               </div>
+              <div class="setting-item">
+                <div>
+                  <span>{{ $t('autoClean') }}</span>
+                  <el-tooltip effect="dark" :content="$t('autoCleanDesc')">
+                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+                  </el-tooltip>
+                </div>
+                <div class="forward">
+                  <span>{{ setting.autoCleanDays > 0 ? $t('autoCleanRetain', { days: setting.autoCleanDays }) : $t('disabled') }}</span>
+                  <el-button class="opt-button" style="margin-top: 0" @click="openAutoClean" size="small"
+                             type="primary">
+                    <Icon icon="fluent:settings-48-regular" width="16" height="16"/>
+                  </el-button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -829,6 +844,22 @@
         </el-form>
         <el-button type="primary" style="width: 100%;" :loading="settingLoading" @click="saveBlackList">{{ $t('save') }}</el-button>
       </el-dialog>
+      <el-dialog v-model="autoCleanShow" :title="t('autoClean')" class="forward-dialog" @closed="resetAutoClean">
+        <el-form>
+          <el-form-item :label="t('autoCleanDays')" label-position="top">
+            <el-input-number v-model="autoCleanDays" :min="0" :max="3650" style="width: 100%"/>
+          </el-form-item>
+          <el-form-item :label="t('autoCleanExclude')" label-position="top">
+            <el-input-tag
+                tag-type="warning"
+                :placeholder="$t('autoCleanExcludeDesc')"
+                v-model="autoCleanExclude"
+                @add-tag="autoCleanExcludeAddTag"
+            />
+          </el-form-item>
+        </el-form>
+        <el-button type="primary" style="width: 100%;" :loading="settingLoading" @click="saveAutoClean">{{ $t('save') }}</el-button>
+      </el-dialog>
       <el-dialog v-model="aiCodeFilterShow" class="forward-dialog" @closed="resetAiCodeFilter">
         <template #header>
           <div class="forward-head">
@@ -884,6 +915,7 @@ const userStore = useUserStore();
 const editTitleShow = ref(false)
 const resendTokenFormShow = ref(false)
 const blackFormShow = ref(false)
+const autoCleanShow = ref(false)
 const aiCodeFilterShow = ref(false)
 const r2DomainShow = ref(false)
 const turnstileShow = ref(false)
@@ -903,6 +935,8 @@ const r2DomainInput = ref('')
 const loginOpacity = ref(0)
 const minEmailPrefix = ref(0)
 const emailPrefixFilter = ref([])
+const autoCleanDays = ref(0)
+const autoCleanExclude = ref([])
 const backgroundUrl = ref('')
 let backgroundFile = {}
 const showSetBackground = ref(false)
@@ -1172,6 +1206,14 @@ function openEmailPrefix() {
   emailPrefixShow.value = true
 }
 
+function openAutoClean() {
+  autoCleanDays.value = setting.value.autoCleanDays ?? 0
+  autoCleanExclude.value = setting.value.autoCleanExclude
+      ? setting.value.autoCleanExclude.split(',').filter(Boolean)
+      : []
+  autoCleanShow.value = true
+}
+
 function openForwardRules() {
   ruleType.value = setting.value.ruleType
   ruleEmail.value = []
@@ -1302,6 +1344,13 @@ function resetBlackList() {
   blackListForm.value.blackSubject = setting.value.blackSubject ? setting.value.blackSubject.split(',') : []
 }
 
+function resetAutoClean() {
+  autoCleanDays.value = setting.value.autoCleanDays ?? 0
+  autoCleanExclude.value = setting.value.autoCleanExclude
+      ? setting.value.autoCleanExclude.split(',').filter(Boolean)
+      : []
+}
+
 function resetAiCodeFilter() {
   aiCodeFilter.value = setting.value.aiCodeFilter ? setting.value.aiCodeFilter.split(',') : []
 }
@@ -1311,6 +1360,13 @@ function saveEmailPrefix() {
   form.minEmailPrefix = minEmailPrefix.value
   form.emailPrefixFilter = emailPrefixFilter.value
   editSetting(form, true)
+}
+
+function saveAutoClean() {
+  editSetting({
+    autoCleanDays: autoCleanDays.value,
+    autoCleanExclude: autoCleanExclude.value.join(',')
+  }, true)
 }
 
 function saveAiCodeFilter() {
@@ -1355,6 +1411,20 @@ function banEmailAddTag(val) {
   emails.forEach(email => {
     if ((isEmail(email) || isDomain(email)) && !blackListForm.value.blackFrom.includes(email)) {
       blackListForm.value.blackFrom.push(email)
+    }
+  })
+}
+
+function autoCleanExcludeAddTag(val) {
+  const emails = Array.from(new Set(
+      val.split(/[,，]/).map(item => item.trim()).filter(item => item)
+  ));
+
+  autoCleanExclude.value.splice(autoCleanExclude.value.length - 1, 1)
+
+  emails.forEach(email => {
+    if (isEmail(email) && !autoCleanExclude.value.includes(email)) {
+      autoCleanExclude.value.push(email)
     }
   })
 }
@@ -1572,6 +1642,7 @@ function editSetting(settingForm, refreshStatus = true) {
     addS3Show.value = false
     emailPrefixShow.value = false
     aiCodeFilterShow.value = false
+    autoCleanShow.value = false
     oauthSettingShow.value = false
   }).catch((e) => {
     loginOpacity.value = setting.value.loginOpacity

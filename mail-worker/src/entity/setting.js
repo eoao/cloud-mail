@@ -61,6 +61,8 @@ export const setting = sqliteTable('setting', {
 	githubSwitch: integer('github_switch').default(1).notNull(),
 	googleClientId: text('google_client_id').default('').notNull(),
 	googleClientSecret: text('google_client_secret').default('').notNull(),
-	googleSwitch: integer('google_switch').default(1).notNull()
+	googleSwitch: integer('google_switch').default(1).notNull(),
+	autoCleanDays: integer('auto_clean_days').default(0).notNull(),
+	autoCleanExclude: text('auto_clean_exclude').default('').notNull()
 });
 export default setting
