@@ -139,7 +139,7 @@ const userService = {
 
 
 		if (email) {
-			conditions.push(sql`${user.email} COLLATE NOCASE LIKE ${'%'+ email + '%'}`);
+			conditions.push(sql`${user.email} COLLATE NOCASE LIKE ${email + '%'}`);
 		}
 
 
@@ -153,7 +153,8 @@ const userService = {
 			username: oauth.username,
 			trustLevel: oauth.trustLevel,
 			avatar: oauth.avatar,
-			name: oauth.name
+			name: oauth.name,
+			platform: oauth.platform
 		}).from(user).leftJoin(oauth, eq(oauth.userId, user.userId))
 			.where(and(...conditions));
 
@@ -349,6 +350,10 @@ const userService = {
 	},
 
 	async resetDaySendCount(c) {
+		// 仅 UTC 0 点执行，便于配合每小时 cron
+		if (new Date().getUTCHours() !== 0) {
+			return;
+		}
 		const roleList = await roleService.selectByIdsAndSendType(c, 'email:send', roleConst.sendType.DAY);
 		const roleIds = roleList.map(action => action.roleId);
 		await orm(c).update(user).set({ sendCount: 0 }).where(inArray(user.type, roleIds)).run();

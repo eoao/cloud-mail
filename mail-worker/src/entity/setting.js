@@ -51,7 +51,18 @@ export const setting = sqliteTable('setting', {
 	blackContent: text('black_content').default('').notNull(),
 	blackFrom: text('black_from').default('').notNull(),
 	aiCode: integer('ai_code').default(1).notNull(),
+	syncDelete: integer('sync_delete').default(1).notNull(),
 	aiCodeFilter: text('ai_code_filter').default('').notNull(),
-	syncDelete: integer('sync_delete').default(1).notNull()
+	linuxdoClientId: text('linuxdo_client_id').default('').notNull(),
+	linuxdoClientSecret: text('linuxdo_client_secret').default('').notNull(),
+	linuxdoSwitch: integer('linuxdo_switch').default(1).notNull(),
+	githubClientId: text('github_client_id').default('').notNull(),
+	githubClientSecret: text('github_client_secret').default('').notNull(),
+	githubSwitch: integer('github_switch').default(1).notNull(),
+	googleClientId: text('google_client_id').default('').notNull(),
+	googleClientSecret: text('google_client_secret').default('').notNull(),
+	googleSwitch: integer('google_switch').default(1).notNull(),
+	autoCleanDays: integer('auto_clean_days').default(0).notNull(),
+	autoCleanExclude: text('auto_clean_exclude').default('').notNull()
 });
 export default setting

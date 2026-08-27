@@ -30,7 +30,7 @@ not_found_handling = "single-page-application"
 run_worker_first = true
 
 [triggers]
-crons = ["0 16 * * *"]	#每天晚上12点执行每日任务,刷新分析缓存
+crons = ["0 * * * *"]	#每小时执行；resetDaySendCount 仅在 UTC 0 点生效
 
 
 [vars]

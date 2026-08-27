@@ -13,6 +13,10 @@ const verifyRecordService = {
 	},
 
 	async clearRecord(c) {
+		// 仅 UTC 0 点执行，便于配合每小时 cron
+		if (new Date().getUTCHours() !== 0) {
+			return;
+		}
 		await orm(c).delete(verifyRecord).run();
 	},
 

@@ -30,6 +30,7 @@ const en = {
     change: 'Change',
     changePwdBtn: 'Change',
     username: 'Username',
+    trustLevel: 'Level',
     password: 'Password',
     delAccount: 'Delete Account',
     delAccountMsg: 'This will permanently delete your account and data. It cannot be reactivated',
@@ -153,6 +154,13 @@ const en = {
     resendToken: 'Resend Token',
     cloudflareEmailSending: 'Cloudflare Email Sending',
     blackList: 'Blocklist',
+    autoClean: 'Auto Cleanup',
+    autoCleanDesc: 'Automatically delete emails older than the configured days. 0 means disabled.',
+    autoCleanDays: 'Retention Days',
+    autoCleanRetain: 'Retain {days} days',
+    autoCleanExclude: 'Excluded Users',
+    autoCleanExcludeDesc: 'Enter user emails that should not be cleaned up',
+    dayUnit: ' days',
     codeRecognition: 'Verification Code Recognition',
     codeRecognitionRules: 'Recognition Rules',
     codeRecognitionRulesDesc: 'Only recognize emails containing the following info. Empty means all.',
@@ -274,6 +282,7 @@ const en = {
     rulesVerify: 'Rules',
     rulesVerifyTitle: 'Trigger After {count} Daily Uses per IP',
     botVerifyMsg: 'Please verify that you are human',
+    oauthLogin: 'OAuth2',
     noticeTitle: 'Notice',
     noticePopup: 'Sign-In Popup',
     icon: 'Icon',
@@ -338,7 +347,11 @@ const en = {
     searchUser: 'Search by user',
     searchEmail: 'Search by Email',
     searchSender: 'Search by Sender',
-    userEmail: 'Email Address'
+    userEmail: 'Email Address',
+    oauthSetting: 'OAuth',
+    clientId: 'Client ID',
+    clientSecret: 'Client Secret',
+    notOwner: 'Base email does not belong to you',
 }
 
 export default en

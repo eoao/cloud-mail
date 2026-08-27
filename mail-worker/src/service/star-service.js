@@ -4,6 +4,7 @@ import emailService from './email-service';
 import BizError from '../error/biz-error';
 import { and, desc, eq, lt, sql, inArray } from 'drizzle-orm';
 import email from '../entity/email';
+import { emailListColumns, emailBriefColumns } from '../lib/email-list-columns';
 import { isDel } from '../const/entity-const';
 import attService from "./att-service";
 import { t } from '../i18n/i18n'
@@ -41,37 +42,39 @@ const starService = {
 	},
 
 	async list(c, params, userId) {
-		let { emailId, size } = params;
-		emailId = Number(emailId);
+		let { emailId, size, full } = params;
+		emailId = Number(emailId) || 0;
 		size = Number(size);
-
-		if (!emailId) {
-			emailId = 9999999999;
-		}
+		full = Number(full) === 1;
+		const columns = full ? emailListColumns : emailBriefColumns;
 
 		const list = await orm(c).select({
 			isStar: sql`1`.as('isStar'),
-			starId: star.starId
-			, ...email
+			starId: star.starId,
+			...columns
 		}).from(star)
 			.leftJoin(email, eq(email.emailId, star.emailId))
 			.where(
 				and(
 					eq(star.userId, userId),
 					eq(email.isDel, isDel.NORMAL),
-					lt(star.emailId, emailId)))
+					emailId ? lt(star.emailId, emailId) : undefined))
 			.orderBy(desc(star.emailId))
 			.limit(size)
 			.all();
 
-		const emailIds = list.map(item => item.emailId);
-
-		const attsList = await attService.selectByEmailIds(c, emailIds);
-
-		list.forEach(emailRow => {
-			const atts = attsList.filter(attsRow => attsRow.emailId === emailRow.emailId);
-			emailRow.attList = atts;
-		});
+		if (full) {
+			const emailIds = list.map(item => item.emailId);
+			const attsList = await attService.selectByEmailIds(c, emailIds);
+			list.forEach(emailRow => {
+				emailRow.attList = attsList.filter(attsRow => attsRow.emailId === emailRow.emailId);
+			});
+		} else {
+			list.forEach(emailRow => {
+				emailRow.text = emailService.toListText(emailRow);
+				delete emailRow.content;
+			});
+		}
 
 		return { list };
 	},
