@@ -9,7 +9,9 @@ let http = axios.create({
 
 http.interceptors.request.use(config => {
     const { lang } = useSettingStore();
-    config.headers.Authorization = `${localStorage.getItem('token')}`
+    if (!config.headers.Authorization) {
+        config.headers.Authorization = `${localStorage.getItem('token')}`
+    }
     config.headers['accept-language'] = lang
     return config
 })

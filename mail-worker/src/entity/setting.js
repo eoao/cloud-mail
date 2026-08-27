@@ -63,6 +63,7 @@ export const setting = sqliteTable('setting', {
 	googleClientSecret: text('google_client_secret').default('').notNull(),
 	googleSwitch: integer('google_switch').default(1).notNull(),
 	autoCleanDays: integer('auto_clean_days').default(0).notNull(),
-	autoCleanExclude: text('auto_clean_exclude').default('').notNull()
+	autoCleanExclude: text('auto_clean_exclude').default('').notNull(),
+	applyAutoTrustLevel: integer('apply_auto_trust_level').default(3).notNull()
 });
 export default setting

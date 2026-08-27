@@ -1,11 +1,14 @@
 import BizError from "../error/biz-error";
 import orm from "../entity/orm";
 import {oauth} from "../entity/oauth";
-import { eq, inArray } from 'drizzle-orm';
+import applyEntity from "../entity/apply";
+import { and, eq, inArray, notInArray } from 'drizzle-orm';
 import userService from "./user-service";
 import loginService from "./login-service";
 import cryptoUtils from "../utils/crypto-utils";
 import settingService from "./setting-service";
+import applyService from "./apply-service";
+import { applyConst } from '../const/entity-const';
 import {t} from '../i18n/i18n';
 
 const oauthService = {
@@ -185,7 +188,8 @@ const oauthService = {
 		const userRow = await userService.selectByIdIncludeDel(c, oauthRow.userId);
 
 		if (!userRow) {
-			return { userInfo: oauthRow, token: null };
+			const applyJwt = await applyService.generateApplyToken(c, oauthRow.oauthUserId);
+			return { userInfo: oauthRow, token: null, applyJwt: applyJwt };
 		}
 
 		const JwtToken = await loginService.login(c, { email: userRow.email, password: null }, true);
@@ -222,9 +226,18 @@ const oauthService = {
 		await orm(c).delete(oauth).where(inArray(oauth.userId, userIds)).run();
 	},
 
-	//定时任务凌晨清除未绑定邮箱的oauth用户
+	//定时任务凌晨清除未绑定邮箱的oauth用户；保留仍存在待审申请的身份，避免申请人等待审核期间被误删
 	async clearNoBindOathUser(c) {
-		await orm(c).delete(oauth).where(eq(oauth.userId, 0)).run();
+
+		const pendingSubQuery = orm(c)
+			.select({ oid: applyEntity.oauthUserId })
+			.from(applyEntity)
+			.where(eq(applyEntity.status, applyConst.status.PENDING));
+
+		await orm(c).delete(oauth).where(and(
+			eq(oauth.userId, 0),
+			notInArray(oauth.oauthUserId, pendingSubQuery)
+		)).run();
 	},
 
 }

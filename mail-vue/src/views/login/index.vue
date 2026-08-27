@@ -168,6 +168,7 @@ import {loginUserInfo} from "@/request/my.js";
 import {permsToRouter} from "@/perm/perm.js";
 import {useI18n} from "vue-i18n";
 import {oauthBindUser, oauthLinuxDoLogin, oauthGithubLogin, oauthGoogleLogin} from "@/request/ouath.js";
+import {launchOauth} from "@/utils/oauth.js";
 
 const {t} = useI18n();
 const accountStore = useAccountStore();
@@ -287,14 +288,7 @@ const getEmailName = (email) => {
 
 function oauthLogin(provider) {
   const clientId = settingStore.settings[provider + 'ClientId']
-  const redirectUri = encodeURIComponent(window.location.origin + '/login')
-  sessionStorage.setItem('oauthProvider', provider)
-  const authorizeUrls = {
-    linuxdo: `https://connect.linux.do/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid+profile+email&state=${provider}`,
-    github: `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email&state=${provider}`,
-    google: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid+profile+email&state=${provider}`,
-  }
-  window.location.href = authorizeUrls[provider]
+  launchOauth(provider, clientId)
 }
 
 const loginFns = {
@@ -321,6 +315,15 @@ async function oauthGetUser() {
     bindForm.oauthUserId = data.userInfo.oauthUserId;
 
     if (!data.token) {
+
+      if (sessionStorage.getItem('oauthNext') === 'apply' && data.applyJwt) {
+        sessionStorage.removeItem('oauthNext')
+        sessionStorage.setItem('applyJwt', data.applyJwt)
+        sessionStorage.setItem('applyUserInfo', JSON.stringify(data.userInfo))
+        router.push('/apply')
+        return;
+      }
+
       showBindForm.value = true
       oauthLoading.value = false
       ElMessage({

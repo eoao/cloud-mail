@@ -432,6 +432,23 @@
             </div>
           </div>
 
+          <!-- Apply Audit Card -->
+          <div class="settings-card">
+            <div class="card-title">{{ $t('applySetting') }}</div>
+            <div class="card-content">
+              <div class="setting-item">
+                <div>
+                  <span>{{ $t('applyAutoTrustLevel') }}</span>
+                  <el-tooltip effect="dark" :content="$t('applyAutoTrustLevelDesc')">
+                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+                  </el-tooltip>
+                </div>
+                <el-input-number @change="change" :style="`width: ${ locale === 'en' ?  100 : 80 }px;`"
+                                 v-model="setting.applyAutoTrustLevel" :min="0" :max="9"/>
+              </div>
+            </div>
+          </div>
+
           <div class="settings-card about">
             <div class="card-title">{{ $t('about') }}</div>
             <div class="card-content">

@@ -147,6 +147,14 @@ export const verifyRecordType = {
 	ADD: 1,
 }
 
+export const applyConst = {
+	status: {
+		PENDING: 0,
+		APPROVED: 1,
+		REJECTED: 2
+	}
+}
+
 
 export const isDel = {
 	DELETE: 1,

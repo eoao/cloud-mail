@@ -99,6 +99,16 @@ const routers = {
             menu: true
         }
     }],
+    'apply:query': [{
+        path: '/apply-audit',
+        name: 'apply-admin',
+        component: () => import('@/views/apply-admin/index.vue'),
+        meta: {
+            title: 'applyAudit',
+            name: 'apply-admin',
+            menu: true
+        }
+    }],
     'all-email:query': [{
         path: '/all-mail',
         name: 'all-email',

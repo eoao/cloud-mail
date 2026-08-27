@@ -60,6 +60,15 @@ const routes = [
         component: () => import('@/views/login/index.vue')
     },
     {
+        path: '/apply',
+        name: 'apply',
+        component: () => import('@/views/apply/index.vue'),
+        meta: {
+            title: 'applyTitle',
+            name: 'apply'
+        }
+    },
+    {
         path: '/test',
         name: 'test',
         component: () => import('@/views/test/index.vue')
@@ -100,7 +109,7 @@ router.beforeEach((to, from, next) => {
 
     const token = localStorage.getItem('token')
 
-    if (!token && !to.path.startsWith('/login')) {
+    if (!token && to.path !== '/apply' && !to.path.startsWith('/login')) {
         return next({name: 'login'})
     }
 
