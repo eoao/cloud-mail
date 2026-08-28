@@ -31,6 +31,7 @@ import {emailList, emailDelete, emailLatest, emailRead} from "@/request/email.js
 import {starAdd, starCancel} from "@/request/star.js";
 import {defineOptions, h, onMounted, reactive, ref, watch} from "vue";
 import {sleep} from "@/utils/time-utils.js";
+import {isVisible, pollDelay, whenVisible} from "@/utils/poll-utils.js";
 import router from "@/router/index.js";
 import {Icon} from "@iconify/vue";
 import { useRoute } from 'vue-router'
@@ -55,6 +56,8 @@ onMounted(() => {
 
 
 watch(() => accountStore.currentAccountId, () => {
+  // Switching account is user intent: poll at full speed again.
+  emptyStreak = 0;
   scroll.value.refreshList();
 })
 
@@ -74,11 +77,22 @@ function jumpContent(email) {
 
 const existIds = new Set();
 
+// Consecutive polls that returned nothing; drives the adaptive backoff.
+let emptyStreak = 0;
+
 async function latest() {
   while (true) {
 
     let autoRefresh = settingStore.settings.autoRefresh;
-    await sleep(autoRefresh > 1 ? autoRefresh * 1000 : 3000);
+
+    // Park while the tab is hidden instead of polling into the void, then come
+    // back at full speed so a returning user sees new mail immediately.
+    if (!isVisible()) {
+      await whenVisible();
+      emptyStreak = 0;
+    }
+
+    await sleep(pollDelay(autoRefresh, emptyStreak));
 
     if (route.name !== 'email') {
       continue;
@@ -99,6 +113,8 @@ async function latest() {
         }
 
         //确保请求回来后，账号没有切换，时间排序没有改变，全部邮件类型没变
+        emptyStreak = list.length > 0 ? 0 : emptyStreak + 1;
+
         if (accountId === accountStore.currentAccountId && params.timeSort === curTimeSort && allReceive === accountStore.currentAccount.allReceive) {
           if (list.length > 0) {
 

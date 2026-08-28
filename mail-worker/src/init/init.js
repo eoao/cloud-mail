@@ -1,4 +1,5 @@
 import settingService from '../service/setting-service';
+import webhookUtils from '../utils/webhook-utils';
 import emailUtils from '../utils/email-utils';
 import {emailConst} from "../const/entity-const";
 
@@ -7,8 +8,16 @@ const dbInit = {
 
 		const secret = c.req.param('secret');
 
-		if (secret !== c.env.jwt_secret) {
-			return c.text('❌ JWT secret mismatch');
+		// Prefer a dedicated init secret so the bootstrap/migration endpoint is not
+		// gated by the same value that signs every session token.
+		const expected = c.env.init_secret || c.env.jwt_secret;
+
+		if (!expected) {
+			return c.text('❌ init_secret not configured', 500);
+		}
+
+		if (!webhookUtils.timingSafeEqual(String(secret), String(expected))) {
+			return c.text('❌ init secret mismatch', 403);
 		}
 
 		await this.intDB(c);
@@ -32,8 +41,37 @@ const dbInit = {
 		await this.v3_1DB(c);
 		await this.v3_2DB(c);
 		await this.v3_3DB(c);
+		await this.v3_4DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	// v3_4: background job queue (Cloudflare Queues is paid-only, so this is D1 +
+	// a single Durable Object runner).
+	async v3_4DB(c) {
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`CREATE TABLE IF NOT EXISTS job (
+					job_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					type TEXT NOT NULL,
+					payload TEXT NOT NULL DEFAULT '{}',
+					status INTEGER NOT NULL DEFAULT 0,
+					priority INTEGER NOT NULL DEFAULT 0,
+					run_after TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					attempts INTEGER NOT NULL DEFAULT 0,
+					max_attempts INTEGER NOT NULL DEFAULT 3,
+					last_error TEXT NOT NULL DEFAULT '',
+					result TEXT NOT NULL DEFAULT '',
+					dedupe_key TEXT NOT NULL DEFAULT '',
+					create_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+					update_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)`),
+				c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_job_claim ON job(status, priority, run_after)`),
+				c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_job_dedupe ON job(dedupe_key, status)`)
+			]);
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
 	},
 
 	async v3_3DB(c) {

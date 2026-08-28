@@ -22,6 +22,15 @@ bucket_name = "cloud-mail-r2"
 [ai]
 binding = "ai"
 
+# Single-instance job queue drainer. SQLite-backed so it works on the free plan.
+[[durable_objects.bindings]]
+name = "JOB_RUNNER"
+class_name = "JobRunner"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["JobRunner"]
+
 [assets]
 binding = "assets"
 directory = "./dist"
@@ -35,7 +44,13 @@ crons = ["0 * * * *"]
 [vars]
 domain = ["dfmsolutions.de"]
 admin = "info@dfmsolutions.de"
-jwt_secret = "e392bdf3dc8e866633d31c2fcb9c3b2e5b5220a375a055ec8ee483575dab3f1b"
+
+# Secrets - NEVER put these in [vars]; set them with `wrangler secret put <name>`:
+#   jwt_secret     signs session tokens (rotating it logs everyone out)
+#   init_secret    gates GET /api/init/<secret> (DB bootstrap + migrations)
+#   webhook_secret Svix signing secret from the sending provider's webhook config
+# Existing deployments keep their old plaintext jwt_secret because keep_vars = true;
+# run `wrangler secret put jwt_secret` to shadow and replace it.
 
 [build]
 command = "pnpm --prefix ../mail-vue install && pnpm --prefix ../mail-vue run build"

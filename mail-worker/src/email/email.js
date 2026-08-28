@@ -39,13 +39,16 @@ export async function email(message, env, ctx) {
 		}
 
 		const reader = message.raw.getReader();
+		const decoder = new TextDecoder();
 		let content = '';
 
 		while (true) {
 			const { done, value } = await reader.read();
 			if (done) break;
-			content += new TextDecoder().decode(value);
+			// stream:true keeps multi-byte characters intact across chunk boundaries
+			content += decoder.decode(value, { stream: true });
 		}
+		content += decoder.decode();
 
 		const email = await PostalMime.parse(content);
 

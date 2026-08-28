@@ -103,6 +103,7 @@ import router from "@/router/index.js";
 import {useI18n} from 'vue-i18n';
 import {toUtc} from "@/utils/day.js";
 import {sleep} from "@/utils/time-utils.js";
+import {isVisible, pollDelay, whenVisible} from "@/utils/poll-utils.js";
 import {useSettingStore} from "@/store/setting.js";
 import { useRoute } from 'vue-router'
 
@@ -296,11 +297,18 @@ function getEmailList(emailId, size) {
 
 async function latest() {
 
+  let emptyStreak = 0;
+
   while (true) {
 
     let autoRefresh = settingStore.settings.autoRefresh;
 
-    await sleep(autoRefresh > 1 ? autoRefresh * 1000 : 3000);
+    if (!isVisible()) {
+      await whenVisible();
+      emptyStreak = 0;
+    }
+
+    await sleep(pollDelay(autoRefresh, emptyStreak));
 
     const latestId = sysEmailScroll.value.latestEmail?.emailId
 
@@ -325,6 +333,8 @@ async function latest() {
 
       const curTimeSort = params.timeSort
       let list = await allEmailLatest(latestId)
+
+      emptyStreak = list.length > 0 ? 0 : emptyStreak + 1;
 
       if (list.length === 0) {
         continue
