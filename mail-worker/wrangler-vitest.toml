@@ -19,6 +19,9 @@ id = "00000000000000000000000000000000"
 binding = "r2"
 bucket_name = "cloud-mail-test-r2"
 
+# No [ai] binding: the Workers AI binding cannot start in the local miniflare
+# runtime. Tests that need it inject a stub env instead (see test/ai.spec.js).
+
 [[durable_objects.bindings]]
 name = "JOB_RUNNER"
 class_name = "JobRunner"

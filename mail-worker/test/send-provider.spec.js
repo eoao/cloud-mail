@@ -5,8 +5,13 @@ import { drivers, getDriver, listDrivers } from '../src/service/send-provider/dr
 import { normalizeWebhook } from '../src/service/resend-service';
 import { emailConst } from '../src/const/entity-const';
 import { dbInit } from '../src/init/init';
+import dayjs from 'dayjs';
 
 const c = { env };
+
+// Match the service's own notion of "today" - it formats in local time, so a
+// UTC-derived date silently disagrees for part of every day.
+const todayStr = () => dayjs().format('YYYY-MM-DD');
 
 function initContext(secret) {
 	const store = new Map();
@@ -160,15 +165,18 @@ describe('send provider registry', () => {
 		});
 		await providerService.upsert(c, { domain: 'a.com', type: 'resend', credentials: {}, priority: 1 });
 
-		const todayStr = new Date().toISOString().slice(0, 10);
 		await env.db.prepare('UPDATE send_provider SET sent_today = 2, sent_date = ? WHERE provider_id = ?')
-			.bind(todayStr, row.providerId).run();
+			.bind(todayStr(), row.providerId).run();
 
-		stubDriver('brevo', async () => { throw new Error('should not be used'); });
+		let brevoCalled = false;
+		stubDriver('brevo', async () => { brevoCalled = true; throw new Error('should not be used'); });
 		stubDriver('resend', async () => ({ providerMessageId: 'ok', status: 'sent' }));
 
 		const out = await providerService.send(c, 'a.com', { receiveEmail: ['x@y.com'] }, () => []);
+
 		expect(out.type).toBe('resend');
+		// Must be skipped outright, not tried-and-failed-over.
+		expect(brevoCalled).toBe(false);
 	});
 
 	it('counts every recipient against the daily quota', async () => {

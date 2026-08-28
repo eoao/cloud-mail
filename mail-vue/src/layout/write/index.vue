@@ -44,6 +44,36 @@
           </template>
         </el-input-tag>
         <el-input v-model="form.subject" :placeholder="t('subject')" />
+
+        <!-- AI writing assistant -->
+        <div class="ai-bar">
+          <el-tooltip effect="dark" :content="t('aiDraftDesc')">
+            <el-button size="small" :loading="aiBusy" @click="openAiDraft">
+              <Icon icon="hugeicons:ai-magic" width="16" height="16"/>
+              <span class="ai-label">{{ t('aiDraft') }}</span>
+            </el-button>
+          </el-tooltip>
+          <el-dropdown trigger="click" @command="aiRewrite" :disabled="aiBusy">
+            <el-button size="small" :loading="aiBusy">
+              {{ t('aiRewrite') }}
+              <Icon icon="mingcute:down-line" width="14" height="14"/>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="proofread">{{ t('aiProofread') }}</el-dropdown-item>
+                <el-dropdown-item command="formal">{{ t('aiFormal') }}</el-dropdown-item>
+                <el-dropdown-item command="casual">{{ t('aiCasual') }}</el-dropdown-item>
+                <el-dropdown-item command="shorter">{{ t('aiShorter') }}</el-dropdown-item>
+                <el-dropdown-item command="longer">{{ t('aiLonger') }}</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+          <el-button size="small" :loading="aiBusy" @click="aiTranslate">{{ t('aiTranslate') }}</el-button>
+          <el-button v-if="form.sendType === 'reply'" size="small" :loading="aiBusy" @click="aiSuggestReplies">
+            {{ t('aiSuggestReplies') }}
+          </el-button>
+        </div>
+
         <tinyEditor :def-value="defValue" ref="editor" @change="change" @focus="focusChange" />
         <div class="button-item">
           <div class="att-add" @click="chooseFile">
@@ -69,6 +99,26 @@
         </div>
       </div>
     </div>
+    <el-dialog v-model="aiDraftShow" :title="t('aiDraft')" width="460">
+      <form @submit.prevent>
+        <el-input v-model="aiInstruction" type="textarea" :rows="4"
+                  :placeholder="t('aiDraftPlaceholder')" style="margin-bottom: 12px"/>
+        <el-select v-model="aiTone" style="margin-bottom: 12px">
+          <el-option value="neutral" :label="t('aiToneNeutral')"/>
+          <el-option value="formal" :label="t('aiFormal')"/>
+          <el-option value="friendly" :label="t('aiCasual')"/>
+        </el-select>
+        <el-button type="primary" :loading="aiBusy" @click="aiDraft">{{ t('aiGenerate') }}</el-button>
+      </form>
+    </el-dialog>
+
+    <el-dialog v-model="aiRepliesShow" :title="t('aiSuggestReplies')" width="520">
+      <div v-for="(reply, i) in aiReplies" :key="i" class="ai-reply">
+        <div class="ai-reply-text">{{ reply }}</div>
+        <el-button size="small" type="primary" @click="useReply(reply)">{{ t('aiUse') }}</el-button>
+      </div>
+    </el-dialog>
+
     <el-dialog top="10vh" v-model="showContacts" @closed="clearSelectContact" :title="t('recentContacts')">
       <el-table ref="contactsTabRef" row-key="email" :data="contacts" style="height: 445px">
         <el-table-column type="selection" width="32" />
@@ -114,6 +164,7 @@ import dayjs from "dayjs";
 import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
 import {ElMessageBox} from "element-plus";
+import {aiRun} from "@/request/ai.js";
 
 defineExpose({
   open,
@@ -122,7 +173,117 @@ defineExpose({
   openDraft
 })
 
-const {t} = useI18n()
+const {t, locale} = useI18n()
+
+// ---- AI writing assistant ----------------------------------------------
+// Tasks run inline because the user is waiting; the worker routes them to
+// whichever provider is configured (Workers AI by default).
+
+const aiBusy = ref(false)
+const aiDraftShow = ref(false)
+const aiRepliesShow = ref(false)
+const aiReplies = ref([])
+const aiInstruction = ref('')
+const aiTone = ref('neutral')
+
+async function callAi(task, input) {
+  if (aiBusy.value) return null
+  aiBusy.value = true
+  try {
+    const outcome = await aiRun(task, input)
+    if (!outcome.ok) {
+      ElMessage({message: outcome.error || t('aiFailed'), type: 'error', duration: 8000})
+      return null
+    }
+    return outcome.result
+  } catch (e) {
+    ElMessage({message: e.message ?? String(e), type: 'error', duration: 8000})
+    return null
+  } finally {
+    aiBusy.value = false
+  }
+}
+
+// TinyMCE holds HTML; the model works in plain text, so strip on the way in and
+// re-wrap paragraphs on the way out.
+function editorText() {
+  const html = editor.value?.getContent() ?? ''
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  return (doc.body.textContent ?? '').trim()
+}
+
+function textToHtml(text) {
+  return String(text ?? '')
+      .split(/\n{2,}/)
+      .map(p => `<p>${p.replace(/\n/g, '<br>').replace(/</g, '&lt;')}</p>`)
+      .join('')
+}
+
+function openAiDraft() {
+  aiInstruction.value = ''
+  aiDraftShow.value = true
+}
+
+async function aiDraft() {
+  if (!aiInstruction.value.trim()) return
+
+  const result = await callAi('draft', {
+    instruction: aiInstruction.value,
+    language: locale.value,
+    tone: aiTone.value,
+    context: form.sendType === 'reply' ? editorText() : ''
+  })
+
+  if (result) {
+    editor.value.insertContent(textToHtml(result))
+    aiDraftShow.value = false
+  }
+}
+
+async function aiRewrite(mode) {
+  const text = editorText()
+  if (!text) {
+    ElMessage({message: t('aiNothingToRewrite'), type: 'warning'})
+    return
+  }
+
+  const result = await callAi('rewrite', {text, mode, language: locale.value})
+  if (result) {
+    editor.value.setContent(textToHtml(result))
+  }
+}
+
+async function aiTranslate() {
+  const text = editorText()
+  if (!text) {
+    ElMessage({message: t('aiNothingToRewrite'), type: 'warning'})
+    return
+  }
+
+  const target = await ElMessageBox.prompt(t('aiTranslateTo'), {inputValue: 'English'})
+      .then(r => r.value)
+      .catch(() => null)
+
+  if (!target) return
+
+  const result = await callAi('translate', {text, target})
+  if (result) {
+    editor.value.setContent(textToHtml(result))
+  }
+}
+
+async function aiSuggestReplies() {
+  const result = await callAi('reply_suggest', {subject: form.subject, body: editorText()})
+  if (result?.length) {
+    aiReplies.value = result
+    aiRepliesShow.value = true
+  }
+}
+
+function useReply(reply) {
+  editor.value.insertContent(textToHtml(reply))
+  aiRepliesShow.value = false
+}
 const writerStore = useWriterStore();
 const draftStore = userDraftStore()
 const settingStore = useSettingStore()
@@ -617,6 +778,35 @@ function close() {
 }
 </style>
 <style scoped lang="scss">
+.ai-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 0 2px;
+
+  .ai-label {
+    margin-left: 4px;
+  }
+}
+
+.ai-reply {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .ai-reply-text {
+    flex: 1;
+    line-height: 1.5;
+    color: var(--el-text-color-primary);
+  }
+}
+
 .send {
   position: fixed;
   top: 0;

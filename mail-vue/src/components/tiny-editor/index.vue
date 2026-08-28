@@ -15,7 +15,9 @@ import {useSettingStore} from '@/store/setting.js'
 defineExpose({
   clearEditor,
   focus,
-  getContent
+  getContent,
+  setContent,
+  insertContent
 })
 
 const props = defineProps({
@@ -165,6 +167,20 @@ function focus() {
 
 function getContent() {
   return editor.value.getContent()
+}
+
+function setContent(html) {
+  if (editor.value) {
+    editor.value.setContent(html ?? '')
+  }
+}
+
+// Insert at the caret rather than replacing, so an AI suggestion can be added
+// to text the user already wrote.
+function insertContent(html) {
+  if (editor.value) {
+    editor.value.insertContent(html ?? '')
+  }
 }
 
 

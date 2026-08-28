@@ -432,6 +432,42 @@
             </div>
           </div>
 
+          <!-- AI providers -->
+          <div class="settings-card">
+            <div class="card-title">{{ $t('aiProviders') }}</div>
+            <div class="card-content">
+              <div class="setting-item">
+                <div>
+                  <span>{{ $t('aiProvider') }}</span>
+                  <el-tooltip effect="dark" :content="$t('aiProvidersDesc')">
+                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+                  </el-tooltip>
+                </div>
+                <div class="forward">
+                  <span>{{ aiRows.length || $t('aiDefaultRouting') }}</span>
+                  <el-button class="opt-button" style="margin-top: 0" size="small" type="primary" @click="openAi">
+                    <Icon icon="fluent:settings-48-regular" width="16" height="16"/>
+                  </el-button>
+                </div>
+              </div>
+              <div class="setting-item">
+                <div><span>{{ $t('aiTaskRouting') }}</span></div>
+                <div class="forward">
+                  <span>{{ aiBindingRows.length || $t('aiDefaultRouting') }}</span>
+                </div>
+              </div>
+              <div class="setting-item">
+                <div><span>{{ $t('test') }}</span></div>
+                <div>
+                  <el-button class="opt-button" style="margin-top: 0" size="small" :loading="aiLoading"
+                             @click="testAi">
+                    <Icon icon="hugeicons:ai-magic" width="16" height="16"/>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Background job queue -->
           <div class="settings-card">
             <div class="card-title">{{ $t('jobQueue') }}</div>
@@ -706,6 +742,81 @@
           <el-table-column :width="tokenColumnWidth" property="value" label="Token" fixed="right"
                            :show-overflow-tooltip="true"/>
         </el-table>
+      </el-dialog>
+
+      <!-- AI providers -->
+      <el-dialog v-model="aiShow" :title="$t('aiProviders')" width="860" top="5vh">
+        <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px">
+          {{ $t('aiProvidersDesc') }}
+        </el-alert>
+
+        <div style="margin-bottom: 10px; display: flex; gap: 8px;">
+          <el-button size="small" :loading="aiLoading" @click="loadAi">{{ $t('refresh') }}</el-button>
+          <el-button size="small" type="primary" @click="openAiForm()">{{ $t('add') }}</el-button>
+        </div>
+
+        <el-table :data="aiRows" size="small" max-height="300">
+          <el-table-column prop="name" :label="$t('aiProvider')" min-width="150" show-overflow-tooltip/>
+          <el-table-column prop="model" :label="$t('aiModel')" min-width="160" show-overflow-tooltip/>
+          <el-table-column prop="priority" :label="$t('priority')" width="90"/>
+          <el-table-column :label="$t('quota')" width="110">
+            <template #default="{ row }">
+              {{ row.dailyCallLimit ? `${row.usedToday} / ${row.dailyCallLimit}` : row.usedToday }}
+            </template>
+          </el-table-column>
+          <el-table-column :label="$t('status')" width="100">
+            <template #default="{ row }">
+              <el-tag size="small" :type="row.enabled ? 'success' : 'info'">
+                {{ row.enabled ? $t('enabled') : $t('disabled') }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="lastError" :label="$t('jobLastError')" min-width="150" show-overflow-tooltip/>
+          <el-table-column :label="$t('jobActions')" width="150" fixed="right">
+            <template #default="{ row }">
+              <el-button size="small" type="primary" @click="openAiForm(row)">{{ $t('edit') }}</el-button>
+              <el-button size="small" type="danger" @click="removeAi(row)">{{ $t('delete') }}</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="card-title" style="margin-top: 14px">{{ $t('aiTaskRouting') }}</div>
+        <el-table :data="aiTaskRows" size="small" max-height="260">
+          <el-table-column prop="label" :label="$t('jobType')" min-width="230" show-overflow-tooltip/>
+          <el-table-column prop="group" label="Group" width="110"/>
+          <el-table-column :label="$t('aiProvider')" min-width="220">
+            <template #default="{ row }">
+              <el-select :model-value="bindingFor(row.name)" size="small"
+                         @change="val => bindTask(row.name, val)">
+                <el-option :value="0" :label="$t('aiDefaultRouting')"/>
+                <el-option v-for="p in aiRows" :key="p.aiId" :value="p.aiId" :label="p.name"/>
+              </el-select>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-dialog>
+
+      <el-dialog v-model="aiFormShow" :title="$t('aiProvider')" width="420">
+        <form @submit.prevent>
+          <el-select v-model="aiForm.type" style="margin-bottom: 12px" @change="onAiTypeChange">
+            <el-option v-for="d in aiDriverList" :key="d.key" :label="d.label" :value="d.key"/>
+          </el-select>
+          <el-input v-model="aiForm.model" :placeholder="$t('aiModel')" style="margin-bottom: 12px"/>
+          <el-input v-model="aiForm.baseUrl" :placeholder="$t('aiBaseUrl')" style="margin-bottom: 12px"/>
+          <el-input v-if="aiNeedsKey" v-model="aiForm.apiKey" :placeholder="$t('aiApiKey')"
+                    style="margin-bottom: 12px"/>
+          <div style="display: flex; gap: 10px; margin-bottom: 12px; align-items: center;">
+            <span>{{ $t('priority') }}</span>
+            <el-input-number v-model="aiForm.priority" :min="-100" :max="100" size="small"/>
+            <span>{{ $t('aiDailyLimit') }}</span>
+            <el-input-number v-model="aiForm.dailyCallLimit" :min="0" size="small"/>
+          </div>
+          <div style="display: flex; gap: 10px; margin-bottom: 12px; align-items: center;">
+            <span>{{ $t('enabled') }}</span>
+            <el-switch v-model="aiForm.enabled" :active-value="1" :inactive-value="0"/>
+          </div>
+          <el-button type="primary" :loading="aiLoading" @click="saveAi">{{ $t('save') }}</el-button>
+        </form>
       </el-dialog>
 
       <!-- Outbound providers -->
@@ -988,6 +1099,9 @@ import {jobStats, jobList, jobRetry, jobCancel, jobPing} from "@/request/job.js"
 import {
   providerDrivers, providerList, providerSet, providerDelete, providerDns, providerTest
 } from "@/request/send-provider.js";
+import {
+  aiDrivers, aiTasks, aiList, aiBindings, aiSet, aiDelete, aiBind, aiTest
+} from "@/request/ai.js";
 
 defineOptions({
   name: 'sys-setting'
@@ -1005,6 +1119,14 @@ const providerRows = ref([])
 const providerDriverList = ref([])
 const providerDnsRows = ref([])
 const providerForm = reactive({providerId: null, domain: '', type: '', credentials: {}, priority: 0, dailyLimit: 0, enabled: 1})
+const aiShow = ref(false)
+const aiFormShow = ref(false)
+const aiLoading = ref(false)
+const aiRows = ref([])
+const aiDriverList = ref([])
+const aiTaskRows = ref([])
+const aiBindingRows = ref([])
+const aiForm = reactive({aiId: null, type: '', model: '', baseUrl: '', apiKey: '', priority: 0, dailyCallLimit: 0, enabled: 1})
 const firstLoading = ref(true)
 const settingReady = ref(false)
 const backgroundImage = ref('')
@@ -1252,6 +1374,108 @@ function jobStatusLabel(status) {
 
 function jobStatusTag(status) {
   return ['info', 'warning', 'success', 'danger'][status] ?? 'info'
+}
+
+// ---- AI providers -------------------------------------------------------
+
+const aiNeedsKey = computed(() =>
+    aiDriverList.value.find(d => d.key === aiForm.type)?.needsApiKey !== false
+)
+
+async function loadAi() {
+  if (aiLoading.value) return
+  aiLoading.value = true
+  try {
+    if (!aiDriverList.value.length) {
+      aiDriverList.value = await aiDrivers()
+      aiTaskRows.value = await aiTasks()
+    }
+    aiRows.value = await aiList()
+    aiBindingRows.value = await aiBindings()
+  } finally {
+    aiLoading.value = false
+  }
+}
+
+async function openAi() {
+  await loadAi()
+  aiShow.value = true
+}
+
+function bindingFor(task) {
+  return aiBindingRows.value.find(b => b.task === task)?.aiId ?? 0
+}
+
+async function bindTask(task, aiId) {
+  await aiBind(task, aiId || null)
+  aiBindingRows.value = await aiBindings()
+}
+
+function openAiForm(row) {
+  aiForm.aiId = row?.aiId ?? null
+  aiForm.type = row?.type ?? (aiDriverList.value[0]?.key ?? 'workers-ai')
+  aiForm.model = row?.model ?? ''
+  aiForm.baseUrl = row?.baseUrl ?? ''
+  // Stored keys come back masked, so an edit starts blank and only replaces
+  // the key when the operator types a new one.
+  aiForm.apiKey = ''
+  aiForm.priority = row?.priority ?? 0
+  aiForm.dailyCallLimit = row?.dailyCallLimit ?? 0
+  aiForm.enabled = row?.enabled ?? 1
+  if (!row) onAiTypeChange()
+  aiFormShow.value = true
+}
+
+function onAiTypeChange() {
+  const driver = aiDriverList.value.find(d => d.key === aiForm.type)
+  aiForm.model = driver?.defaultModel ?? ''
+  aiForm.baseUrl = driver?.defaultBaseUrl ?? ''
+  aiForm.apiKey = ''
+}
+
+async function saveAi() {
+  if (aiLoading.value) return
+  aiLoading.value = true
+  try {
+    const payload = {
+      aiId: aiForm.aiId,
+      type: aiForm.type,
+      model: aiForm.model,
+      baseUrl: aiForm.baseUrl,
+      priority: aiForm.priority,
+      dailyCallLimit: aiForm.dailyCallLimit,
+      enabled: aiForm.enabled
+    }
+    if (aiForm.apiKey) {
+      payload.apiKey = aiForm.apiKey
+    }
+    await aiSet(payload)
+    aiFormShow.value = false
+    await loadAi()
+  } finally {
+    aiLoading.value = false
+  }
+}
+
+async function removeAi(row) {
+  await ElMessageBox.confirm(t('deleteConfirm'), {type: 'warning'})
+  await aiDelete(row.aiId)
+  await loadAi()
+}
+
+async function testAi() {
+  if (aiLoading.value) return
+  aiLoading.value = true
+  try {
+    const outcome = await aiTest()
+    ElMessage({
+      message: outcome.ok ? t('aiTestOk', {text: String(outcome.result).slice(0, 120)}) : outcome.error,
+      type: outcome.ok ? 'success' : 'error',
+      duration: outcome.ok ? 5000 : 8000
+    })
+  } finally {
+    aiLoading.value = false
+  }
 }
 
 // ---- outbound providers -------------------------------------------------

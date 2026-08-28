@@ -9,12 +9,18 @@
 import emailService from '../service/email-service';
 import analysisService from '../service/analysis-service';
 import jobService from '../service/job-service';
+import aiRouter from '../service/ai';
+import orm from '../entity/orm';
+import email from '../entity/email';
+import { eq } from 'drizzle-orm';
 
 export const jobType = {
 	AUTO_CLEAN: 'auto_clean',
 	REFRESH_ANALYSIS: 'refresh_analysis',
 	COMPLETE_RECEIVE: 'complete_receive',
 	PURGE_JOBS: 'purge_jobs',
+	AI_TASK: 'ai_task',
+	AI_TRIAGE: 'ai_triage',
 	NOOP: 'noop'
 };
 
@@ -38,6 +44,56 @@ const handlers = {
 	[jobType.PURGE_JOBS]: async (c, payload) => {
 		const removed = await jobService.purgeFinished(c, payload?.olderThanDays ?? 3);
 		return { removed };
+	},
+
+	// Generic escape hatch: run any registered AI task off the request path.
+	[jobType.AI_TASK]: async (c, payload) => {
+		const { task, input } = payload ?? {};
+		const outcome = await aiRouter.run(c, task, input ?? {});
+
+		if (!outcome.ok) {
+			throw new Error(outcome.error);
+		}
+
+		return outcome.result;
+	},
+
+	/**
+	 * Classify one received email. Runs in the queue rather than in the inbound
+	 * email handler so the 10ms CPU budget and the Workers AI daily quota are
+	 * not spent while Cloudflare is waiting on the SMTP transaction.
+	 */
+	[jobType.AI_TRIAGE]: async (c, payload) => {
+
+		const emailId = Number(payload?.emailId);
+
+		if (!emailId) {
+			throw new Error('ai_triage requires an emailId');
+		}
+
+		const row = await orm(c).select().from(email).where(eq(email.emailId, emailId)).get();
+
+		if (!row) {
+			// The message was deleted before we got to it - nothing to do.
+			return { skipped: 'email no longer exists' };
+		}
+
+		const input = {
+			from: row.sendEmail,
+			subject: row.subject,
+			body: row.text || row.content || ''
+		};
+
+		const [category, spam] = await Promise.all([
+			aiRouter.run(c, 'categorize', input),
+			aiRouter.run(c, 'spam_score', { ...input, links: [] })
+		]);
+
+		return {
+			emailId,
+			category: category.ok ? category.result : null,
+			spam: spam.ok ? spam.result : null
+		};
 	},
 
 	// Used by tests and by the admin "queue is alive" check.

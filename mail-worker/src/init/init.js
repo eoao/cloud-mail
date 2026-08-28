@@ -44,8 +44,39 @@ const dbInit = {
 		await this.v3_3DB(c);
 		await this.v3_4DB(c);
 		await this.v3_5DB(c);
+		await this.v3_6DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	// v3_6: pluggable AI providers and per-task model routing.
+	async v3_6DB(c) {
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`CREATE TABLE IF NOT EXISTS ai_provider (
+					ai_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					name TEXT NOT NULL DEFAULT '',
+					type TEXT NOT NULL,
+					base_url TEXT NOT NULL DEFAULT '',
+					api_key TEXT NOT NULL DEFAULT '',
+					model TEXT NOT NULL DEFAULT '',
+					enabled INTEGER NOT NULL DEFAULT 1,
+					priority INTEGER NOT NULL DEFAULT 0,
+					daily_call_limit INTEGER NOT NULL DEFAULT 0,
+					used_today INTEGER NOT NULL DEFAULT 0,
+					used_date TEXT NOT NULL DEFAULT '',
+					last_error TEXT NOT NULL DEFAULT '',
+					create_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)`),
+				c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_ai_provider_pick ON ai_provider(enabled, priority)`),
+				c.env.db.prepare(`CREATE TABLE IF NOT EXISTS ai_task_binding (
+					task TEXT PRIMARY KEY,
+					ai_id INTEGER NOT NULL
+				)`)
+			]);
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
 	},
 
 	// v3_5: pluggable outbound providers, replacing the single resend_tokens map.
