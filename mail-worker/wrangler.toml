@@ -33,7 +33,7 @@ crons = ["0 * * * *"]
 
 [vars]
 domain = ["mail.dfmsolutions.de"]
-admin = "info@dfmsolutions.de"
+admin = "info@mail.dfmsolutions.de"
 jwt_secret = "e392bdf3dc8e866633d31c2fcb9c3b2e5b5220a375a055ec8ee483575dab3f1b"
 
 [build]
