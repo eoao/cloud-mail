@@ -6,6 +6,11 @@ import emailService from './service/email-service';
 import kvObjService from './service/kv-obj-service';
 import oauthService from './service/oauth-service';
 import analysisService from './service/analysis-service';
+import jobService from './service/job-service';
+import { jobType } from './job/handlers';
+
+export { JobRunner } from './do/job-runner';
+
 export default {
 	 async fetch(req, env, ctx) {
 
@@ -25,16 +30,33 @@ export default {
 	},
 	email: email,
 	async scheduled(c, env, ctx) {
-		if (c.cron === '*/30 * * * *') {
-			await analysisService.refreshEchartsCache({ env })
+
+		const ctxLike = { env };
+
+		// Cheap bookkeeping stays inline.
+		await verifyRecordService.clearRecord(ctxLike)
+		await userService.resetDaySendCount(ctxLike)
+		await oauthService.clearNoBindOathUser(ctxLike)
+
+		// Everything expensive goes through the queue so it runs serially in the
+		// JobRunner instead of racing inside one scheduled invocation. dedupeKey
+		// stops an hour's jobs piling up when the runner is behind.
+		if (env.JOB_RUNNER) {
+
+			await jobService.requeueStale(ctxLike)
+
+			await jobService.enqueue(ctxLike, jobType.COMPLETE_RECEIVE, {}, { dedupeKey: jobType.COMPLETE_RECEIVE })
+			await jobService.enqueue(ctxLike, jobType.AUTO_CLEAN, {}, { dedupeKey: jobType.AUTO_CLEAN })
+			await jobService.enqueue(ctxLike, jobType.REFRESH_ANALYSIS, {}, { dedupeKey: jobType.REFRESH_ANALYSIS })
+			await jobService.enqueue(ctxLike, jobType.PURGE_JOBS, {}, { dedupeKey: jobType.PURGE_JOBS, priority: -10 })
+
+			await jobService.kick(ctxLike)
 			return;
 		}
 
-		await verifyRecordService.clearRecord({ env })
-		await userService.resetDaySendCount({ env })
-		await emailService.completeReceiveAll({ env })
-		await emailService.autoClean({ env })
-		await analysisService.refreshEchartsCache({ env })
-		await oauthService.clearNoBindOathUser({ env })
+		// No Durable Object binding (older deployment): fall back to inline work.
+		await emailService.completeReceiveAll(ctxLike)
+		await emailService.autoClean(ctxLike)
+		await analysisService.refreshEchartsCache(ctxLike)
 	},
 };

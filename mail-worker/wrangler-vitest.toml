@@ -1,0 +1,34 @@
+# Config used only by vitest (@cloudflare/vitest-pool-workers).
+# Deliberately has no [assets] and no [build] so the test run does not rebuild
+# the Vue frontend, and no real resource IDs so nothing can touch production.
+name = "cloud-mail-test"
+main = "src/index.js"
+compatibility_date = "2025-06-04"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "db"
+database_name = "cloud-mail-test-db"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[[kv_namespaces]]
+binding = "kv"
+id = "00000000000000000000000000000000"
+
+[[r2_buckets]]
+binding = "r2"
+bucket_name = "cloud-mail-test-r2"
+
+[[durable_objects.bindings]]
+name = "JOB_RUNNER"
+class_name = "JobRunner"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["JobRunner"]
+
+[vars]
+domain = ["test.local"]
+admin = "admin@test.local"
+jwt_secret = "test-jwt-secret"
+init_secret = "test-init-secret"

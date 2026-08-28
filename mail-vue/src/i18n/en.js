@@ -352,6 +352,23 @@ const en = {
     clientId: 'Client ID',
     clientSecret: 'Client Secret',
     notOwner: 'Base email does not belong to you',
+    refresh: 'Refresh',
+    jobQueue: 'Job Queue',
+    jobPending: 'Pending',
+    jobRunning: 'Running',
+    jobDone: 'Done',
+    jobFailed: 'Failed',
+    jobActions: 'Actions',
+    jobType: 'Type',
+    jobStatus: 'Status',
+    jobAttempts: 'Attempts',
+    jobRunAfter: 'Run after',
+    jobLastError: 'Last error',
+    jobRetry: 'Retry',
+    jobCancel: 'Cancel',
+    jobPing: 'Ping queue',
+    jobPingOk: 'Queue is alive, test job enqueued',
+    jobRunnerMissing: 'Job runner is not bound - redeploy the worker',
 }
 
 export default en

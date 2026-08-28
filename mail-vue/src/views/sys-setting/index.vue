@@ -432,54 +432,36 @@
             </div>
           </div>
 
-          <div class="settings-card about">
-            <div class="card-title">{{ $t('about') }}</div>
+          <!-- Background job queue -->
+          <div class="settings-card">
+            <div class="card-title">{{ $t('jobQueue') }}</div>
             <div class="card-content">
-              <div class="concerning-item">
-                <span>{{ $t('version') }} :</span>
-                <el-badge is-dot :hidden="!hasUpdate">
-                  <el-button @click="jump('https://github.com/maillab/cloud-mail/releases')">
-                    {{ currentVersion }}
-                    <template #icon>
-                      <Icon icon="qlementine-icons:version-control-16" style="font-size: 20px" color="#1890FF"/>
-                    </template>
-                  </el-button>
-                </el-badge>
+              <div class="setting-item">
+                <div><span>{{ $t('jobPending') }}</span></div>
+                <div><el-tag type="info">{{ jobStatsData.pending }}</el-tag></div>
               </div>
-              <div class="concerning-item">
-                <span>{{ $t('community') }} : </span>
-                <div class="community">
-                  <el-button @click="jump('https://github.com/maillab/cloud-mail')">
-                    Github
-                    <template #icon>
-                      <Icon icon="codicon:github-inverted" width="22" height="22"/>
-                    </template>
+              <div class="setting-item">
+                <div><span>{{ $t('jobRunning') }}</span></div>
+                <div><el-tag type="warning">{{ jobStatsData.running }}</el-tag></div>
+              </div>
+              <div class="setting-item">
+                <div><span>{{ $t('jobDone') }}</span></div>
+                <div><el-tag type="success">{{ jobStatsData.done }}</el-tag></div>
+              </div>
+              <div class="setting-item">
+                <div><span>{{ $t('jobFailed') }}</span></div>
+                <div><el-tag :type="jobStatsData.failed > 0 ? 'danger' : 'info'">{{ jobStatsData.failed }}</el-tag></div>
+              </div>
+              <div class="setting-item">
+                <div><span>{{ $t('jobActions') }}</span></div>
+                <div class="forward">
+                  <el-button class="opt-button" size="small" :loading="jobLoading" @click="refreshJobs">
+                    <Icon icon="fluent:arrow-sync-24-regular" width="18" height="18"/>
                   </el-button>
-                  <el-button @click="jump('https://t.me/cloud_mail_tg')">
-                    Telegram
-                    <template #icon>
-                      <Icon icon="logos:telegram" width="30" height="30"/>
-                    </template>
+                  <el-button class="opt-button" size="small" type="primary" :loading="jobLoading" @click="openJobList">
+                    <Icon icon="fluent:task-list-square-ltr-24-regular" width="18" height="18"/>
                   </el-button>
                 </div>
-              </div>
-              <div class="concerning-item">
-                <span>{{ $t('support') }} : </span>
-                <el-button @click="jump('https://doc.skymail.ink/support.html')">
-                  {{ t('supportDesc') }}
-                  <template #icon>
-                    <Icon color="#79D6B5" icon="simple-icons:buymeacoffee" width="20" height="20"/>
-                  </template>
-                </el-button>
-              </div>
-              <div class="concerning-item">
-                <span>{{ $t('help') }} : </span>
-                <el-button @click="jump('https://doc.skymail.ink')">
-                  {{ t('document') }}
-                  <template #icon>
-                    <Icon color="#79D6B5" icon="fluent-color:document-32" width="18" height="18"/>
-                  </template>
-                </el-button>
               </div>
             </div>
           </div>
@@ -487,6 +469,36 @@
       </div>
 
       <!-- Dialogs remain the same -->
+      <el-dialog v-model="jobListShow" :title="$t('jobQueue')" width="760">
+        <div style="margin-bottom: 10px; display: flex; gap: 8px;">
+          <el-button size="small" :loading="jobLoading" @click="openJobList">{{ $t('refresh') }}</el-button>
+          <el-button size="small" type="primary" :loading="jobLoading" @click="pingJobQueue">{{ $t('jobPing') }}</el-button>
+        </div>
+        <el-table :data="jobRows" size="small" max-height="420">
+          <el-table-column prop="jobId" label="ID" width="70"/>
+          <el-table-column prop="type" :label="$t('jobType')" width="150" show-overflow-tooltip/>
+          <el-table-column :label="$t('jobStatus')" width="100">
+            <template #default="{ row }">
+              <el-tag size="small" :type="jobStatusTag(row.status)">{{ jobStatusLabel(row.status) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column :label="$t('jobAttempts')" width="90">
+            <template #default="{ row }">{{ row.attempts }} / {{ row.maxAttempts }}</template>
+          </el-table-column>
+          <el-table-column prop="runAfter" :label="$t('jobRunAfter')" width="160"/>
+          <el-table-column prop="lastError" :label="$t('jobLastError')" show-overflow-tooltip/>
+          <el-table-column :label="$t('jobActions')" width="130" fixed="right">
+            <template #default="{ row }">
+              <el-button v-if="row.status === 3" size="small" type="primary" @click="retryJob(row)">
+                {{ $t('jobRetry') }}
+              </el-button>
+              <el-button v-if="row.status === 0" size="small" type="danger" @click="cancelJob(row)">
+                {{ $t('jobCancel') }}
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-dialog>
       <el-dialog v-model="editTitleShow" :title="$t('changeTitle')" width="340" @closed="editTitle = setting.title">
         <form @submit.prevent>
           <el-input type="text" :placeholder="$t('websiteTitle')" v-model="editTitle" @keyup.enter="saveTitle"/>
@@ -896,16 +908,17 @@ import loading from "@/components/loading/index.vue";
 import {getTextWidth} from "@/utils/text.js";
 import {fileToBase64} from "@/utils/file-utils.js"
 import {useI18n} from 'vue-i18n';
-import axios from "axios";
+import {jobStats, jobList, jobRetry, jobCancel, jobPing} from "@/request/job.js";
 
 defineOptions({
   name: 'sys-setting'
 })
 
-const currentVersion = 'v3.2.0'
-const hasUpdate = ref(false)
-let getUpdateErrorCount = 1;
 const {t, locale} = useI18n();
+const jobStatsData = reactive({pending: 0, running: 0, done: 0, failed: 0})
+const jobRows = ref([])
+const jobListShow = ref(false)
+const jobLoading = ref(false)
 const firstLoading = ref(true)
 const settingReady = ref(false)
 const backgroundImage = ref('')
@@ -1031,7 +1044,7 @@ const tgMsgTextOption = [{label: t('show'), value: 'show'}, {label: t('hide'), v
 const tgMsgLabelWidth = computed(() => locale.value === 'en' ? '120px' : '100px');
 
 getSettings()
-getUpdate()
+refreshJobs()
 
 function getSettings() {
   settingReady.value = false
@@ -1104,19 +1117,57 @@ const resendList = computed(() => {
   return list;
 });
 
-function getUpdate() {
-  if (getUpdateErrorCount > 5 || !getUpdateErrorCount) return
-  axios.get('https://api.github.com/repos/maillab/cloud-mail/releases/latest').then(({data}) => {
-    hasUpdate.value = data.name !== currentVersion
-    getUpdateErrorCount = 0
-  }).catch(e => {
-    getUpdateErrorCount++
-    setTimeout(() => {
-      getUpdate()
-    }, 2000)
-    console.error('检查更新失败：', e)
-  })
+async function refreshJobs() {
+  if (jobLoading.value) return
+  jobLoading.value = true
+  try {
+    Object.assign(jobStatsData, await jobStats())
+  } finally {
+    jobLoading.value = false
+  }
 }
+
+async function openJobList() {
+  if (jobLoading.value) return
+  jobLoading.value = true
+  try {
+    jobRows.value = await jobList()
+    jobListShow.value = true
+  } finally {
+    jobLoading.value = false
+  }
+}
+
+async function retryJob(row) {
+  await jobRetry(row.jobId)
+  await openJobList()
+  await refreshJobs()
+}
+
+async function cancelJob(row) {
+  await jobCancel(row.jobId)
+  await openJobList()
+  await refreshJobs()
+}
+
+// Enqueues a no-op and wakes the runner: proves the queue is actually draining.
+async function pingJobQueue() {
+  const data = await jobPing()
+  ElMessage({
+    message: data.runnerBound ? t('jobPingOk') : t('jobRunnerMissing'),
+    type: data.runnerBound ? 'success' : 'warning'
+  })
+  await refreshJobs()
+}
+
+function jobStatusLabel(status) {
+  return [t('jobPending'), t('jobRunning'), t('jobDone'), t('jobFailed')][status] ?? status
+}
+
+function jobStatusTag(status) {
+  return ['info', 'warning', 'success', 'danger'][status] ?? 'info'
+}
+
 
 function saveAddVerifyCount() {
   if (!addVerifyCount.value) {
@@ -1603,13 +1654,6 @@ function changeField(key, value) {
 
 function saveTitle() {
   editSetting({title: editTitle.value})
-}
-
-function jump(href) {
-  const doc = document.createElement('a')
-  doc.href = href
-  doc.target = '_blank'
-  doc.click()
 }
 
 function editSetting(settingForm, refreshStatus = true) {

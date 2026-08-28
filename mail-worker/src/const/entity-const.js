@@ -142,6 +142,20 @@ export const settingConst = {
 	}
 }
 
+export const jobConst = {
+	status: {
+		PENDING: 0,
+		RUNNING: 1,
+		DONE: 2,
+		FAILED: 3
+	},
+	priority: {
+		LOW: -10,
+		NORMAL: 0,
+		HIGH: 10
+	}
+}
+
 export const verifyRecordType = {
 	REG: 0,
 	ADD: 1,
