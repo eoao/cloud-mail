@@ -88,6 +88,15 @@ const routers = {
             name: 'sys-setting',
             menu: true
         }
+    }, {
+        path: '/cloudflare',
+        name: 'cloudflare',
+        component: () => import('@/views/cloudflare/index.vue'),
+        meta: {
+            title: 'cloudflare',
+            name: 'cloudflare',
+            menu: true
+        }
     }],
     'reg-key:query': [{
         path: '/invite-code',

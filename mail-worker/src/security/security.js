@@ -78,7 +78,12 @@ const requirePerms = [
 	'/ai/set',
 	'/ai/delete',
 	'/ai/bind',
-	'/ai/test'
+	'/ai/test',
+	'/cf/status',
+	'/cf/usage',
+	'/cf/fix',
+	'/cf/probe',
+	'/cf/credentials'
 ];
 
 const premKey = {
@@ -102,8 +107,8 @@ const premKey = {
 	'all-email:query': ['/allEmail/list','/allEmail/latest'],
 	'all-email:delete': ['/allEmail/delete','/allEmail/batchDelete'],
 	// The job queue is infrastructure, so it rides along with system settings.
-	'setting:query': ['/setting/query', '/job/stats', '/job/list', '/sendProvider/drivers', '/sendProvider/list', '/sendProvider/dns', '/ai/drivers', '/ai/list', '/ai/bindings'],
-	'setting:set': ['/setting/set', '/setting/setBackground','/setting/deleteBackground','/setting/setBlacklist', '/job/retry', '/job/cancel', '/job/ping', '/sendProvider/set', '/sendProvider/delete', '/sendProvider/test', '/ai/set', '/ai/delete', '/ai/bind', '/ai/test'],
+	'setting:query': ['/setting/query', '/job/stats', '/job/list', '/sendProvider/drivers', '/sendProvider/list', '/sendProvider/dns', '/ai/drivers', '/ai/list', '/ai/bindings', '/cf/status', '/cf/usage'],
+	'setting:set': ['/setting/set', '/setting/setBackground','/setting/deleteBackground','/setting/setBlacklist', '/job/retry', '/job/cancel', '/job/ping', '/sendProvider/set', '/sendProvider/delete', '/sendProvider/test', '/ai/set', '/ai/delete', '/ai/bind', '/ai/test', '/cf/fix', '/cf/probe', '/cf/credentials'],
 	'analysis:query': ['/analysis/echarts'],
 	'reg-key:add': ['/regKey/add'],
 	'reg-key:query': ['/regKey/list','/regKey/history'],

@@ -64,6 +64,11 @@
           <Icon icon="eos-icons:system-ok-outlined" width="18" height="18" style="margin-left: 2px" />
           <span class="menu-name" style="margin-left: 22px">{{$t('SystemSettings')}}</span>
         </el-menu-item>
+        <el-menu-item @click="router.push({name: 'cloudflare'})" index="cloudflare" v-perm="'setting:query'"
+                      :class="route.meta.name === 'cloudflare' ? 'choose-item' : ''">
+          <Icon icon="simple-icons:cloudflare" width="20" height="20" style="margin-left: 1px" />
+          <span class="menu-name" style="margin-left: 21px">{{$t('cloudflare')}}</span>
+        </el-menu-item>
       </el-menu>
     </div>
   </el-scrollbar>

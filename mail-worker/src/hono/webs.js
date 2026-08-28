@@ -23,4 +23,5 @@ import '../api/oauth-api'
 import '../api/job-api'
 import '../api/send-provider-api'
 import '../api/ai-api'
+import '../api/cf-api'
 export default app;
