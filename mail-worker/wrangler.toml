@@ -30,6 +30,7 @@ run_worker_first = true
 
 [triggers]
 crons = ["0 * * * *"]
+# trigger rebuild
 
 [vars]
 domain = ["mail.dfmsolutions.de"]
