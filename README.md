@@ -34,6 +34,22 @@
 
 只需要一个域名，就可以创建多个不同的邮箱，类似各大邮箱平台，本项目支持署到 Cloudflare Workers ，降低服务器成本，搭建自己的邮箱服务
 
+## 快速开始
+
+一条命令完成全部 Cloudflare 配置 —— Email Routing、DNS、D1、KV、R2、密钥、部署和数据库迁移，无需在控制台手动操作：
+
+```bash
+node tools/setup/bin/cloud-mail-setup.mjs
+```
+
+已安装但出现问题？`--doctor` 以只读方式诊断：
+
+```bash
+node tools/setup/bin/cloud-mail-setup.mjs --doctor
+```
+
+详见 [tools/setup/README.md](tools/setup/README.md)，其中也说明了为什么收信不需要但发信需要第三方服务商。
+
 ## 项目展示
 
 - [在线演示](https://skymail.ink)<br>

@@ -31,6 +31,24 @@
 
 ## Description
 With only one domain, you can create multiple different email addresses, similar to major email platforms. This project can be deployed on Cloudflare Workers to reduce server costs and build your own email service.
+## Quick start
+
+One command sets up Cloudflare end to end — Email Routing, DNS, D1, KV, R2,
+secrets, deploy and migrations — with nothing to click in the dashboard:
+
+```bash
+node tools/setup/bin/cloud-mail-setup.mjs
+```
+
+Already installed and something is broken? `--doctor` diagnoses it read-only:
+
+```bash
+node tools/setup/bin/cloud-mail-setup.mjs --doctor
+```
+
+See [tools/setup/README.md](tools/setup/README.md), including why sending needs
+a provider even though receiving does not.
+
 ## Project Showcase
 
 - [Live Demo](https://skymail.ink)<br>

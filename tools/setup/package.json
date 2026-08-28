@@ -1,0 +1,17 @@
+{
+  "name": "cloud-mail-setup",
+  "version": "1.0.0",
+  "private": true,
+  "description": "End-to-end Cloudflare setup wizard for cloud-mail",
+  "type": "module",
+  "bin": {
+    "cloud-mail-setup": "bin/cloud-mail-setup.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node bin/cloud-mail-setup.mjs",
+    "doctor": "node bin/cloud-mail-setup.mjs --doctor"
+  }
+}
