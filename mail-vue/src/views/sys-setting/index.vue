@@ -189,18 +189,18 @@
                 </div>
               </div>
               <div class="setting-item">
-                <div><span>{{ setting.hasCfEmail ? $t('cloudflareEmailSending') : $t('resendToken') }}</span></div>
-                <div v-if="setting.hasCfEmail">
-                  <span>{{ $t('enabled') }}</span>
+                <div>
+                  <span>{{ $t('sendProviders') }}</span>
+                  <el-tooltip effect="dark" :content="$t('sendProvidersDesc')">
+                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+                  </el-tooltip>
                 </div>
-                <div v-else>
-                  <el-button class="opt-button" style="margin-top: 0" @click="openResendList" size="small"
+                <div class="forward">
+                  <span v-if="providerRows.length">{{ providerRows.length }}</span>
+                  <span v-else class="provider-none">{{ $t('sendProviderNone') }}</span>
+                  <el-button class="opt-button" style="margin-top: 0" @click="openProviders" size="small"
                              type="primary">
-                    <Icon icon="ic:round-list" width="18" height="18"/>
-                  </el-button>
-                  <el-button class="opt-button" style="margin-top: 0" @click="openResendForm" size="small"
-                             type="primary">
-                    <Icon icon="material-symbols:add-rounded" width="16" height="16"/>
+                    <Icon icon="fluent:settings-48-regular" width="16" height="16"/>
                   </el-button>
                 </div>
               </div>
@@ -707,6 +707,82 @@
                            :show-overflow-tooltip="true"/>
         </el-table>
       </el-dialog>
+
+      <!-- Outbound providers -->
+      <el-dialog v-model="providerShow" :title="$t('sendProviders')" width="860" top="5vh">
+        <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px">
+          {{ $t('sendProvidersHelp') }}
+        </el-alert>
+
+        <div style="margin-bottom: 10px; display: flex; gap: 8px;">
+          <el-button size="small" :loading="providerLoading" @click="loadProviders">{{ $t('refresh') }}</el-button>
+          <el-button size="small" type="primary" @click="openProviderForm()">{{ $t('add') }}</el-button>
+        </div>
+
+        <el-table :data="providerRows" size="small" max-height="420">
+          <el-table-column prop="domain" :label="$t('domain')" min-width="140" show-overflow-tooltip/>
+          <el-table-column :label="$t('provider')" width="150">
+            <template #default="{ row }">{{ driverLabel(row.type) }}</template>
+          </el-table-column>
+          <el-table-column prop="priority" :label="$t('priority')" width="90"/>
+          <el-table-column :label="$t('quota')" width="110">
+            <template #default="{ row }">
+              {{ row.dailyLimit ? `${row.sentToday} / ${row.dailyLimit}` : row.sentToday }}
+            </template>
+          </el-table-column>
+          <el-table-column :label="$t('status')" width="110">
+            <template #default="{ row }">
+              <el-tag size="small" :type="row.enabled ? 'success' : 'info'">
+                {{ row.enabled ? $t('enabled') : $t('disabled') }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="lastError" :label="$t('jobLastError')" min-width="160" show-overflow-tooltip/>
+          <el-table-column :label="$t('jobActions')" width="210" fixed="right">
+            <template #default="{ row }">
+              <el-button size="small" :loading="providerLoading" @click="testProvider(row)">{{ $t('test') }}</el-button>
+              <el-button size="small" type="primary" @click="openProviderForm(row)">{{ $t('edit') }}</el-button>
+              <el-button size="small" type="danger" @click="removeProvider(row)">{{ $t('delete') }}</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div v-if="providerDnsRows.length" style="margin-top: 14px">
+          <div class="card-title">{{ $t('dnsRecordsNeeded') }}</div>
+          <el-table :data="providerDnsRows" size="small">
+            <el-table-column prop="type" label="Type" width="110"/>
+            <el-table-column prop="name" label="Name" min-width="170" show-overflow-tooltip/>
+            <el-table-column prop="content" label="Value" min-width="230" show-overflow-tooltip/>
+            <el-table-column prop="note" label="Note" min-width="200" show-overflow-tooltip/>
+          </el-table>
+        </div>
+      </el-dialog>
+
+      <el-dialog v-model="providerFormShow" :title="$t('sendProvider')" width="420">
+        <form @submit.prevent>
+          <el-select v-model="providerForm.domain" :placeholder="$t('domain')" style="margin-bottom: 12px">
+            <el-option v-for="item in settingStore.domainList" :key="item" :label="item" :value="item"/>
+          </el-select>
+          <el-select v-model="providerForm.type" :placeholder="$t('provider')" style="margin-bottom: 12px"
+                     @change="onProviderTypeChange">
+            <el-option v-for="d in providerDriverList" :key="d.key" :label="d.label" :value="d.key"/>
+          </el-select>
+          <el-input v-for="field in providerCredentialFields" :key="field"
+                    v-model="providerForm.credentials[field]"
+                    :placeholder="field" style="margin-bottom: 12px"/>
+          <div style="display: flex; gap: 10px; margin-bottom: 12px; align-items: center;">
+            <span>{{ $t('priority') }}</span>
+            <el-input-number v-model="providerForm.priority" :min="-100" :max="100" size="small"/>
+            <span>{{ $t('dailyLimit') }}</span>
+            <el-input-number v-model="providerForm.dailyLimit" :min="0" size="small"/>
+          </div>
+          <div style="display: flex; gap: 10px; margin-bottom: 12px; align-items: center;">
+            <span>{{ $t('enabled') }}</span>
+            <el-switch v-model="providerForm.enabled" :active-value="1" :inactive-value="0"/>
+          </div>
+          <el-button type="primary" :loading="providerLoading" @click="saveProvider">{{ $t('save') }}</el-button>
+        </form>
+      </el-dialog>
       <el-dialog v-model="regVerifyCountShow" :title="$t('rulesVerifyTitle',{count: regVerifyCount})"
                  @closed="regVerifyCount = setting.regVerifyCount">
         <form @submit.prevent>
@@ -909,6 +985,9 @@ import {getTextWidth} from "@/utils/text.js";
 import {fileToBase64} from "@/utils/file-utils.js"
 import {useI18n} from 'vue-i18n';
 import {jobStats, jobList, jobRetry, jobCancel, jobPing} from "@/request/job.js";
+import {
+  providerDrivers, providerList, providerSet, providerDelete, providerDns, providerTest
+} from "@/request/send-provider.js";
 
 defineOptions({
   name: 'sys-setting'
@@ -919,6 +998,13 @@ const jobStatsData = reactive({pending: 0, running: 0, done: 0, failed: 0})
 const jobRows = ref([])
 const jobListShow = ref(false)
 const jobLoading = ref(false)
+const providerShow = ref(false)
+const providerFormShow = ref(false)
+const providerLoading = ref(false)
+const providerRows = ref([])
+const providerDriverList = ref([])
+const providerDnsRows = ref([])
+const providerForm = reactive({providerId: null, domain: '', type: '', credentials: {}, priority: 0, dailyLimit: 0, enabled: 1})
 const firstLoading = ref(true)
 const settingReady = ref(false)
 const backgroundImage = ref('')
@@ -1166,6 +1252,117 @@ function jobStatusLabel(status) {
 
 function jobStatusTag(status) {
   return ['info', 'warning', 'success', 'danger'][status] ?? 'info'
+}
+
+// ---- outbound providers -------------------------------------------------
+
+function driverLabel(type) {
+  return providerDriverList.value.find(d => d.key === type)?.label ?? type
+}
+
+const providerCredentialFields = computed(() =>
+    providerDriverList.value.find(d => d.key === providerForm.type)?.credentialFields ?? []
+)
+
+async function loadProviders() {
+  if (providerLoading.value) return
+  providerLoading.value = true
+  try {
+    if (!providerDriverList.value.length) {
+      providerDriverList.value = await providerDrivers()
+    }
+    providerRows.value = await providerList()
+    await refreshProviderDns()
+  } finally {
+    providerLoading.value = false
+  }
+}
+
+async function openProviders() {
+  await loadProviders()
+  providerShow.value = true
+}
+
+// Show the DNS the operator still owes for each distinct provider+domain pair.
+async function refreshProviderDns() {
+  const seen = new Set()
+  const rows = []
+  for (const row of providerRows.value) {
+    const key = `${row.type}:${row.domain}`
+    if (seen.has(key) || row.type === 'cloudflare') continue
+    seen.add(key)
+    rows.push(...await providerDns(row.type, row.domain))
+  }
+  providerDnsRows.value = rows
+}
+
+function openProviderForm(row) {
+  providerForm.providerId = row?.providerId ?? null
+  providerForm.domain = row?.domain ?? (settingStore.domainList[0] ?? '').replace(/^@/, '')
+  providerForm.type = row?.type ?? (providerDriverList.value[0]?.key ?? 'resend')
+  // Stored secrets come back masked, so an edit starts blank and only
+  // overwrites them when the operator actually types a new value.
+  providerForm.credentials = {}
+  providerForm.priority = row?.priority ?? 0
+  providerForm.dailyLimit = row?.dailyLimit ?? 0
+  providerForm.enabled = row?.enabled ?? 1
+  providerFormShow.value = true
+}
+
+function onProviderTypeChange() {
+  providerForm.credentials = {}
+}
+
+async function saveProvider() {
+  if (providerLoading.value) return
+  providerLoading.value = true
+  try {
+    const payload = {
+      providerId: providerForm.providerId,
+      domain: providerForm.domain.replace(/^@/, ''),
+      type: providerForm.type,
+      priority: providerForm.priority,
+      dailyLimit: providerForm.dailyLimit,
+      enabled: providerForm.enabled
+    }
+    const typed = Object.fromEntries(
+        Object.entries(providerForm.credentials).filter(([, v]) => v !== undefined && v !== '')
+    )
+    if (Object.keys(typed).length) {
+      payload.credentials = typed
+    }
+    await providerSet(payload)
+    providerFormShow.value = false
+    await loadProviders()
+  } finally {
+    providerLoading.value = false
+  }
+}
+
+async function removeProvider(row) {
+  await ElMessageBox.confirm(t('deleteConfirm'), {type: 'warning'})
+  await providerDelete(row.providerId)
+  await loadProviders()
+}
+
+// Credentials can be valid while the domain is unverified, so the only honest
+// check is sending a real message.
+async function testProvider(row) {
+  if (providerLoading.value) return
+  providerLoading.value = true
+  try {
+    const data = await providerTest(row.providerId)
+    ElMessage({
+      message: data.sent ? t('sendProviderTestOk', {to: data.to}) : data.error,
+      type: data.sent ? 'success' : 'error',
+      duration: data.sent ? 3000 : 8000
+    })
+    await loadProviders()
+  } catch (e) {
+    ElMessage({message: e.message ?? String(e), type: 'error', duration: 8000})
+  } finally {
+    providerLoading.value = false
+  }
 }
 
 

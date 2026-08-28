@@ -369,6 +369,21 @@ const en = {
     jobPing: 'Ping queue',
     jobPingOk: 'Queue is alive, test job enqueued',
     jobRunnerMissing: 'Job runner is not bound - redeploy the worker',
+    edit: 'Edit',
+    test: 'Test',
+    status: 'Status',
+    provider: 'Provider',
+    priority: 'Priority',
+    quota: 'Sent today',
+    dailyLimit: 'Daily limit',
+    deleteConfirm: 'Delete this entry?',
+    sendProvider: 'Sending provider',
+    sendProviders: 'Sending providers',
+    sendProviderNone: 'none',
+    sendProvidersDesc: 'Cloudflare Email Routing only receives mail. Sending to an outside address needs a provider.',
+    sendProvidersHelp: 'Providers are tried per sending domain in priority order, and the next one takes over if a send fails. Add the DNS records below or your mail will be treated as spam.',
+    sendProviderTestOk: 'Test message sent to {to}',
+    dnsRecordsNeeded: 'DNS records you still need to add',
 }
 
 export default en

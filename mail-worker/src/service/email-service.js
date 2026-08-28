@@ -9,7 +9,7 @@ import accountService from './account-service';
 import BizError from '../error/biz-error';
 import emailUtils from '../utils/email-utils';
 import fileUtils from '../utils/file-utils';
-import { Resend } from 'resend';
+import providerService from './send-provider';
 import attService from './att-service';
 import { parseHTML } from 'linkedom';
 import userService from './user-service';
@@ -241,7 +241,7 @@ const emailService = {
 			attachments = [] //附件
 		} = params;
 
-		const { resendTokens, r2Domain, send, domainList } = await settingService.query(c);
+		const { r2Domain, send, domainList } = await settingService.query(c);
 
 		let { imageDataList, html } = await attService.toImageUrlHtml(c, content);
 
@@ -307,11 +307,12 @@ const emailService = {
 		}
 
 		const domain = emailUtils.getDomain(accountRow.email);
-		const resendToken = resendTokens[domain];
-		const useCloudflareEmail = !!c.env.email;
 
-		//如果接收方存在站外邮箱，又没有发信服务
-		if (!useCloudflareEmail && !resendToken && !allInternal) {
+		// Cloudflare Email Routing only receives. Anything leaving the instance
+		// needs a configured provider for the sending domain.
+		const providers = allInternal ? [] : await providerService.candidatesFor(c, domain);
+
+		if (!allInternal && providers.length === 0) {
 			throw new BizError(t('noSendProvider'));
 		}
 
@@ -337,42 +338,28 @@ const emailService = {
 
 		let sendResult = {};
 
-		//存在站外邮箱时，如果配置了 Cloudflare Email Service 就优先使用，否则使用 Resend
+		// Providers are tried in priority order for this sending domain, with
+		// failover; see src/service/send-provider.
 		if (!allInternal) {
 
-			if (useCloudflareEmail) {
-				sendResult = await this.sendByCloudflareEmail(c, {
+			const outgoing = [...imageDataList, ...attachments];
+
+			try {
+				sendResult = await providerService.send(c, domain, {
 					name,
 					accountEmail: accountRow.email,
 					receiveEmail,
 					subject,
 					text,
 					html,
-					attachments: [...imageDataList, ...attachments],
 					sendType,
 					messageId: emailRow.messageId
-				});
-			} else {
-				sendResult = await this.sendByResend(resendToken, {
-					name,
-					accountEmail: accountRow.email,
-					receiveEmail,
-					subject,
-					text,
-					html,
-					attachments: [...imageDataList, ...attachments],
-					sendType,
-					messageId: emailRow.messageId
-				});
+				}, (encoding) => encoding === 'buffer'
+					? this.toArrayBufferAttachments(outgoing)
+					: this.toResendAttachments(outgoing));
+			} catch (e) {
+				throw new BizError(e.noProvider ? t('noSendProvider') : e.message);
 			}
-
-		}
-
-		const { data, error } = sendResult;
-
-
-		if (error) {
-			throw new BizError(error.message);
 		}
 
 		imageDataList = imageDataList.map(item => ({...item, contentId: `<${item.contentId}>`}))
@@ -388,10 +375,11 @@ const emailService = {
 		emailData.content = html;
 		emailData.text = text;
 		emailData.accountId = accountId;
-		emailData.status = useCloudflareEmail ? emailConst.status.DELIVERED : emailConst.status.SENT;
+		emailData.status = sendResult.status === 'delivered' ? emailConst.status.DELIVERED : emailConst.status.SENT;
 		emailData.type = emailConst.type.SEND;
 		emailData.userId = userId;
-		emailData.resendEmailId = data?.id;
+		// Column keeps its historical name; it now holds any provider's message id.
+		emailData.resendEmailId = sendResult.providerMessageId ?? null;
 
 		const recipient = [];
 
@@ -452,82 +440,8 @@ const emailService = {
 		return [ emailResult ];
 	},
 
-	async sendByCloudflareEmail(c, params) {
-		const sendForm = {
-			from: { email: params.accountEmail, name: params.name },
-			to: [...params.receiveEmail],
-			subject: params.subject
-		};
-
-		if (params.text) {
-			sendForm.text = params.text;
-		}
-
-		if (params.html) {
-			sendForm.html = params.html;
-		}
-
-		const attachments = await this.toCloudflareAttachments(params.attachments);
-		if (attachments.length > 0) {
-			sendForm.attachments = attachments;
-		}
-
-		if (params.sendType === 'reply' && params.messageId) {
-			sendForm.headers = {
-				'in-reply-to': params.messageId,
-				'references': params.messageId
-			};
-		}
-
-		const result = await c.env.email.send(sendForm);
-
-		return {
-			data: {
-				id: result.messageId
-			}
-		};
-	},
-
-	async sendByResend(resendToken, params) {
-		const resend = new Resend(resendToken);
-
-		const sendForm = {
-			from: `${params.name} <${params.accountEmail}>`,
-			to: [...params.receiveEmail],
-			subject: params.subject,
-			text: params.text,
-			html: params.html,
-			attachments: await this.toResendAttachments(params.attachments)
-		};
-
-		if (params.sendType === 'reply') {
-			sendForm.headers = {
-				'in-reply-to': params.messageId,
-				'references': params.messageId
-			};
-		}
-
-		return await resend.emails.send(sendForm);
-	},
-
-	async toCloudflareAttachments(attachments) {
-		const arrayBufferAttachments = await this.toArrayBufferAttachments(attachments);
-
-		return arrayBufferAttachments.map(attachment => {
-			const item = {
-				content: attachment.content,
-				filename: attachment.filename,
-				type: attachment.mimeType || attachment.contentType || attachment.type || 'application/octet-stream',
-				disposition: attachment.contentId ? 'inline' : 'attachment'
-			};
-
-			if (attachment.contentId) {
-				item.contentId = attachment.contentId.replace(/^<|>$/g, '');
-			}
-
-			return item;
-		});
-	},
+	// sendByCloudflareEmail / sendByResend / toCloudflareAttachments moved to
+	// src/service/send-provider/drivers.js when sending became pluggable.
 
 	async toResendAttachments(attachments = []) {
 		const result = [];

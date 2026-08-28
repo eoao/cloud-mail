@@ -63,7 +63,13 @@ const requirePerms = [
 	'/job/list',
 	'/job/retry',
 	'/job/cancel',
-	'/job/ping'
+	'/job/ping',
+	'/sendProvider/drivers',
+	'/sendProvider/list',
+	'/sendProvider/dns',
+	'/sendProvider/set',
+	'/sendProvider/delete',
+	'/sendProvider/test'
 ];
 
 const premKey = {
@@ -87,8 +93,8 @@ const premKey = {
 	'all-email:query': ['/allEmail/list','/allEmail/latest'],
 	'all-email:delete': ['/allEmail/delete','/allEmail/batchDelete'],
 	// The job queue is infrastructure, so it rides along with system settings.
-	'setting:query': ['/setting/query', '/job/stats', '/job/list'],
-	'setting:set': ['/setting/set', '/setting/setBackground','/setting/deleteBackground','/setting/setBlacklist', '/job/retry', '/job/cancel', '/job/ping'],
+	'setting:query': ['/setting/query', '/job/stats', '/job/list', '/sendProvider/drivers', '/sendProvider/list', '/sendProvider/dns'],
+	'setting:set': ['/setting/set', '/setting/setBackground','/setting/deleteBackground','/setting/setBlacklist', '/job/retry', '/job/cancel', '/job/ping', '/sendProvider/set', '/sendProvider/delete', '/sendProvider/test'],
 	'analysis:query': ['/analysis/echarts'],
 	'reg-key:add': ['/regKey/add'],
 	'reg-key:query': ['/regKey/list','/regKey/history'],

@@ -1,4 +1,5 @@
 import settingService from '../service/setting-service';
+import providerService from '../service/send-provider';
 import webhookUtils from '../utils/webhook-utils';
 import emailUtils from '../utils/email-utils';
 import {emailConst} from "../const/entity-const";
@@ -42,8 +43,47 @@ const dbInit = {
 		await this.v3_2DB(c);
 		await this.v3_3DB(c);
 		await this.v3_4DB(c);
+		await this.v3_5DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	// v3_5: pluggable outbound providers, replacing the single resend_tokens map.
+	async v3_5DB(c) {
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`CREATE TABLE IF NOT EXISTS send_provider (
+					provider_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					domain TEXT NOT NULL,
+					type TEXT NOT NULL,
+					credentials TEXT NOT NULL DEFAULT '{}',
+					priority INTEGER NOT NULL DEFAULT 0,
+					enabled INTEGER NOT NULL DEFAULT 1,
+					daily_limit INTEGER NOT NULL DEFAULT 0,
+					sent_today INTEGER NOT NULL DEFAULT 0,
+					sent_date TEXT NOT NULL DEFAULT '',
+					last_error TEXT NOT NULL DEFAULT '',
+					verified_at TEXT NOT NULL DEFAULT '',
+					create_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)`),
+				c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_send_provider_pick ON send_provider(domain, enabled, priority)`)
+			]);
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
+
+		// Carry the old per-domain Resend tokens over so existing installs keep
+		// sending after the upgrade. Skips domains that already have a row.
+		try {
+			const row = await c.env.db.prepare(`SELECT resend_tokens FROM setting LIMIT 1`).first();
+			const tokens = JSON.parse(row?.resend_tokens || '{}');
+			const imported = await providerService.importResendTokens(c, tokens);
+			if (imported > 0) {
+				console.log(`imported ${imported} resend token(s) into send_provider`);
+			}
+		} catch (e) {
+			console.warn(`resend token import skipped: ${e.message}`);
+		}
 	},
 
 	// v3_4: background job queue (Cloudflare Queues is paid-only, so this is D1 +
