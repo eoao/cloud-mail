@@ -20,6 +20,25 @@ function initContext(secret) {
 	};
 }
 
+/**
+ * Drain one batch through the runner.
+ *
+ * A fresh stub per call on purpose: miniflare invalidates an existing stub when
+ * the module graph changes, and a stub held across a loop then fails mid-run
+ * with "Please retry the fetch call".
+ */
+async function drainOnce() {
+	for (let attempt = 0; attempt < 3; attempt++) {
+		try {
+			const runner = env.JOB_RUNNER.get(env.JOB_RUNNER.idFromName('global'));
+			return await runner.fetch('https://job-runner/drain');
+		} catch (e) {
+			if (!/invalidating this Durable Object/.test(e.message)) throw e;
+		}
+	}
+	throw new Error('durable object kept invalidating');
+}
+
 describe('init endpoint auth', () => {
 	it('rejects a wrong secret without running migrations', async () => {
 		const res = await dbInit.init(initContext('not-the-secret'));
@@ -61,11 +80,10 @@ describe('job queue', () => {
 			await jobService.enqueue(c, 'test_order', { n });
 		}
 
-		const runner = env.JOB_RUNNER.get(env.JOB_RUNNER.idFromName('global'));
 
 		// Batch size is 5, so 10 drains clear the backlog.
 		for (let i = 0; i < 12 && seen.length < 50; i++) {
-			await runner.fetch('https://job-runner/drain');
+			await drainOnce();
 		}
 
 		expect(seen).toEqual(Array.from({ length: 50 }, (_, n) => n));
@@ -86,8 +104,7 @@ describe('job queue', () => {
 		await jobService.enqueue(c, 'test_priority', { label: 'normal' });
 		await jobService.enqueue(c, 'test_priority', { label: 'high' }, { priority: 10 });
 
-		const runner = env.JOB_RUNNER.get(env.JOB_RUNNER.idFromName('global'));
-		await runner.fetch('https://job-runner/drain');
+		await drainOnce();
 
 		expect(seen).toEqual(['high', 'normal', 'low']);
 	});
@@ -100,9 +117,8 @@ describe('job queue', () => {
 		});
 
 		await jobService.enqueue(c, 'test_fail', {}, { maxAttempts: 3 });
-		const runner = env.JOB_RUNNER.get(env.JOB_RUNNER.idFromName('global'));
 
-		await runner.fetch('https://job-runner/drain');
+		await drainOnce();
 		expect(calls).toBe(1);
 
 		let row = await env.db.prepare('SELECT * FROM job').first();
@@ -111,13 +127,13 @@ describe('job queue', () => {
 		expect(row.last_error).toContain('boom');
 
 		// Backoff pushed run_after into the future, so a drain now is a no-op.
-		await runner.fetch('https://job-runner/drain');
+		await drainOnce();
 		expect(calls).toBe(1);
 
 		// Fast-forward past the backoff twice to exhaust max_attempts.
 		for (let i = 0; i < 2; i++) {
 			await env.db.prepare(`UPDATE job SET run_after = '2000-01-01 00:00:00'`).run();
-			await runner.fetch('https://job-runner/drain');
+			await drainOnce();
 		}
 
 		expect(calls).toBe(3);
@@ -129,8 +145,7 @@ describe('job queue', () => {
 	it('parks an unknown job type immediately instead of retrying', async () => {
 		await jobService.enqueue(c, 'no_such_handler', {}, { maxAttempts: 5 });
 
-		const runner = env.JOB_RUNNER.get(env.JOB_RUNNER.idFromName('global'));
-		await runner.fetch('https://job-runner/drain');
+		await drainOnce();
 
 		const row = await env.db.prepare('SELECT * FROM job').first();
 		expect(row.status).toBe(jobConst.status.FAILED);
@@ -143,8 +158,7 @@ describe('job queue', () => {
 
 		await jobService.enqueue(c, 'test_delayed', {}, { runAfter: '2999-01-01 00:00:00' });
 
-		const runner = env.JOB_RUNNER.get(env.JOB_RUNNER.idFromName('global'));
-		await runner.fetch('https://job-runner/drain');
+		await drainOnce();
 
 		expect(ran).toBe(false);
 		expect((await jobService.stats(c)).pending).toBe(1);

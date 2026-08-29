@@ -12,18 +12,54 @@ import BizError from '../error/biz-error';
 const BASE = 'https://api.cloudflare.com/client/v4';
 const GRAPHQL = 'https://api.cloudflare.com/client/v4/graphql';
 
+/**
+ * A pasted token routinely arrives with a trailing newline, a stray space, or
+ * a copied "Bearer " prefix. Any of those make the Authorization header
+ * malformed and Cloudflare answers 6003 "Invalid request headers", which reads
+ * like a bug in this app rather than a bad paste. Normalise before sending.
+ */
+function cleanToken(token) {
+	return String(token ?? '').trim().replace(/^Bearer\s+/i, '').trim();
+}
+
 async function cfFetch(token, method, path, body) {
+
+	const clean = cleanToken(token);
+
+	if (!clean) {
+		throw new Error('Cloudflare API token is empty');
+	}
+
+	// A token with a character that cannot go in a header would otherwise throw
+	// an opaque TypeError from fetch itself.
+	if (/[^\x21-\x7e]/.test(clean)) {
+		throw new Error('Cloudflare API token contains invalid characters - re-copy it from the dashboard');
+	}
 
 	const res = await fetch(`${BASE}${path}`, {
 		method,
-		headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+		headers: { Authorization: `Bearer ${clean}`, 'Content-Type': 'application/json' },
 		body: body === undefined ? undefined : JSON.stringify(body)
 	});
 
 	const json = await res.json().catch(() => null);
 
 	if (!json?.success) {
-		const detail = (json?.errors ?? []).map(e => `${e.code}: ${e.message}`).join('; ') || `HTTP ${res.status}`;
+		const errors = json?.errors ?? [];
+
+		// 6003 is Cloudflare rejecting the header itself, which in practice means
+		// the wrong credential was pasted - a Global API Key, an account id, or
+		// a truncated token.
+		if (errors.some(e => e.code === 6003)) {
+			const error = new Error(
+				'Cloudflare rejected the credential. Use an API *token* from ' +
+				'dash.cloudflare.com/profile/api-tokens - not the Global API Key, and not the account ID.'
+			);
+			error.status = 401;
+			throw error;
+		}
+
+		const detail = errors.map(e => `${e.code}: ${e.message}`).join('; ') || `HTTP ${res.status}`;
 		const error = new Error(detail);
 		error.status = res.status;
 		throw error;
@@ -349,7 +385,8 @@ const cfService = {
 		// An omitted token means "keep the stored one" - the UI only ever sees a
 		// boolean, never the value.
 		if (cfApiToken) {
-			params.cfApiToken = cfApiToken;
+			// Store it clean, so a stray newline is not baked into every later call.
+			params.cfApiToken = cleanToken(cfApiToken);
 		}
 
 		await settingService.set(c, params);
