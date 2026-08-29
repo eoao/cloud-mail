@@ -6,7 +6,7 @@
     <el-scrollbar class="scroll" v-if="!firstLoading">
       <div class="scroll-body">
         <div class="card-grid">
-          <!-- Website Settings Card -->
+          <!-- Basic Settings Card -->
           <div class="settings-card">
             <div class="card-title">{{ $t('websiteSetting') }}</div>
             <div class="card-content">

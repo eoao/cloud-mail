@@ -31,11 +31,26 @@ const emailService = {
 		let { emailId, type, accountId, size, timeSort, allReceive, full } = params;
 
 		size = Number(size);
+		type = Number(type);
 		emailId = Number(emailId) || 0;
 		timeSort = Number(timeSort);
 		accountId = Number(accountId);
 		allReceive = Number(allReceive);
-		full = Number(full) === 1;
+		full = Number(full);
+
+		if (isNaN(type)) {
+			type = 0;
+		}
+
+		if (isNaN(size)) {
+			size = 10;
+		}
+
+		if (isNaN(full)) {
+			full = 1;
+		}
+
+		full = full === 1;
 
 		if (size > 50) {
 			size = 50;
@@ -876,14 +891,27 @@ const emailService = {
 		let { emailId, size, name, subject, accountEmail, userEmail, type, timeSort, full } = params;
 
 		size = Number(size);
-
 		emailId = Number(emailId) || 0;
 		timeSort = Number(timeSort);
-		full = Number(full) === 1;
+		full = Number(full);
+
+		if (type === undefined) {
+			type = 'receive';
+		}
+
+		if (isNaN(size)) {
+			size = 10;
+		}
 
 		if (size > 50) {
 			size = 50;
 		}
+
+		if (isNaN(full)) {
+			full = 1;
+		}
+
+		full = full === 1;
 
 		const filters = this.allEmailListFilters({ emailId, name, subject, accountEmail, userEmail, type, timeSort });
 		const countFilters = this.allEmailListFilters({ emailId, name, subject, accountEmail, userEmail, type, timeSort, withCursor: false });

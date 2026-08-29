@@ -70,7 +70,7 @@ const userService = {
 	selectByEmail(c, email) {
 		return orm(c).select().from(user).where(
 			and(
-				eq(user.email, email),
+				sql`${user.email} COLLATE NOCASE = ${email}`,
 				eq(user.isDel, isDel.NORMAL)))
 			.get();
 	},
@@ -124,6 +124,15 @@ const userService = {
 		num = Number(num);
 		timeSort = Number(timeSort);
 		params.isDel = Number(params.isDel);
+
+		if (isNaN(size)) {
+			size = 50;
+		}
+
+		if (isNaN(num)) {
+			num = 1;
+		}
+
 		if (size > 50) {
 			size = 50;
 		}
@@ -314,7 +323,7 @@ const userService = {
 
 	async add(c, params) {
 
-		const { email, type, password } = params;
+		let { email, type, password } = params;
 
 		if (!c.env.domain.includes(emailUtils.getDomain(email))) {
 			throw new BizError(t('notEmailDomain'));
@@ -334,7 +343,13 @@ const userService = {
 			throw new BizError(t('isRegAccount'));
 		}
 
-		const role = roleService.selectById(c, type);
+		let role;
+		if (type === undefined) {
+			role = await roleService.selectDefaultRole(c);
+			type = role?.roleId;
+		} else {
+			role = await roleService.selectById(c, type);
+		}
 
 		if (!role) {
 			throw new BizError(t('roleNotExist'));

@@ -135,7 +135,7 @@ const zh = {
     hasAccount: '已有账号?',
     regSwitch: '创建账号',
     loginSwitch: '去登录',
-    websiteSetting: '网站设置',
+    websiteSetting: '基本设置',
     websiteReg: '用户注册',
     loginDomain: '隐藏登录域名',
     syncDelete: '同步删除',
