@@ -462,7 +462,7 @@ const en = {
     sendAlreadyLeft: 'Too late - the message has already been sent',
     snooze: 'Snooze',
     snoozeUntil: 'Show again at',
-    rules: 'Rules',
+    mailRules: 'Rules',
     rule: 'Rule',
     ruleMatchAll: 'Match all conditions',
     ruleStopOnMatch: 'Stop after this rule',

@@ -462,7 +462,7 @@ const zh = {
     sendAlreadyLeft: '为时已晚 - 邮件已发出',
     snooze: '稍后提醒',
     snoozeUntil: '重新显示时间',
-    rules: '规则',
+    mailRules: '规则',
     rule: '规则',
     ruleMatchAll: '满足全部条件',
     ruleStopOnMatch: '命中后停止',

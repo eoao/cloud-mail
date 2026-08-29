@@ -157,7 +157,7 @@
 
     <!-- Inbound rules -->
     <div class="container">
-      <div class="title">{{ $t('rules') }}</div>
+      <div class="title">{{ $t('mailRules') }}</div>
       <el-table :data="rules" size="small" v-if="rules.length">
         <el-table-column prop="name" :label="$t('rule')" min-width="140" show-overflow-tooltip/>
         <el-table-column :label="$t('ruleConditions')" min-width="200">
