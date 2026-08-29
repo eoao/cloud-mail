@@ -19,6 +19,13 @@
     </el-container>
   </el-container>
   <writer ref="writerRef" />
+
+  <el-dialog v-model="shortcutsShow" :title="$t('shortcuts')" width="420">
+    <div v-for="row in shortcutRows" :key="row.keys" class="shortcut-row">
+      <kbd>{{ row.keys }}</kbd>
+      <span>{{ $t(row.label) }}</span>
+    </div>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -28,8 +35,28 @@ import Main from '@/layout/main/index.vue'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import {useUiStore} from "@/store/ui.js";
 import writer from '@/layout/write/index.vue'
+import router from '@/router/index.js'
+import {useShortcuts} from '@/composables/use-shortcuts.js'
 
 const uiStore = useUiStore();
+const shortcutsShow = ref(false)
+
+const shortcutRows = [
+  {keys: 'c', label: 'shortcutCompose'},
+  {keys: '/', label: 'shortcutSearch'},
+  {keys: 'i', label: 'shortcutInbox'},
+  {keys: 'Esc', label: 'shortcutClose'},
+  {keys: '?', label: 'shortcutHelp'}
+]
+
+useShortcuts({
+  c: () => uiStore.writerRef?.value?.open?.(),
+  // "/" is the near-universal focus-search binding; the inbox owns the input,
+  // so the layout only asks it to focus.
+  '/': () => document.querySelector('.search-wrap input')?.focus(),
+  '?': () => (shortcutsShow.value = !shortcutsShow.value),
+  i: () => router.push('/inbox')
+})
 const writerRef = ref({})
 const isMobile = ref(window.innerWidth < 1025)
 const handleResize = () => {
@@ -50,6 +77,29 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" scoped>
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 7px 0;
+
+  kbd {
+    min-width: 44px;
+    text-align: center;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--el-border-color);
+    background: var(--el-fill-color-light);
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--el-text-color-regular);
+  }
+
+  span {
+    color: var(--el-text-color-primary);
+  }
+}
+
 .el-aside-hide {
   position: fixed;
   left: 0;

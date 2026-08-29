@@ -16,6 +16,19 @@
         <div class="email-title">
           {{ email.subject }}
         </div>
+
+        <!-- Conversation: the other messages sharing this thread. -->
+        <div v-if="threadRows.length > 1" class="thread-strip">
+          <span class="thread-count">{{ $t('threadCount', {count: threadRows.length}) }}</span>
+          <div class="thread-items">
+            <div v-for="row in threadRows" :key="row.emailId" class="thread-item"
+                 :class="row.emailId === email.emailId ? 'current' : ''"
+                 @click="openThreadMessage(row)">
+              <span class="thread-who">{{ row.name || row.sendEmail }}</span>
+              <span class="thread-when">{{ row.createTime?.slice(5, 16) }}</span>
+            </div>
+          </div>
+        </div>
         <div class="content">
           <div class="email-info">
             <div>
@@ -75,6 +88,7 @@
 </template>
 <script setup>
 import ShadowHtml from '@/components/shadow-html/index.vue'
+import {threadMessages} from "@/request/search.js"
 import {computed, reactive, ref, watch, onMounted, onUnmounted} from "vue";
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
@@ -148,8 +162,37 @@ watch(
   { flush: 'post' }
 )
 
+// ---- conversation -------------------------------------------------------
+
+const threadRows = ref([])
+
+async function loadThread() {
+  const threadId = email.value?.threadId
+
+  // Older mail predates threading and simply has no conversation to show.
+  if (!threadId) {
+    threadRows.value = []
+    return
+  }
+
+  try {
+    threadRows.value = await threadMessages(threadId)
+  } catch {
+    // A conversation strip is a nicety - never block reading the message.
+    threadRows.value = []
+  }
+}
+
+function openThreadMessage(row) {
+  if (row.emailId === email.value?.emailId) return
+  emailStore.contentData.email = {...emailStore.contentData.email, ...row}
+}
+
+watch(() => email.value?.threadId, loadThread)
+
 onMounted(() => {
   tryMarkRead()
+  loadThread()
   window.addEventListener('keydown', handleKeyDown);
 })
 
@@ -266,6 +309,51 @@ const handleDelete = () => {
 }
 </script>
 <style scoped lang="scss">
+.thread-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0 10px;
+  overflow-x: auto;
+
+  .thread-count {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+  }
+
+  .thread-items {
+    display: flex;
+    gap: 6px;
+  }
+
+  .thread-item {
+    flex-shrink: 0;
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--el-border-color-lighter);
+    font-size: 12px;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--el-fill-color-light);
+    }
+
+    &.current {
+      border-color: var(--el-color-primary);
+      color: var(--el-color-primary);
+      cursor: default;
+    }
+  }
+
+  .thread-when {
+    color: var(--el-text-color-secondary);
+  }
+}
+
 .box {
   height: 100%;
   overflow: hidden;

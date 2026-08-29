@@ -43,7 +43,23 @@
             </div>
           </template>
         </el-input-tag>
-        <el-input v-model="form.subject" :placeholder="t('subject')" />
+        <el-input-tag v-if="showCc" tag-type="info" size="default" v-model="form.cc">
+          <template #prefix>
+            <div class="item-title">{{ $t('cc') }}</div>
+          </template>
+        </el-input-tag>
+        <el-input-tag v-if="showBcc" tag-type="info" size="default" v-model="form.bcc">
+          <template #prefix>
+            <div class="item-title">{{ $t('bcc') }}</div>
+          </template>
+        </el-input-tag>
+        <div class="cc-toggle">
+          <span :class="showCc ? 'cc-on' : ''" @click="showCc = !showCc">{{ $t('cc') }}</span>
+          <span :class="showBcc ? 'cc-on' : ''" @click="showBcc = !showBcc">{{ $t('bcc') }}</span>
+          <span class="draft-hint" v-if="draftSaving">{{ $t('draftSaving') }}</span>
+          <span class="draft-hint" v-else-if="draftSavedAt">{{ $t('draftSavedAt', {time: draftSavedAt}) }}</span>
+        </div>
+        <el-input v-model="form.subject" :placeholder="t('subject')" @input="autosaveDraft" />
 
         <!-- AI writing assistant -->
         <div class="ai-bar">
@@ -161,6 +177,7 @@ import {userDraftStore} from "@/store/draft.js";
 import {useWriterStore} from "@/store/writer.js";
 import db from "@/db/db.js";
 import dayjs from "dayjs";
+import {debounce} from "lodash-es";
 import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
 import {ElMessageBox} from "element-plus";
@@ -309,6 +326,8 @@ const backReply = reactive({
 const form = reactive({
   sendEmail: '',
   receiveEmail: [],
+  cc: [],
+  bcc: [],
   accountId: -1,
   name: '',
   subject: '',
@@ -319,6 +338,55 @@ const form = reactive({
   attachments: [],
   draftId: null,
 })
+
+const showCc = ref(false)
+const showBcc = ref(false)
+
+// ---- draft autosave -----------------------------------------------------
+// Previously a draft only existed if the user confirmed a dialog on close, so
+// a crashed tab or a stray Escape lost the whole message. Autosave writes to
+// the same Dexie store on a debounce, and reuses one draftId so it updates in
+// place instead of piling up copies.
+
+const draftSaving = ref(false)
+const draftSavedAt = ref('')
+
+function hasDraftContent() {
+  return !!(form.subject?.trim() || form.receiveEmail.length || editorText())
+}
+
+async function persistDraft() {
+  if (!show.value || !hasDraftContent()) {
+    return
+  }
+
+  draftSaving.value = true
+  try {
+    form.content = editor.value.getContent()
+
+    const formData = {...toRaw(form)}
+    delete formData.draftId
+    delete formData.attachments
+    formData.createTime = dayjs().utc().format('YYYY-MM-DD HH:mm:ss')
+
+    if (form.draftId) {
+      await db.value.draft.update(form.draftId, formData)
+    } else {
+      form.draftId = await db.value.draft.add({...formData})
+      draftStore.refreshList++
+    }
+
+    await db.value.att.put({draftId: form.draftId, attachments: toRaw(form.attachments)})
+    draftSavedAt.value = dayjs().format('HH:mm:ss')
+  } catch (e) {
+    // Autosave is a convenience; a failure must not interrupt composing.
+    console.warn('draft autosave failed:', e)
+  } finally {
+    draftSaving.value = false
+  }
+}
+
+const autosaveDraft = debounce(persistDraft, 2000)
 
 const selectRecipientList = ref([])
 
@@ -512,6 +580,9 @@ async function sendEmail() {
 
   show.value = false
 
+  // The message is on its way; a queued autosave would resurrect it as a draft.
+  autosaveDraft.cancel()
+
   emailSend(form, (e) => {
     percent.value = Math.round((e.loaded * 98) / e.total)
   }).then(emailList => {
@@ -531,13 +602,15 @@ async function sendEmail() {
 
     addRecipientRecord();
 
+    // A sent message must not linger in Drafts.
     if (form.draftId) {
-      form.subject = ''
-      form.content = ''
-      form.receiveEmail = []
-      draftStore.setDraft = {...toRaw(form)}
+      db.value.draft.delete(form.draftId)
+      db.value.att.delete(form.draftId)
+      draftStore.refreshList++
+      form.draftId = null
     }
 
+    draftSavedAt.value = ''
     show.value = false
     resetForm();
   }).catch((e) => {
@@ -571,6 +644,11 @@ function addRecipientRecord() {
 
 function resetForm() {
   form.receiveEmail = []
+  form.cc = []
+  form.bcc = []
+  showCc.value = false
+  showBcc.value = false
+  draftSavedAt.value = ''
   form.subject = ''
   form.content = ''
   form.manyType = null
@@ -588,6 +666,7 @@ function resetForm() {
 function change(content, text) {
   form.content = content;
   form.text = text
+  autosaveDraft()
 }
 
 function focusChange() {
@@ -678,11 +757,25 @@ function open() {
     form.name = accountStore.currentAccount.name;
   }
   show.value = true;
+  applySignature()
   editor.value.focus()
+}
+
+// Signature belongs to the sending identity, so it is applied when the writer
+// opens on a fresh message - never on a reply or a restored draft, which
+// already carry their own body.
+function applySignature() {
+  const signature = accountStore.currentAccount?.signature
+  if (!signature || form.sendType === 'reply' || form.sendType === 'forward' || form.draftId) {
+    return
+  }
+  defValue.value = `<p><br></p><p>--</p>${signature}`
 }
 
 function openDraft(draft) {
   Object.assign(form, {...draft})
+  showCc.value = (form.cc?.length ?? 0) > 0
+  showBcc.value = (form.bcc?.length ?? 0) > 0
   defValue.value = ''
   setTimeout(() => defValue.value = form.content)
   show.value = true;
@@ -738,28 +831,16 @@ function close() {
     }
   }
 
-  ElMessageBox.confirm(t('saveDraftConfirm'), {
-    confirmButtonText: t('confirm'),
-    cancelButtonText: t('cancel'),
-    type: 'warning',
-    distinguishCancelAndClose: true
-  }).then(async () => {
-    const formData = {...toRaw(form)};
-    delete formData.draftId
-    delete formData.attachments
-    formData.createTime = dayjs().utc().format('YYYY-MM-DD HH:mm:ss');
-    const draftId = await db.value.draft.add({...formData})
-    db.value.att.add({draftId, attachments: toRaw(form.attachments)})
+  // Autosave already keeps a copy, so closing saves silently rather than
+  // asking - the old confirm dialog was the only thing standing between a
+  // stray Escape and a lost message.
+  autosaveDraft.cancel()
+  persistDraft().then(async () => {
     draftStore.refreshList++
     show.value = false
     await nextTick(() => {
       resetForm()
     })
-  }).catch((action) => {
-    if (action === 'cancel') {
-      show.value = false
-      resetForm()
-    }
   })
 
 }
@@ -778,6 +859,28 @@ function close() {
 }
 </style>
 <style scoped lang="scss">
+.cc-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 2px 0;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+
+  span {
+    cursor: pointer;
+
+    &.cc-on {
+      color: var(--el-color-primary);
+    }
+  }
+
+  .draft-hint {
+    margin-left: auto;
+    cursor: default;
+  }
+}
+
 .ai-bar {
   display: flex;
   flex-wrap: wrap;

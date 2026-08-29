@@ -25,6 +25,7 @@
                 <template #dropdown>
                   <el-dropdown-menu>
                     <el-dropdown-item v-if="hasPerm('email:send')" @click="openSetName(item)">{{ $t('rename') }}</el-dropdown-item>
+                    <el-dropdown-item v-if="hasPerm('email:send')" @click="openSignature(item)">{{ $t('signature') }}</el-dropdown-item>
                     <el-dropdown-item v-if="item.accountId !== userStore.user.account.accountId" @click="setAsTop(item, index)">{{ $t('pin') }}</el-dropdown-item>
                     <el-dropdown-item v-if="item.accountId !== userStore.user.account.accountId && hasPerm('account:delete')"
                                       @click="remove(item)">{{ $t('delete') }}
@@ -123,6 +124,15 @@
         </el-button>
       </div>
     </el-dialog>
+    <el-dialog v-model="signatureShow" :title="$t('signature')" width="520">
+      <div class="container">
+        <div class="signature-desc">{{ $t('signatureDesc') }}</div>
+        <el-input v-model="signatureHtml" type="textarea" :rows="8" :placeholder="$t('signature')"/>
+        <el-button class="btn" type="primary" @click="saveSignature" :loading="signatureLoading">
+          {{ $t('save') }}
+        </el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 <script setup>
@@ -133,6 +143,7 @@ import {
   accountAdd,
   accountDelete,
   accountSetName,
+  accountSetSignature,
   accountSetAllReceive,
   accountSetAsTop
 } from "@/request/account.js";
@@ -161,6 +172,9 @@ const followLoading = ref(false);
 const verifyShow = ref(false)
 const setNameShow = ref(false)
 const setNameLoading = ref(false)
+const signatureShow = ref(false)
+const signatureLoading = ref(false)
+const signatureHtml = ref('')
 const accountName = ref(null)
 const addRef = ref({})
 const scrollbarRef = ref({})
@@ -270,6 +284,31 @@ function openSetName(accountItem) {
   accountName.value = accountItem.name
   account = accountItem
   setNameShow.value = true
+}
+
+function openSignature(accountItem) {
+  signatureHtml.value = accountItem.signature ?? ''
+  account = accountItem
+  signatureShow.value = true
+}
+
+function saveSignature() {
+  if (signatureLoading.value) return
+  signatureLoading.value = true
+
+  const target = account
+
+  accountSetSignature(target.accountId, signatureHtml.value).then(() => {
+    // Keep the in-memory account in step so the writer picks the signature up
+    // without a reload.
+    target.signature = signatureHtml.value
+    if (accountStore.currentAccount?.accountId === target.accountId) {
+      accountStore.currentAccount.signature = signatureHtml.value
+    }
+    signatureShow.value = false
+  }).finally(() => {
+    signatureLoading.value = false
+  })
 }
 
 function setAllReceive(account) {
@@ -520,6 +559,12 @@ path[fill="#ffdda1"] {
 }
 </style>
 <style scoped lang="scss">
+.signature-desc {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin-bottom: 8px;
+}
+
 .account-box {
 
   border-right: 1px solid var(--el-border-color) !important;

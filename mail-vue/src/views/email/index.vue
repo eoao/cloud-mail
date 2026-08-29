@@ -1,4 +1,5 @@
 <template>
+  <mailSearch ref="search" @open="openSearchResult"/>
   <emailScroll ref="scroll"
                :cancel-success="cancelStar"
                :star-success="addStar"
@@ -27,6 +28,7 @@ import {useAccountStore} from "@/store/account.js";
 import {useEmailStore} from "@/store/email.js";
 import {useSettingStore} from "@/store/setting.js";
 import emailScroll from "@/components/email-scroll/index.vue"
+import mailSearch from "@/components/mail-search/index.vue"
 import {emailList, emailDelete, emailLatest, emailRead} from "@/request/email.js";
 import {starAdd, starCancel} from "@/request/star.js";
 import {defineOptions, h, onMounted, reactive, ref, watch} from "vue";
@@ -45,9 +47,21 @@ const emailStore = useEmailStore();
 const accountStore = useAccountStore();
 const settingStore = useSettingStore();
 const scroll = ref({})
+const search = ref(null)
 const params = reactive({
   timeSort: 0,
 })
+
+// A search hit is a summary row, so open the detail view the same way the list
+// does rather than trying to render a partial message.
+function openSearchResult(row) {
+  emailStore.contentData.email = emailStore.toContentEmail(row)
+  emailStore.contentData.delType = 'logic'
+  emailStore.contentData.showUnread = true
+  emailStore.contentData.showStar = true
+  emailStore.contentData.showReply = true
+  router.push('/mail')
+}
 
 onMounted(() => {
   emailStore.emailScroll = scroll;

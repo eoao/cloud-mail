@@ -16,6 +16,10 @@ export function accountDelete(accountId) {
     return http.delete('/account/delete', {params: {accountId}})
 }
 
+export function accountSetSignature(accountId, signature) {
+    return http.put('/account/setSignature', {accountId, signature})
+}
+
 export function accountSetAllReceive(accountId) {
     return http.put('/account/setAllReceive', {accountId})
 }
