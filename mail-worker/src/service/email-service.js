@@ -388,7 +388,10 @@ const emailService = {
 		emailData.content = html;
 		emailData.text = text;
 		emailData.accountId = accountId;
-		if (deferUntil && !allInternal) {
+		// Scheduling applies to internal mail too. Delivering it immediately
+		// would silently ignore the requested time, and would leave the undo
+		// window offering an undo that can only fail.
+		if (deferUntil) {
 			emailData.status = emailConst.status.SCHEDULED;
 			emailData.scheduledAt = deferUntil;
 		} else {
@@ -462,7 +465,9 @@ const emailService = {
 		}
 
 		//如果全是站内接收方，直接写入数据库
-		if (allInternal) {
+		// A deferred send hands this to the delivery job instead, so the copy does
+		// not land in the recipient's mailbox before the scheduled time.
+		if (allInternal && !deferUntil) {
 			await this.HandleOnSiteEmail(c, receiveEmail, emailResult, attList);
 		}
 
@@ -556,6 +561,22 @@ const emailService = {
 		const bcc = JSON.parse(row.bcc || '[]').map(r => r.address).filter(Boolean);
 
 		const attRows = await attService.selectByEmailIds(c, [emailId]);
+
+		// Internal-only mail never touches a provider - it is written straight
+		// into the recipients' mailboxes, just deferred until now.
+		const { domainList } = await settingService.query(c);
+		const allInternal = recipients.every(address => domainList.includes('@' + emailUtils.getDomain(address)));
+
+		if (allInternal) {
+			await orm(c).update(email)
+				.set({ status: emailConst.status.SENT, scheduledAt: '' })
+				.where(eq(email.emailId, emailId)).run();
+
+			await this.HandleOnSiteEmail(c, recipients, { ...row, status: emailConst.status.SENT }, attRows);
+
+			return { emailId, internal: true };
+		}
+
 		const outgoing = await this.attachmentsFromStorage(c, attRows);
 
 		const domain = emailUtils.getDomain(accountRow.email);

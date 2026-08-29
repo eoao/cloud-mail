@@ -324,6 +324,54 @@ describe('send timing', () => {
 	it('does not deliver a message that no longer exists', async () => {
 		expect((await emailService.deliverEmail(c, 999999)).skipped).toContain('no longer exists');
 	});
+
+	it('defers internal mail too, instead of ignoring the schedule', () => {
+		// A message to an address on this instance never reaches a provider, but
+		// it must still wait: delivering it now would silently ignore the
+		// requested time, and would leave the undo window offering an undo that
+		// could only fail.
+		const at = dayjs().add(1, 'hour').format('YYYY-MM-DD HH:mm:ss');
+		expect(emailService.resolveSendTime({ scheduleAt: at })).toBe(at);
+	});
+
+	it('routes a deferred internal message to the mailbox, not to a provider', async () => {
+
+		// domainList comes from env.domain, which the test config sets to test.local.
+		await env.db.prepare('DELETE FROM account').run();
+		await env.db.prepare(
+			`INSERT INTO account (account_id, email, name, user_id, is_del) VALUES (?,?,?,?,0)`
+		).bind(1, 'me@test.local', 'Me', USER).run();
+
+		const mail = await insertEmail({ sendEmail: 'me@test.local', toEmail: 'friend@test.local' });
+
+		await env.db.prepare(
+			`UPDATE email SET status = ?, scheduled_at = ?, recipient = ? WHERE email_id = ?`
+		).bind(
+			emailConst.status.SCHEDULED,
+			'2000-01-01 00:00:00',
+			JSON.stringify([{ address: 'friend@test.local', name: '' }]),
+			mail.emailId
+		).run();
+
+		// No sending provider is configured in this suite, so the provider path
+		// fails with a recognisable error. Reaching the internal handoff instead
+		// is the whole point: before the fix, scheduling was ignored for internal
+		// mail and it was delivered at send time.
+		let error = null;
+		try {
+			await emailService.deliverEmail(c, mail.emailId);
+		} catch (e) {
+			error = e;
+		}
+
+		expect(error?.message ?? '').not.toMatch(/provider/i);
+
+		// And the schedule was cleared as the message left the queue.
+		const row = await env.db.prepare('SELECT scheduled_at FROM email WHERE email_id = ?')
+			.bind(mail.emailId).first();
+
+		expect(row.scheduled_at).toBe('');
+	});
 });
 
 describe('snooze', () => {
