@@ -7,6 +7,8 @@ import userService from '../service/user-service';
 import permService from '../service/perm-service';
 import { t } from '../i18n/i18n'
 import app from '../hono/hono';
+import apiKeyService from '../service/api-key-service';
+import { isDel, userConst } from '../const/entity-const';
 
 const exclude = [
 	'/login',
@@ -135,6 +137,28 @@ app.use('*', async (c, next) => {
 		if (publicToken !== userPublicToken) {
 			throw new BizError(t('publicTokenFail'), 401);
 		}
+		return await next();
+	}
+
+	// Programmatic access. /v1 is the only surface an API key can reach, so a
+	// leaked key can never touch the admin routes a session token can.
+	if (path.startsWith('/v1')) {
+
+		const bearer = c.req.header('Authorization')?.replace(/^Bearer\s+/i, '');
+		const identity = await apiKeyService.verify(c, bearer);
+
+		if (!identity) {
+			throw new BizError(t('unauthorized'), 401);
+		}
+
+		const user = await userService.selectById(c, identity.userId);
+
+		if (!user || user.isDel === isDel.DELETE || user.status === userConst.status.BAN) {
+			throw new BizError(t('unauthorized'), 401);
+		}
+
+		c.set('user', user);
+		c.set('apiScopes', identity.scopes);
 		return await next();
 	}
 

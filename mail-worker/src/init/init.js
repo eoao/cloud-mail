@@ -49,8 +49,44 @@ const dbInit = {
 		await this.v3_8DB(c);
 		await this.v3_9DB(c);
 		await this.v4_0DB(c);
+		await this.v4_1DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	// v4_1: programmatic access - API keys and outgoing webhooks.
+	async v4_1DB(c) {
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`CREATE TABLE IF NOT EXISTS api_key (
+					key_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					name TEXT NOT NULL DEFAULT '',
+					prefix TEXT NOT NULL,
+					hash TEXT NOT NULL,
+					scopes TEXT NOT NULL DEFAULT '[]',
+					last_used TEXT NOT NULL DEFAULT '',
+					expires_at TEXT NOT NULL DEFAULT '',
+					revoked INTEGER NOT NULL DEFAULT 0,
+					create_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)`),
+				c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_api_key_lookup ON api_key(prefix, revoked)`),
+				c.env.db.prepare(`CREATE TABLE IF NOT EXISTS webhook (
+					webhook_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					url TEXT NOT NULL,
+					secret TEXT NOT NULL DEFAULT '',
+					events TEXT NOT NULL DEFAULT '[]',
+					enabled INTEGER NOT NULL DEFAULT 1,
+					last_error TEXT NOT NULL DEFAULT '',
+					last_delivery TEXT NOT NULL DEFAULT '',
+					create_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)`),
+				c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_webhook_user ON webhook(user_id, enabled)`)
+			]);
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
 	},
 
 	// v4_0: contacts, calendar events parsed from invitations, and tasks.

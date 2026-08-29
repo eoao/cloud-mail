@@ -35,9 +35,31 @@ function timingSafeEqual(a, b) {
 	return diff === 0;
 }
 
+async function hmacBase64(secret, message) {
+	const keyB64 = secret.startsWith('whsec_') ? secret.slice(6) : secret;
+
+	let keyBytes;
+	try {
+		keyBytes = base64ToBytes(keyB64);
+	} catch {
+		// A secret we generated ourselves is hex, not base64 - use it as raw bytes.
+		keyBytes = encoder.encode(keyB64);
+	}
+
+	const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+	const mac = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
+
+	return bytesToBase64(new Uint8Array(mac));
+}
+
 const webhookUtils = {
 
 	timingSafeEqual,
+
+	/** Sign an outgoing delivery the same way we require of inbound ones. */
+	async signSvix(secret, id, timestamp, rawBody) {
+		return `v1,${await hmacBase64(secret, `${id}.${timestamp}.${rawBody}`)}`;
+	},
 
 	async verifySvix(secret, headers, rawBody, tolerance = DEFAULT_TOLERANCE_SECONDS) {
 

@@ -27,4 +27,5 @@ import '../api/cf-api'
 import '../api/search-api'
 import '../api/rule-api'
 import '../api/contact-api'
+import '../api/api-key-api'
 export default app;
