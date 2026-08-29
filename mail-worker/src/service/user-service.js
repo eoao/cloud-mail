@@ -96,6 +96,20 @@ const userService = {
 			.get();
 	},
 
+	async getBarkUrl(c, userId) {
+		const userRow = await this.selectById(c, userId);
+		return userRow?.barkUrl || '';
+	},
+
+	async setBarkUrl(c, params, userId) {
+		let { barkUrl } = params;
+		if (typeof barkUrl !== 'string') {
+			barkUrl = '';
+		}
+		barkUrl = barkUrl.trim();
+		await orm(c).update(user).set({ barkUrl }).where(eq(user.userId, userId)).run();
+	},
+
 	async delete(c, userId) {
 		const { syncDelete } = await settingService.query(c);
 		if (syncDelete === settingConst.syncDelete.OPEN) {

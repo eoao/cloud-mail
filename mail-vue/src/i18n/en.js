@@ -352,6 +352,15 @@ const en = {
     clientId: 'Client ID',
     clientSecret: 'Client Secret',
     notOwner: 'Base email does not belong to you',
+    barkPush: 'Bark Push',
+    barkUrl: 'Bark URL',
+    barkUrlPlaceholder: 'https://api.day.app/your_key',
+    barkUrlDesc: 'Enter your Bark push URL to receive notifications on your phone when emails arrive',
+    barkUrlHelp: 'How to get it?',
+    barkTestSuccess: 'Test push sent',
+    barkTestFail: 'Test push failed, please check the URL',
+    barkUrlSaved: 'Bark URL saved',
+    barkUrlEmpty: 'Please enter Bark URL first',
 }
 
 export default en

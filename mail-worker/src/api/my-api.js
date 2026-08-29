@@ -18,4 +18,14 @@ app.delete('/my/delete', async (c) => {
 	return c.json(result.ok());
 });
 
+app.get('/my/barkUrl', async (c) => {
+	const barkUrl = await userService.getBarkUrl(c, userContext.getUserId(c));
+	return c.json(result.ok({ barkUrl }));
+});
+
+app.put('/my/barkUrl', async (c) => {
+	await userService.setBarkUrl(c, await c.req.json(), userContext.getUserId(c));
+	return c.json(result.ok());
+});
+
 

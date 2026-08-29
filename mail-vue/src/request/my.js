@@ -12,3 +12,11 @@ export function userDelete() {
     return http.delete('/my/delete')
 }
 
+export function getBarkUrl() {
+    return http.get('/my/barkUrl')
+}
+
+export function setBarkUrl(barkUrl) {
+    return http.put('/my/barkUrl', { barkUrl })
+}
+
