@@ -28,6 +28,11 @@ app.put('/account/setAllReceive', async (c) => {
 	return c.json(result.ok());
 });
 
+app.put('/account/setSignature', async (c) => {
+	await accountService.setSignature(c, await c.req.json(), userContext.getUserId(c));
+	return c.json(result.ok());
+});
+
 app.put('/account/setAsTop', async (c) => {
 	await accountService.setAsTop(c, await c.req.json(), userContext.getUserId(c));
 	return c.json(result.ok());

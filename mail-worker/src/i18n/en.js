@@ -21,6 +21,7 @@ const en = {
 	daySendLack: 'Not enough remaining sends today',
 	totalSendLack: 'Not enough total remaining sends',
 	senderAccountNotExist: 'Sender email does not exist',
+	signatureLengthLimit: 'Signature must be 5000 characters or fewer',
 	noResendToken: 'Resend API token not configured',
 	noSendProvider: 'Email sending service is not configured',
 	sendEmailNotCurUser: 'Sender email does not belong to current user',

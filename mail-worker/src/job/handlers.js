@@ -10,6 +10,7 @@ import emailService from '../service/email-service';
 import analysisService from '../service/analysis-service';
 import jobService from '../service/job-service';
 import aiRouter from '../service/ai';
+import searchService from '../service/search-service';
 import orm from '../entity/orm';
 import email from '../entity/email';
 import { eq } from 'drizzle-orm';
@@ -21,6 +22,7 @@ export const jobType = {
 	PURGE_JOBS: 'purge_jobs',
 	AI_TASK: 'ai_task',
 	AI_TRIAGE: 'ai_triage',
+	REBUILD_SEARCH: 'rebuild_search',
 	NOOP: 'noop'
 };
 
@@ -89,11 +91,31 @@ const handlers = {
 			aiRouter.run(c, 'spam_score', { ...input, links: [] })
 		]);
 
-		return {
-			emailId,
-			category: category.ok ? category.result : null,
-			spam: spam.ok ? spam.result : null
-		};
+		const update = {};
+
+		if (category.ok && category.result) {
+			update.category = category.result.category;
+			update.priority = category.result.priority;
+		}
+
+		if (spam.ok && spam.result) {
+			update.spamScore = spam.result.score;
+			update.spamVerdict = spam.result.verdict;
+		}
+
+		// A provider outage leaves the row untouched rather than writing defaults
+		// that would look like a real "not spam" verdict.
+		if (Object.keys(update).length === 0) {
+			throw new Error(category.error || spam.error || 'triage produced nothing');
+		}
+
+		await orm(c).update(email).set(update).where(eq(email.emailId, emailId)).run();
+
+		return { emailId, ...update };
+	},
+
+	[jobType.REBUILD_SEARCH]: async (c) => {
+		return searchService.rebuildIndex(c);
 	},
 
 	// Used by tests and by the admin "queue is alive" check.

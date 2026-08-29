@@ -238,6 +238,8 @@ const emailService = {
 			text, //邮件纯文本
 			content, //邮件内容
 			subject, //邮件标题
+			cc = [], //抄送
+			bcc = [], //密送
 			attachments = [] //附件
 		} = params;
 
@@ -349,6 +351,8 @@ const emailService = {
 					name,
 					accountEmail: accountRow.email,
 					receiveEmail,
+					cc,
+					bcc,
 					subject,
 					text,
 					html,
@@ -388,10 +392,15 @@ const emailService = {
 		});
 
 		emailData.recipient = JSON.stringify(recipient);
+		emailData.cc = JSON.stringify(cc.map(address => ({ address, name: '' })));
+		emailData.bcc = JSON.stringify(bcc.map(address => ({ address, name: '' })));
 
 		if (sendType === 'reply') {
 			emailData.inReplyTo = emailRow.messageId;
 			emailData.relation = emailRow.messageId;
+			// Stay in the conversation being replied to; fall back to its own chain
+			// when the original predates threading.
+			emailData.threadId = emailRow.threadId || emailRow.messageId || `e${emailRow.emailId}`;
 		}
 
 		//如果权限有发送次数增加用户发送次数
@@ -401,6 +410,15 @@ const emailService = {
 
 		//保存到数据库并返回结果
 		const emailResult = await orm(c).insert(email).values(emailData).returning().get();
+
+		// A new outgoing message starts its own conversation. The id is only known
+		// after the insert, so this is a second write - sends are rare compared to
+		// receives, so it stays inside the D1 free-tier write budget.
+		if (!emailResult.threadId) {
+			emailResult.threadId = `e${emailResult.emailId}`;
+			await orm(c).update(email).set({ threadId: emailResult.threadId })
+				.where(eq(email.emailId, emailResult.emailId)).run();
+		}
 
 		//保存内嵌附件
 		if (imageDataList.length > 0) {

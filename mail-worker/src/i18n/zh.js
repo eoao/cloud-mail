@@ -21,6 +21,7 @@ const zh = {
 	daySendLack: '当日剩余发送次数不足',
 	totalSendLack: '剩余发送次数不足',
 	senderAccountNotExist: '发件人邮箱不存在',
+	signatureLengthLimit: '签名最多 5000 个字符',
 	noResendToken: 'Resend未配置，只能给站内邮箱发件',
 	noSendProvider: '发信服务未配置，只能给站内邮箱发件',
 	sendEmailNotCurUser: '发件人邮箱非当前用户所有',

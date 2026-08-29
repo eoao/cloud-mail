@@ -46,8 +46,100 @@ const dbInit = {
 		await this.v3_5DB(c);
 		await this.v3_6DB(c);
 		await this.v3_7DB(c);
+		await this.v3_8DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	// v3_8: conversations, full-text search, folders/labels, signatures and the
+	// columns the AI triage job writes back.
+	async v3_8DB(c) {
+
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`ALTER TABLE email ADD COLUMN thread_id TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE email ADD COLUMN spam_score INTEGER NOT NULL DEFAULT -1;`),
+				c.env.db.prepare(`ALTER TABLE email ADD COLUMN spam_verdict TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE email ADD COLUMN category TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE email ADD COLUMN priority INTEGER NOT NULL DEFAULT -1;`),
+				c.env.db.prepare(`ALTER TABLE account ADD COLUMN signature TEXT NOT NULL DEFAULT '';`)
+			]);
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
+
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_email_thread ON email(user_id, thread_id, email_id)`),
+				c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_email_spam ON email(user_id, spam_verdict, email_id)`)
+			]);
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
+
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`CREATE TABLE IF NOT EXISTS label (
+					label_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					name TEXT NOT NULL,
+					color TEXT NOT NULL DEFAULT '',
+					kind TEXT NOT NULL DEFAULT 'label',
+					sort INTEGER NOT NULL DEFAULT 0,
+					create_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)`),
+				c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_label_user ON label(user_id, kind, sort)`),
+				c.env.db.prepare(`CREATE TABLE IF NOT EXISTS email_label (
+					email_id INTEGER NOT NULL,
+					label_id INTEGER NOT NULL,
+					user_id INTEGER NOT NULL,
+					PRIMARY KEY (email_id, label_id)
+				)`),
+				c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_email_label_label ON email_label(label_id, email_id)`)
+			]);
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
+
+		// Full-text search. External-content FTS5 keeps the index off the row
+		// data, so it costs storage rather than duplicating every body, and the
+		// triggers keep it in step with writes from anywhere in the codebase.
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`CREATE VIRTUAL TABLE IF NOT EXISTS email_fts USING fts5(
+					subject, text, send_email, to_email,
+					content='email', content_rowid='email_id', tokenize='unicode61'
+				)`),
+				c.env.db.prepare(`CREATE TRIGGER IF NOT EXISTS email_fts_ai AFTER INSERT ON email BEGIN
+					INSERT INTO email_fts(rowid, subject, text, send_email, to_email)
+					VALUES (new.email_id, new.subject, new.text, new.send_email, new.to_email);
+				END`),
+				c.env.db.prepare(`CREATE TRIGGER IF NOT EXISTS email_fts_ad AFTER DELETE ON email BEGIN
+					INSERT INTO email_fts(email_fts, rowid, subject, text, send_email, to_email)
+					VALUES ('delete', old.email_id, old.subject, old.text, old.send_email, old.to_email);
+				END`),
+				c.env.db.prepare(`CREATE TRIGGER IF NOT EXISTS email_fts_au AFTER UPDATE ON email BEGIN
+					INSERT INTO email_fts(email_fts, rowid, subject, text, send_email, to_email)
+					VALUES ('delete', old.email_id, old.subject, old.text, old.send_email, old.to_email);
+					INSERT INTO email_fts(rowid, subject, text, send_email, to_email)
+					VALUES (new.email_id, new.subject, new.text, new.send_email, new.to_email);
+				END`)
+			]);
+		} catch (e) {
+			console.warn(`全文索引跳过：${e.message}`);
+		}
+
+		// Backfill thread_id for existing mail: group by the reply chain where one
+		// exists, otherwise the message stands alone.
+		try {
+			await c.env.db.prepare(
+				`UPDATE email
+				    SET thread_id = COALESCE(NULLIF(relation, ''), NULLIF(in_reply_to, ''), NULLIF(message_id, ''), 'e' || email_id)
+				  WHERE thread_id = ''`
+			).run();
+		} catch (e) {
+			console.warn(`thread 回填跳过：${e.message}`);
+		}
 	},
 
 	// v3_7: credentials for the in-app Cloudflare control panel.

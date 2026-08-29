@@ -231,6 +231,21 @@ const accountService = {
 		await orm(c).update(account).set({name}).where(and(eq(account.userId, userId),eq(account.accountId, accountId))).run();
 	},
 
+	/**
+	 * Per-identity signature. Scoping the update by userId is what stops one
+	 * user writing a signature onto another user's address.
+	 */
+	async setSignature(c, params, userId) {
+		const { signature = '', accountId } = params;
+
+		if (signature.length > 5000) {
+			throw new BizError(t('signatureLengthLimit'));
+		}
+
+		await orm(c).update(account).set({ signature })
+			.where(and(eq(account.userId, userId), eq(account.accountId, accountId))).run();
+	},
+
 	async allAccount(c, params) {
 
 		let { userId, num, size } = params

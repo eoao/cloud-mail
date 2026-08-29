@@ -11,6 +11,9 @@ import roleService from '../service/role-service';
 import userService from '../service/user-service';
 import telegramService from '../service/telegram-service';
 import aiService from '../service/ai-service';
+import threadService from '../service/thread-service';
+import jobService from '../service/job-service';
+import { jobType } from '../job/handlers';
 
 export async function email(message, env, ctx) {
 
@@ -119,6 +122,11 @@ export async function email(message, env, ctx) {
 			inReplyTo: email.inReplyTo,
 			relation: email.references,
 			messageId: email.messageId,
+			threadId: threadService.deriveThreadId({
+				references: email.references,
+				inReplyTo: email.inReplyTo,
+				messageId: email.messageId
+			}),
 			userId: account ? account.userId : 0,
 			accountId: account ? account.accountId : 0,
 			isDel: isDel.DELETE,
@@ -156,6 +164,19 @@ export async function email(message, env, ctx) {
 
 		emailRow = await emailService.completeReceive({ env }, account ? emailConst.status.RECEIVE : emailConst.status.NOONE, emailRow.emailId);
 
+		// Classification and spam scoring are queued, never run here: Cloudflare is
+		// holding the SMTP transaction open, and a model call would blow the 10ms
+		// CPU budget as well as the free daily AI quota.
+		if (account && env.JOB_RUNNER) {
+			try {
+				await jobService.enqueue({ env }, jobType.AI_TRIAGE, { emailId: emailRow.emailId }, {
+					dedupeKey: `${jobType.AI_TRIAGE}:${emailRow.emailId}`
+				});
+				ctx.waitUntil(jobService.kick({ env }));
+			} catch (e) {
+				console.warn('could not queue ai triage:', e.message);
+			}
+		}
 
 		if (ruleType === settingConst.ruleType.RULE) {
 
