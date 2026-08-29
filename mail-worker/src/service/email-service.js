@@ -170,6 +170,27 @@ const emailService = {
 		return conditions;
 	},
 
+	isVerifySearchKeyword(keyword) {
+		const key = String(keyword || '').trim().toLowerCase();
+		return [
+			'验证码', '校验码', '确认码', '確認碼', '驗證碼',
+			'动态密码', '動態密碼', '短信验证码',
+			'otp', 'pin', 'passcode', 'code',
+			'verification code', 'verify'
+		].includes(key);
+	},
+
+	allEmailKeywordMatch(column, keyword) {
+		const conds = [
+			sql`${column} COLLATE NOCASE LIKE ${keyword + '%'}`,
+			sql`${email.code} COLLATE NOCASE LIKE ${keyword + '%'}`,
+		];
+		if (this.isVerifySearchKeyword(keyword)) {
+			conds.push(ne(email.code, ''));
+		}
+		return or(...conds);
+	},
+
 	allEmailListFilters({ emailId, name, subject, accountEmail, userEmail, type, timeSort, withCursor = true }) {
 		const conditions = [];
 
@@ -203,11 +224,11 @@ const emailService = {
 		}
 
 		if (name) {
-			conditions.push(sql`${email.name} COLLATE NOCASE LIKE ${name + '%'}`);
+			conditions.push(this.allEmailKeywordMatch(email.name, name));
 		}
 
 		if (subject) {
-			conditions.push(sql`${email.subject} COLLATE NOCASE LIKE ${subject + '%'}`);
+			conditions.push(this.allEmailKeywordMatch(email.subject, subject));
 		}
 
 		if (withCursor && emailId) {

@@ -157,6 +157,8 @@ export async function email(message, env, ctx) {
 		}
 
 		emailRow = await emailService.completeReceive({ env }, account ? emailConst.status.RECEIVE : emailConst.status.NOONE, emailRow.emailId);
+		// webhook / TG 用官方 email.code，completeReceive 的 returning 有时不带这列
+		emailRow.code = code || emailRow.code || '';
 
 
 		if (ruleType === settingConst.ruleType.RULE) {
