@@ -12,6 +12,8 @@ import jobService from '../service/job-service';
 import aiRouter from '../service/ai';
 import searchService from '../service/search-service';
 import ruleService from '../service/rule-service';
+import contactService from '../service/contact-service';
+import r2Service from '../service/r2-service';
 import orm from '../entity/orm';
 import email from '../entity/email';
 import { eq } from 'drizzle-orm';
@@ -26,6 +28,7 @@ export const jobType = {
 	REBUILD_SEARCH: 'rebuild_search',
 	SEND_EMAIL: 'send_email',
 	WAKE_SNOOZED: 'wake_snoozed',
+	IMPORT_ICS: 'import_ics',
 	NOOP: 'noop'
 };
 
@@ -131,6 +134,23 @@ const handlers = {
 
 	[jobType.WAKE_SNOOZED]: async (c) => {
 		return { woken: await emailService.wakeSnoozed(c) };
+	},
+
+	// Parse a meeting invitation attached to a received message. Queued rather
+	// than run inline: iCalendar parsing is pure CPU, which is the scarcest
+	// thing in the inbound path.
+	[jobType.IMPORT_ICS]: async (c, payload) => {
+		const { emailId, userId, key } = payload ?? {};
+
+		const obj = await r2Service.getObj(c, key);
+
+		if (!obj) {
+			return { skipped: 'invitation is no longer in storage' };
+		}
+
+		const saved = await contactService.importIcs(c, await obj.text(), Number(userId), Number(emailId) || 0);
+
+		return { imported: saved.length };
 	},
 
 	// Used by tests and by the admin "queue is alive" check.

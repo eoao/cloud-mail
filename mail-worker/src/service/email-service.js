@@ -13,6 +13,7 @@ import providerService from './send-provider';
 import jobService from './job-service';
 import { jobType } from '../job/handlers';
 import r2Service from './r2-service';
+import contactService from './contact-service';
 import attService from './att-service';
 import { parseHTML } from 'linkedom';
 import userService from './user-service';
@@ -451,6 +452,14 @@ const emailService = {
 
 		const attList = await attService.selectByEmailIds(c, [emailResult.emailId]);
 		emailResult.attList = attList;
+
+		// The address book fills itself from who you actually write to. A failure
+		// here must not fail the send.
+		try {
+			await contactService.touch(c, [...receiveEmail, ...cc, ...bcc], userId);
+		} catch (e) {
+			console.warn('could not record contacts:', e.message);
+		}
 
 		//如果全是站内接收方，直接写入数据库
 		if (allInternal) {

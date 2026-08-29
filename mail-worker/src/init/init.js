@@ -48,8 +48,64 @@ const dbInit = {
 		await this.v3_7DB(c);
 		await this.v3_8DB(c);
 		await this.v3_9DB(c);
+		await this.v4_0DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	// v4_0: contacts, calendar events parsed from invitations, and tasks.
+	async v4_0DB(c) {
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`CREATE TABLE IF NOT EXISTS contact (
+					contact_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					name TEXT NOT NULL DEFAULT '',
+					email TEXT NOT NULL,
+					phone TEXT NOT NULL DEFAULT '',
+					company TEXT NOT NULL DEFAULT '',
+					notes TEXT NOT NULL DEFAULT '',
+					group_name TEXT NOT NULL DEFAULT '',
+					use_count INTEGER NOT NULL DEFAULT 0,
+					last_used TEXT NOT NULL DEFAULT '',
+					create_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)`),
+				c.env.db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS uq_contact_user_email ON contact(user_id, email)`),
+				c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_contact_user ON contact(user_id, group_name)`),
+				c.env.db.prepare(`CREATE TABLE IF NOT EXISTS calendar_event (
+					event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					uid TEXT NOT NULL DEFAULT '',
+					title TEXT NOT NULL DEFAULT '',
+					description TEXT NOT NULL DEFAULT '',
+					location TEXT NOT NULL DEFAULT '',
+					start_at TEXT NOT NULL DEFAULT '',
+					end_at TEXT NOT NULL DEFAULT '',
+					all_day INTEGER NOT NULL DEFAULT 0,
+					organizer TEXT NOT NULL DEFAULT '',
+					attendees TEXT NOT NULL DEFAULT '[]',
+					status TEXT NOT NULL DEFAULT 'confirmed',
+					response TEXT NOT NULL DEFAULT '',
+					email_id INTEGER NOT NULL DEFAULT 0,
+					create_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)`),
+				c.env.db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS uq_event_user_uid ON calendar_event(user_id, uid)`),
+				c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_event_user_start ON calendar_event(user_id, start_at)`),
+				c.env.db.prepare(`CREATE TABLE IF NOT EXISTS task (
+					task_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					title TEXT NOT NULL,
+					notes TEXT NOT NULL DEFAULT '',
+					done INTEGER NOT NULL DEFAULT 0,
+					due_at TEXT NOT NULL DEFAULT '',
+					email_id INTEGER NOT NULL DEFAULT 0,
+					create_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)`),
+				c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_task_user ON task(user_id, done, due_at)`)
+			]);
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
 	},
 
 	// v3_9: scheduled send / undo send, snooze, inbound rules and templates.

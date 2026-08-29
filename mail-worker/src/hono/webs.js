@@ -26,4 +26,5 @@ import '../api/ai-api'
 import '../api/cf-api'
 import '../api/search-api'
 import '../api/rule-api'
+import '../api/contact-api'
 export default app;

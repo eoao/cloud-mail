@@ -32,6 +32,16 @@ const routes = [
                 }
             },
             {
+                path: '/workspace',
+                name: 'workspace',
+                component: () => import('@/views/workspace/index.vue'),
+                meta: {
+                    title: 'workspace',
+                    name: 'workspace',
+                    menu: true
+                }
+            },
+            {
                 path: '/settings',
                 name: 'setting',
                 component: () => import('@/views/setting/index.vue'),

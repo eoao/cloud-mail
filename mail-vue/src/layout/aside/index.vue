@@ -26,6 +26,11 @@
           <Icon icon="solar:star-line-duotone" width="20" height="20" />
           <span class="menu-name" style="margin-left: 21px">{{$t('starred')}}</span>
         </el-menu-item>
+        <el-menu-item @click="router.push({name: 'workspace'})" index="workspace"
+                      :class="route.meta.name === 'workspace' ? 'choose-item' : ''">
+          <Icon icon="fluent:people-team-24-regular" width="20" height="20" />
+          <span class="menu-name" style="margin-left: 20px">{{$t('workspace')}}</span>
+        </el-menu-item>
         <el-menu-item @click="router.push({name: 'setting'})" index="setting"
                       :class="route.meta.name === 'setting' ? 'choose-item' : ''">
           <Icon icon="fluent:settings-48-regular" width="20" height="20" />

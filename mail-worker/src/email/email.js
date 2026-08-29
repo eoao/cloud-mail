@@ -172,9 +172,24 @@ export async function email(message, env, ctx) {
 				await jobService.enqueue({ env }, jobType.AI_TRIAGE, { emailId: emailRow.emailId }, {
 					dedupeKey: `${jobType.AI_TRIAGE}:${emailRow.emailId}`
 				});
+				// A meeting invitation arrives as a text/calendar part. Parsing it is
+				// pure CPU, so it is queued like everything else in this path.
+				const invitation = attachments.find(a =>
+					/text\/calendar/i.test(a.mimeType ?? a.contentType ?? '') ||
+					/\.ics$/i.test(a.filename ?? '')
+				);
+
+				if (invitation) {
+					await jobService.enqueue({ env }, jobType.IMPORT_ICS, {
+						emailId: emailRow.emailId,
+						userId: emailRow.userId,
+						key: invitation.key
+					}, { dedupeKey: `${jobType.IMPORT_ICS}:${emailRow.emailId}` });
+				}
+
 				ctx.waitUntil(jobService.kick({ env }));
 			} catch (e) {
-				console.warn('could not queue ai triage:', e.message);
+				console.warn('could not queue background work:', e.message);
 			}
 		}
 
