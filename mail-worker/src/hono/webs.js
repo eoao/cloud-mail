@@ -28,4 +28,5 @@ import '../api/search-api'
 import '../api/rule-api'
 import '../api/contact-api'
 import '../api/api-key-api'
+import '../api/totp-api'
 export default app;

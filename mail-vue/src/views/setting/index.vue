@@ -30,6 +30,96 @@
         </div>
       </div>
     </div>
+    <!-- Two-factor -->
+    <div class="container">
+      <div class="title">{{ $t('twoFactor') }}</div>
+      <div class="item">
+        <div>{{ $t('twoFactorDesc') }}</div>
+        <div>
+          <el-tag v-if="totpOn" type="success" style="margin-right: 10px">{{ $t('enabled') }}</el-tag>
+          <el-button v-if="!totpOn" type="primary" :loading="secLoading" @click="startTotp">
+            {{ $t('twoFactorEnable') }}
+          </el-button>
+          <el-button v-else type="danger" @click="totpDisableShow = true">{{ $t('twoFactorDisable') }}</el-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- API keys -->
+    <div class="container">
+      <div class="title">{{ $t('apiKeys') }}</div>
+      <div class="api-note">{{ $t('apiKeysDesc') }}</div>
+      <el-table :data="apiKeys" size="small" v-if="apiKeys.length">
+        <el-table-column prop="name" :label="$t('apiKeyName')" min-width="140" show-overflow-tooltip/>
+        <el-table-column prop="prefix" :label="$t('apiKeyPrefix')" width="140"/>
+        <el-table-column :label="$t('apiKeyScopes')" min-width="200">
+          <template #default="{ row }">{{ row.scopes.join(', ') }}</template>
+        </el-table-column>
+        <el-table-column prop="lastUsed" :label="$t('apiKeyLastUsed')" width="160"/>
+        <el-table-column width="110" fixed="right">
+          <template #default="{ row }">
+            <el-tag v-if="row.revoked" size="small" type="info">{{ $t('apiKeyRevoked') }}</el-tag>
+            <el-button v-else size="small" type="danger" @click="revokeKey(row)">{{ $t('apiKeyRevoke') }}</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-button type="primary" style="margin-top: 10px" @click="keyShow = true">{{ $t('add') }}</el-button>
+    </div>
+
+    <!-- Outgoing webhooks -->
+    <div class="container">
+      <div class="title">{{ $t('webhooksOut') }}</div>
+      <el-table :data="webhooks" size="small" v-if="webhooks.length">
+        <el-table-column prop="url" label="URL" min-width="240" show-overflow-tooltip/>
+        <el-table-column :label="$t('webhookEvents')" min-width="160">
+          <template #default="{ row }">{{ row.events.length ? row.events.join(', ') : $t('webhookAllEvents') }}</template>
+        </el-table-column>
+        <el-table-column prop="lastError" :label="$t('jobLastError')" min-width="140" show-overflow-tooltip/>
+        <el-table-column width="110" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" type="danger" @click="removeWebhook(row)">{{ $t('delete') }}</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div style="margin-top: 10px; display: flex; gap: 8px;">
+        <el-input v-model="newWebhookUrl" placeholder="https://example.com/hook" style="max-width: 320px"/>
+        <el-button type="primary" :loading="secLoading" @click="addWebhook">{{ $t('add') }}</el-button>
+        <el-button :loading="secLoading" @click="testWebhook">{{ $t('test') }}</el-button>
+      </div>
+    </div>
+
+    <el-dialog v-model="totpSetupShow" :title="$t('twoFactor')" width="420">
+      <div class="api-note">{{ $t('twoFactorScan') }}</div>
+      <div class="totp-secret">{{ totpSecret }}</div>
+      <div class="api-note" style="word-break: break-all">{{ totpUri }}</div>
+      <el-input v-model="totpCode" :placeholder="$t('twoFactorCode')" maxlength="6"
+                style="margin: 12px 0" @keyup.enter="confirmTotp"/>
+      <el-button type="primary" :loading="secLoading" @click="confirmTotp">{{ $t('confirm') }}</el-button>
+    </el-dialog>
+
+    <el-dialog v-model="totpDisableShow" :title="$t('twoFactorDisable')" width="400">
+      <el-input v-model="disablePwd" type="password" show-password :placeholder="$t('password')"
+                style="margin-bottom: 10px"/>
+      <el-input v-model="disableCode" :placeholder="$t('twoFactorCode')" maxlength="6"
+                style="margin-bottom: 12px"/>
+      <el-button type="danger" :loading="secLoading" @click="disableTotp">{{ $t('twoFactorDisable') }}</el-button>
+    </el-dialog>
+
+    <el-dialog v-model="keyShow" :title="$t('apiKeyNew')" width="440">
+      <el-input v-model="keyForm.name" :placeholder="$t('apiKeyName')" style="margin-bottom: 12px"/>
+      <el-checkbox-group v-model="keyForm.scopes" style="margin-bottom: 12px">
+        <el-checkbox v-for="s in scopes" :key="s" :value="s" :label="s"/>
+      </el-checkbox-group>
+      <el-button type="primary" :loading="secLoading" @click="createKey">{{ $t('add') }}</el-button>
+    </el-dialog>
+
+    <el-dialog v-model="keyRevealShow" :title="$t('apiKeyNew')" width="480" @closed="createdKey = ''">
+      <el-alert type="warning" :closable="false" show-icon style="margin-bottom: 12px">
+        {{ $t('apiKeyOnce') }}
+      </el-alert>
+      <div class="totp-secret">{{ createdKey }}</div>
+    </el-dialog>
+
     <!-- New-mail alerts -->
     <div class="container">
       <div class="title">{{ $t('notifications') }}</div>
@@ -203,6 +293,11 @@ import {
 import {labelList} from '@/request/search.js'
 import {locales} from '@/i18n/index.js'
 import {
+  totpStatus, totpStart, totpConfirm, totpDisable,
+  apiKeyScopes, apiKeyList, apiKeyCreate, apiKeyRevoke,
+  webhookOutList, webhookOutSet, webhookOutDelete, webhookOutTest
+} from '@/request/security.js'
+import {
   prefs as notify, savePrefs, permission, requestPermission, playChime
 } from '@/composables/use-notifications.js'
 import {resetPassword, userDelete} from "@/request/my.js";
@@ -221,6 +316,132 @@ const setPwdLoading = ref(false)
 const setNameShow = ref(false)
 const accountName = ref(null)
 const langSelect = ref(settingStore.lang)
+
+// ---- security: two-factor, API keys, outgoing webhooks ------------------
+
+const secLoading = ref(false)
+const totpOn = ref(false)
+const totpSetupShow = ref(false)
+const totpDisableShow = ref(false)
+const totpSecret = ref('')
+const totpUri = ref('')
+const totpCode = ref('')
+const disablePwd = ref('')
+const disableCode = ref('')
+
+const apiKeys = ref([])
+const scopes = ref([])
+const keyShow = ref(false)
+const keyRevealShow = ref(false)
+const createdKey = ref('')
+const keyForm = reactive({name: '', scopes: []})
+
+const webhooks = ref([])
+const newWebhookUrl = ref('')
+
+async function loadSecurity() {
+  const [status, keyRows, scopeList, hookRows] = await Promise.all([
+    totpStatus(), apiKeyList(), apiKeyScopes(), webhookOutList()
+  ])
+  totpOn.value = status.enabled
+  apiKeys.value = keyRows
+  scopes.value = scopeList
+  webhooks.value = hookRows
+}
+
+async function startTotp() {
+  secLoading.value = true
+  try {
+    const data = await totpStart()
+    totpSecret.value = data.secret
+    totpUri.value = data.uri
+    totpCode.value = ''
+    totpSetupShow.value = true
+  } finally {
+    secLoading.value = false
+  }
+}
+
+// Enabling is confirmed with a real code: storing the secret alone would lock
+// out anyone whose authenticator failed to save it.
+async function confirmTotp() {
+  secLoading.value = true
+  try {
+    await totpConfirm(totpCode.value)
+    totpSetupShow.value = false
+    totpOn.value = true
+    ElMessage({message: t('twoFactorOn'), type: 'success'})
+  } finally {
+    secLoading.value = false
+  }
+}
+
+async function disableTotp() {
+  secLoading.value = true
+  try {
+    await totpDisable(disablePwd.value, disableCode.value)
+    totpDisableShow.value = false
+    totpOn.value = false
+    disablePwd.value = ''
+    disableCode.value = ''
+  } finally {
+    secLoading.value = false
+  }
+}
+
+async function createKey() {
+  secLoading.value = true
+  try {
+    const created = await apiKeyCreate({...keyForm})
+    keyShow.value = false
+    // Shown once and never retrievable again.
+    createdKey.value = created.key
+    keyRevealShow.value = true
+    keyForm.name = ''
+    keyForm.scopes = []
+    await loadSecurity()
+  } finally {
+    secLoading.value = false
+  }
+}
+
+async function revokeKey(row) {
+  await ElMessageBox.confirm(t('apiKeyRevokeConfirm'), {type: 'warning'})
+  await apiKeyRevoke(row.keyId)
+  await loadSecurity()
+}
+
+async function addWebhook() {
+  if (!newWebhookUrl.value.trim()) return
+  secLoading.value = true
+  try {
+    await webhookOutSet({url: newWebhookUrl.value.trim(), events: []})
+    newWebhookUrl.value = ''
+    await loadSecurity()
+  } finally {
+    secLoading.value = false
+  }
+}
+
+async function removeWebhook(row) {
+  await ElMessageBox.confirm(t('deleteConfirm'), {type: 'warning'})
+  await webhookOutDelete(row.webhookId)
+  await loadSecurity()
+}
+
+async function testWebhook() {
+  secLoading.value = true
+  try {
+    const out = await webhookOutTest()
+    ElMessage({
+      message: t('webhookTestResult', {delivered: out.delivered, targets: out.targets}),
+      type: out.delivered === out.targets ? 'success' : 'warning'
+    })
+    await loadSecurity()
+  } finally {
+    secLoading.value = false
+  }
+}
 
 // ---- new-mail alerts ----------------------------------------------------
 
@@ -330,7 +551,10 @@ async function removeTemplate(row) {
   await loadRules()
 }
 
-onMounted(loadRules)
+onMounted(() => {
+  loadRules()
+  loadSecurity()
+})
 
 defineOptions({
   name: 'setting'
@@ -461,6 +685,23 @@ function submitPwd() {
 
 </script>
 <style scoped lang="scss">
+.api-note {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin-bottom: 10px;
+}
+
+.totp-secret {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  word-break: break-all;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-primary);
+  user-select: all;
+}
+
 .notify-row {
   display: flex;
   align-items: center;

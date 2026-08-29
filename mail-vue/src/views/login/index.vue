@@ -41,6 +41,8 @@
           </el-input>
           <el-input v-model="form.password" :placeholder="$t('password')" type="password" autocomplete="off" @keyup.enter="submit">
           </el-input>
+          <el-input v-if="totpShow" v-model="form.totpCode" :placeholder="$t('twoFactorCode')"
+                    maxlength="6" autocomplete="one-time-code" @keyup.enter="submit"/>
           <el-button class="btn" type="primary" @click="submit" :loading="loginLoading"
           >{{ $t('loginBtn') }}
           </el-button>
@@ -205,7 +207,11 @@ const bindForm = reactive({
   code: ''
 })
 
+// Shown only after the server says the password was right but a second factor
+// is still needed, so nobody is asked for a code they do not have.
+const totpShow = ref(false)
 const form = reactive({
+  totpCode: '',
   email: '',
   password: '',
 
@@ -431,8 +437,17 @@ const submit = () => {
   }
 
   loginLoading.value = true
-  login(email, form.password).then(async data => {
+  login(email, form.password, form.totpCode || undefined).then(async data => {
+    totpShow.value = false
     await saveToken(data.token)
+  }).catch(e => {
+    // 428 is the server saying the password was right but a second factor is
+    // still needed - a prompt, not a failure.
+    if (e.code === 428) {
+      totpShow.value = true
+      return
+    }
+    ElMessage({message: e.message, type: 'error', plain: true})
   }).finally(() => {
     loginLoading.value = false
   })

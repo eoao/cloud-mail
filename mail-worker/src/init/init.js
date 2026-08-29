@@ -50,8 +50,21 @@ const dbInit = {
 		await this.v3_9DB(c);
 		await this.v4_0DB(c);
 		await this.v4_1DB(c);
+		await this.v4_2DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	// v4_2: two-factor authentication.
+	async v4_2DB(c) {
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`ALTER TABLE user ADD COLUMN totp_secret TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE user ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0;`)
+			]);
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
 	},
 
 	// v4_1: programmatic access - API keys and outgoing webhooks.

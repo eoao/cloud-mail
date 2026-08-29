@@ -12,6 +12,7 @@ import accountService from './account-service';
 import settingService from './setting-service';
 import saltHashUtils from '../utils/crypto-utils';
 import cryptoUtils from '../utils/crypto-utils';
+import totpUtils from '../utils/totp-utils';
 import turnstileService from './turnstile-service';
 import roleService from './role-service';
 import regKeyService from './reg-key-service';
@@ -223,6 +224,22 @@ const loginService = {
 
 		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password) && !noVerifyPwd) {
 			throw new BizError(t('IncorrectPwd'));
+		}
+
+		// Two-factor is checked after the password, and only for password logins:
+		// an OAuth callback (noVerifyPwd) has already been through the provider's
+		// own second factor.
+		if (userRow.totpEnabled && !noVerifyPwd) {
+
+			if (!params.totpCode) {
+				// A distinct code lets the UI show the second-factor prompt without
+				// treating it as a failed login.
+				throw new BizError(t('totpRequired'), 428);
+			}
+
+			if (!await totpUtils.verifyCode(userRow.totpSecret, params.totpCode)) {
+				throw new BizError(t('totpInvalid'));
+			}
 		}
 
 		const uuid = uuidv4();

@@ -6,6 +6,10 @@ const user = sqliteTable('user', {
 	type: integer('type').default(1).notNull(),
 	password: text('password').notNull(),
 	salt: text('salt').notNull(),
+	// Two-factor. The secret is only meaningful once totpEnabled is 1 - it is
+	// written first, then confirmed by a code the user actually produced.
+	totpSecret: text('totp_secret').notNull().default(''),
+	totpEnabled: integer('totp_enabled').notNull().default(0),
 	status: integer('status').default(0).notNull(),
 	createTime: text('create_time').default(sql`CURRENT_TIMESTAMP`),
 	activeTime: text('active_time'),
