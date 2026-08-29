@@ -47,8 +47,52 @@ const dbInit = {
 		await this.v3_6DB(c);
 		await this.v3_7DB(c);
 		await this.v3_8DB(c);
+		await this.v3_9DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	// v3_9: scheduled send / undo send, snooze, inbound rules and templates.
+	async v3_9DB(c) {
+
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`ALTER TABLE email ADD COLUMN scheduled_at TEXT NOT NULL DEFAULT '';`),
+				c.env.db.prepare(`ALTER TABLE email ADD COLUMN snooze_until TEXT NOT NULL DEFAULT '';`)
+			]);
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
+
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_email_snooze ON email(user_id, snooze_until)`),
+				c.env.db.prepare(`CREATE TABLE IF NOT EXISTS rule (
+					rule_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					name TEXT NOT NULL DEFAULT '',
+					conditions TEXT NOT NULL DEFAULT '[]',
+					actions TEXT NOT NULL DEFAULT '[]',
+					match_all INTEGER NOT NULL DEFAULT 1,
+					stop_on_match INTEGER NOT NULL DEFAULT 0,
+					enabled INTEGER NOT NULL DEFAULT 1,
+					sort INTEGER NOT NULL DEFAULT 0,
+					create_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)`),
+				c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_rule_user ON rule(user_id, enabled, sort)`),
+				c.env.db.prepare(`CREATE TABLE IF NOT EXISTS template (
+					template_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					name TEXT NOT NULL,
+					subject TEXT NOT NULL DEFAULT '',
+					content TEXT NOT NULL DEFAULT '',
+					create_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+				)`),
+				c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_template_user ON template(user_id, template_id)`)
+			]);
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
 	},
 
 	// v3_8: conversations, full-text search, folders/labels, signatures and the

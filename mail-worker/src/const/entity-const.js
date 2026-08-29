@@ -49,7 +49,11 @@ export const emailConst = {
 		DELAYED: 5,
 		SAVING: 6,
 		NOONE: 7,
-		FAILED: 8
+		FAILED: 8,
+		// Written, validated and stored, but not handed to a provider yet -
+		// scheduled send and the undo-send window both park here.
+		SCHEDULED: 9,
+		CANCELED: 10
 	},
 	unread: {
 		UNREAD: 0,

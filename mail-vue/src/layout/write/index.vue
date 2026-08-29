@@ -107,7 +107,12 @@
                     width="22" height="22"/>
             </div>
           </div>
-          <div>
+          <div class="send-actions">
+            <el-tooltip effect="dark" :content="$t('scheduleSend')">
+              <el-button @click="scheduleShow = true">
+                <Icon icon="mingcute:time-line" width="18" height="18"/>
+              </el-button>
+            </el-tooltip>
             <el-button type="primary" @click="sendEmail" v-if="form.sendType === 'reply'">{{ $t('reply') }}</el-button>
             <el-button type="primary" @click="sendEmail" v-else-if="form.sendType === 'forward'">{{ $t('forward') }}</el-button>
             <el-button type="primary" @click="sendEmail" v-else>{{ $t('send') }}</el-button>
@@ -115,6 +120,15 @@
         </div>
       </div>
     </div>
+    <el-dialog v-model="scheduleShow" :title="t('scheduleSend')" width="400">
+      <form @submit.prevent>
+        <el-date-picker v-model="scheduleAt" type="datetime" style="width: 100%; margin-bottom: 12px"
+                        value-format="YYYY-MM-DD HH:mm:ss" :placeholder="t('scheduleSendAt')"
+                        :disabled-date="beforeToday"/>
+        <el-button type="primary" :disabled="!scheduleAt" @click="sendScheduled">{{ t('scheduleSend') }}</el-button>
+      </form>
+    </el-dialog>
+
     <el-dialog v-model="aiDraftShow" :title="t('aiDraft')" width="460">
       <form @submit.prevent>
         <el-input v-model="aiInstruction" type="textarea" :rows="4"
@@ -182,6 +196,7 @@ import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
 import {ElMessageBox} from "element-plus";
 import {aiRun} from "@/request/ai.js";
+import {emailCancelSend} from "@/request/rule.js";
 
 defineExpose({
   open,
@@ -341,6 +356,62 @@ const form = reactive({
 
 const showCc = ref(false)
 const showBcc = ref(false)
+
+// ---- send timing --------------------------------------------------------
+// Undo works because the server parks the message for a few seconds before
+// handing it to a provider. Once it has left, it has left - so the toast only
+// offers Undo for as long as that window lasts.
+
+const UNDO_SECONDS = 15
+const scheduleShow = ref(false)
+const scheduleAt = ref('')
+
+function beforeToday(date) {
+  return date.getTime() < Date.now() - 86400000
+}
+
+function sendScheduled() {
+  scheduleShow.value = false
+  sendEmail({scheduleAt: scheduleAt.value})
+}
+
+/**
+ * Show "Sent - Undo" for as long as the server is still holding the message.
+ * The notification closes itself when the window expires, so it never offers
+ * an undo that would fail.
+ */
+function offerUndo(email) {
+
+  let notification = null
+  let undone = false
+
+  const undo = async () => {
+    undone = true
+    notification?.close()
+    try {
+      await emailCancelSend(email.emailId)
+      emailStore.sendScroll?.deleteEmail?.([email.emailId])
+      ElMessage({message: t('undoSendOk'), type: 'success', plain: true})
+    } catch (e) {
+      ElMessage({message: e.message ?? t('sendAlreadyLeft'), type: 'warning', plain: true})
+    }
+  }
+
+  notification = ElNotification({
+    title: t('sendSuccessMsg'),
+    type: 'success',
+    duration: UNDO_SECONDS * 1000,
+    position: 'bottom-right',
+    message: h('span', {}, [
+      h('span', {style: 'color: teal'}, email.subject),
+      ' ',
+      h('a', {
+        style: 'cursor:pointer;text-decoration:underline',
+        onClick: () => { if (!undone) undo() }
+      }, t('undoSend'))
+    ])
+  })
+}
 
 // ---- draft autosave -----------------------------------------------------
 // Previously a draft only existed if the user confirmed a dialog on close, so
@@ -517,7 +588,7 @@ function chooseFile() {
   }
 }
 
-async function sendEmail() {
+async function sendEmail(options = {}) {
 
   if (form.receiveEmail.length === 0) {
     ElMessage({
@@ -583,7 +654,15 @@ async function sendEmail() {
   // The message is on its way; a queued autosave would resurrect it as a draft.
   autosaveDraft.cancel()
 
-  emailSend(form, (e) => {
+  // Explicit schedule wins; otherwise every send gets a short undo window.
+  const scheduleAtValue = options.scheduleAt ?? null
+  const payload = {
+    ...toRaw(form),
+    scheduleAt: scheduleAtValue,
+    undoSeconds: scheduleAtValue ? 0 : UNDO_SECONDS
+  }
+
+  emailSend(payload, (e) => {
     percent.value = Math.round((e.loaded * 98) / e.total)
   }).then(emailList => {
     const email = emailList[0]
@@ -591,12 +670,16 @@ async function sendEmail() {
       emailStore.sendScroll?.addItem(item)
     })
 
-    ElNotification({
-      title: t('sendSuccessMsg'),
-      type: "success",
-      message: h('span', {style: 'color: teal'}, email.subject),
-      position: 'bottom-right'
-    })
+    if (scheduleAtValue) {
+      ElNotification({
+        title: t('scheduledMsg', {time: scheduleAtValue}),
+        type: 'success',
+        message: h('span', {style: 'color: teal'}, email.subject),
+        position: 'bottom-right'
+      })
+    } else {
+      offerUndo(email)
+    }
 
     userStore.refreshUserInfo();
 
@@ -859,6 +942,12 @@ function close() {
 }
 </style>
 <style scoped lang="scss">
+.send-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .cc-toggle {
   display: flex;
   align-items: center;

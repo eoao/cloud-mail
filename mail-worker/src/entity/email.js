@@ -26,6 +26,10 @@ export const email = sqliteTable('email', {
 	// Conversation grouping. Derived from the RFC 5322 References/In-Reply-To
 	// chain at receive time, falling back to the message's own id.
 	threadId: text('thread_id').default('').notNull(),
+	// Set for scheduled and undo-window sends; the delivery job fires at this time.
+	scheduledAt: text('scheduled_at').default('').notNull(),
+	// Hidden from the inbox until this time passes.
+	snoozeUntil: text('snooze_until').default('').notNull(),
 	// Populated asynchronously by the ai_triage job, never inline.
 	spamScore: integer('spam_score').default(-1).notNull(),
 	spamVerdict: text('spam_verdict').default('').notNull(),

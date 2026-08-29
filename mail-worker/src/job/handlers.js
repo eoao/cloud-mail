@@ -11,6 +11,7 @@ import analysisService from '../service/analysis-service';
 import jobService from '../service/job-service';
 import aiRouter from '../service/ai';
 import searchService from '../service/search-service';
+import ruleService from '../service/rule-service';
 import orm from '../entity/orm';
 import email from '../entity/email';
 import { eq } from 'drizzle-orm';
@@ -23,6 +24,8 @@ export const jobType = {
 	AI_TASK: 'ai_task',
 	AI_TRIAGE: 'ai_triage',
 	REBUILD_SEARCH: 'rebuild_search',
+	SEND_EMAIL: 'send_email',
+	WAKE_SNOOZED: 'wake_snoozed',
 	NOOP: 'noop'
 };
 
@@ -111,11 +114,23 @@ const handlers = {
 
 		await orm(c).update(email).set(update).where(eq(email.emailId, emailId)).run();
 
-		return { emailId, ...update };
+		// Rules run after classification so a rule can match on the AI category.
+		const applied = await ruleService.apply(c, { ...row, ...update });
+
+		return { emailId, ...update, rules: applied.length };
 	},
 
 	[jobType.REBUILD_SEARCH]: async (c) => {
 		return searchService.rebuildIndex(c);
+	},
+
+	// Deferred delivery for scheduled sends and the undo-send window.
+	[jobType.SEND_EMAIL]: async (c, payload) => {
+		return emailService.deliverEmail(c, Number(payload?.emailId));
+	},
+
+	[jobType.WAKE_SNOOZED]: async (c) => {
+		return { woken: await emailService.wakeSnoozed(c) };
 	},
 
 	// Used by tests and by the admin "queue is alive" check.

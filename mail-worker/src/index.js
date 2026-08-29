@@ -49,6 +49,7 @@ export default {
 			await jobService.enqueue(ctxLike, jobType.AUTO_CLEAN, {}, { dedupeKey: jobType.AUTO_CLEAN })
 			await jobService.enqueue(ctxLike, jobType.REFRESH_ANALYSIS, {}, { dedupeKey: jobType.REFRESH_ANALYSIS })
 			await jobService.enqueue(ctxLike, jobType.PURGE_JOBS, {}, { dedupeKey: jobType.PURGE_JOBS, priority: -10 })
+			await jobService.enqueue(ctxLike, jobType.WAKE_SNOOZED, {}, { dedupeKey: jobType.WAKE_SNOOZED })
 
 			await jobService.kick(ctxLike)
 			return;

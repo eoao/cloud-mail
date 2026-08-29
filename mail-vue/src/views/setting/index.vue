@@ -30,6 +30,104 @@
         </div>
       </div>
     </div>
+    <!-- Inbound rules -->
+    <div class="container">
+      <div class="title">{{ $t('rules') }}</div>
+      <el-table :data="rules" size="small" v-if="rules.length">
+        <el-table-column prop="name" :label="$t('rule')" min-width="140" show-overflow-tooltip/>
+        <el-table-column :label="$t('ruleConditions')" min-width="200">
+          <template #default="{ row }">{{ describeConditions(row) }}</template>
+        </el-table-column>
+        <el-table-column :label="$t('ruleActions')" min-width="140">
+          <template #default="{ row }">{{ row.actions.map(a => a.type).join(', ') }}</template>
+        </el-table-column>
+        <el-table-column :label="$t('status')" width="90">
+          <template #default="{ row }">
+            <el-tag size="small" :type="row.enabled ? 'success' : 'info'">
+              {{ row.enabled ? $t('enabled') : $t('disabled') }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column width="150" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" type="primary" @click="openRule(row)">{{ $t('edit') }}</el-button>
+            <el-button size="small" type="danger" @click="removeRule(row)">{{ $t('delete') }}</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-button type="primary" style="margin-top: 10px" @click="openRule()">{{ $t('add') }}</el-button>
+    </div>
+
+    <!-- Reply templates -->
+    <div class="container">
+      <div class="title">{{ $t('templates') }}</div>
+      <el-table :data="templates" size="small" v-if="templates.length">
+        <el-table-column prop="name" :label="$t('template')" min-width="160" show-overflow-tooltip/>
+        <el-table-column prop="subject" :label="$t('subject')" min-width="200" show-overflow-tooltip/>
+        <el-table-column width="150" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" type="primary" @click="openTemplate(row)">{{ $t('edit') }}</el-button>
+            <el-button size="small" type="danger" @click="removeTemplate(row)">{{ $t('delete') }}</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-button type="primary" style="margin-top: 10px" @click="openTemplate()">{{ $t('add') }}</el-button>
+    </div>
+
+    <el-dialog v-model="ruleShow" :title="$t('rule')" width="620">
+      <el-input v-model="ruleForm.name" :placeholder="$t('rule')" style="margin-bottom: 12px"/>
+
+      <div class="sub-title">{{ $t('ruleConditions') }}</div>
+      <div v-for="(cond, i) in ruleForm.conditions" :key="i" class="rule-row">
+        <el-select v-model="cond.field" size="small" style="width: 120px">
+          <el-option v-for="f in vocabulary.fields" :key="f" :value="f" :label="f"/>
+        </el-select>
+        <el-select v-model="cond.op" size="small" style="width: 140px">
+          <el-option v-for="o in vocabulary.ops" :key="o" :value="o" :label="o"/>
+        </el-select>
+        <el-input v-model="cond.value" size="small"/>
+        <Icon icon="mingcute:close-line" width="18" height="18" class="rule-remove"
+              @click="ruleForm.conditions.splice(i, 1)"/>
+      </div>
+      <el-button size="small" @click="ruleForm.conditions.push({field: 'from', op: 'contains', value: ''})">
+        {{ $t('ruleAddCondition') }}
+      </el-button>
+
+      <div class="sub-title">{{ $t('ruleActions') }}</div>
+      <div v-for="(act, i) in ruleForm.actions" :key="'a' + i" class="rule-row">
+        <el-select v-model="act.type" size="small" style="width: 140px">
+          <el-option v-for="a in vocabulary.actions" :key="a" :value="a" :label="a"/>
+        </el-select>
+        <el-select v-if="act.type === 'label' || act.type === 'move'" v-model="act.value" size="small">
+          <el-option v-for="l in labels" :key="l.labelId" :value="String(l.labelId)" :label="l.name"/>
+        </el-select>
+        <el-input v-else-if="act.type === 'snooze'" v-model="act.value" size="small"
+                  placeholder="YYYY-MM-DD HH:mm:ss"/>
+        <Icon icon="mingcute:close-line" width="18" height="18" class="rule-remove"
+              @click="ruleForm.actions.splice(i, 1)"/>
+      </div>
+      <el-button size="small" @click="ruleForm.actions.push({type: 'markRead', value: ''})">
+        {{ $t('ruleAddAction') }}
+      </el-button>
+
+      <div class="rule-row" style="margin-top: 14px">
+        <el-checkbox v-model="ruleForm.matchAll" :true-value="1" :false-value="0">{{ $t('ruleMatchAll') }}</el-checkbox>
+        <el-checkbox v-model="ruleForm.stopOnMatch" :true-value="1" :false-value="0">{{ $t('ruleStopOnMatch') }}</el-checkbox>
+        <el-checkbox v-model="ruleForm.enabled" :true-value="1" :false-value="0">{{ $t('enabled') }}</el-checkbox>
+      </div>
+
+      <el-button type="primary" style="margin-top: 12px" :loading="ruleLoading" @click="saveRule">
+        {{ $t('save') }}
+      </el-button>
+    </el-dialog>
+
+    <el-dialog v-model="templateShow" :title="$t('template')" width="520">
+      <el-input v-model="templateForm.name" :placeholder="$t('template')" style="margin-bottom: 12px"/>
+      <el-input v-model="templateForm.subject" :placeholder="$t('subject')" style="margin-bottom: 12px"/>
+      <el-input v-model="templateForm.content" type="textarea" :rows="8" style="margin-bottom: 12px"/>
+      <el-button type="primary" :loading="ruleLoading" @click="saveTemplate">{{ $t('save') }}</el-button>
+    </el-dialog>
+
     <div class="language">
       <div class="title">{{$t('language')}}</div>
       <el-select
@@ -61,7 +159,13 @@
   </div>
 </template>
 <script setup>
-import {reactive, ref, defineOptions} from 'vue'
+import {onMounted, reactive, ref, defineOptions} from 'vue'
+import {Icon} from '@iconify/vue'
+import {
+  ruleVocabulary, ruleList, ruleSet, ruleDelete,
+  templateList, templateSet, templateDelete
+} from '@/request/rule.js'
+import {labelList} from '@/request/search.js'
 import {resetPassword, userDelete} from "@/request/my.js";
 import {useUserStore} from "@/store/user.js";
 import router from "@/router/index.js";
@@ -78,6 +182,90 @@ const setPwdLoading = ref(false)
 const setNameShow = ref(false)
 const accountName = ref(null)
 const langSelect = ref(settingStore.lang)
+
+// ---- rules and templates ------------------------------------------------
+
+const rules = ref([])
+const templates = ref([])
+const labels = ref([])
+const vocabulary = ref({fields: [], ops: [], actions: []})
+const ruleShow = ref(false)
+const templateShow = ref(false)
+const ruleLoading = ref(false)
+const ruleForm = reactive({ruleId: null, name: '', conditions: [], actions: [], matchAll: 1, stopOnMatch: 0, enabled: 1})
+const templateForm = reactive({templateId: null, name: '', subject: '', content: ''})
+
+function describeConditions(row) {
+  return row.conditions.map(c => `${c.field} ${c.op} "${c.value}"`).join(row.matchAll ? ' AND ' : ' OR ')
+}
+
+async function loadRules() {
+  const [voc, ruleRows, templateRows, labelRows] = await Promise.all([
+    ruleVocabulary(), ruleList(), templateList(), labelList()
+  ])
+  vocabulary.value = voc
+  rules.value = ruleRows
+  templates.value = templateRows
+  labels.value = labelRows
+}
+
+function openRule(row) {
+  ruleForm.ruleId = row?.ruleId ?? null
+  ruleForm.name = row?.name ?? ''
+  // Clone so an abandoned edit does not mutate the row still shown in the table.
+  ruleForm.conditions = row ? row.conditions.map(c => ({...c})) : [{field: 'from', op: 'contains', value: ''}]
+  ruleForm.actions = row ? row.actions.map(a => ({...a})) : [{type: 'markRead', value: ''}]
+  ruleForm.matchAll = row?.matchAll ?? 1
+  ruleForm.stopOnMatch = row?.stopOnMatch ?? 0
+  ruleForm.enabled = row?.enabled ?? 1
+  ruleShow.value = true
+}
+
+async function saveRule() {
+  if (ruleLoading.value) return
+  ruleLoading.value = true
+  try {
+    await ruleSet({...ruleForm})
+    ruleShow.value = false
+    await loadRules()
+  } finally {
+    ruleLoading.value = false
+  }
+}
+
+async function removeRule(row) {
+  await ElMessageBox.confirm(t('deleteConfirm'), {type: 'warning'})
+  await ruleDelete(row.ruleId)
+  await loadRules()
+}
+
+function openTemplate(row) {
+  templateForm.templateId = row?.templateId ?? null
+  templateForm.name = row?.name ?? ''
+  templateForm.subject = row?.subject ?? ''
+  templateForm.content = row?.content ?? ''
+  templateShow.value = true
+}
+
+async function saveTemplate() {
+  if (ruleLoading.value) return
+  ruleLoading.value = true
+  try {
+    await templateSet({...templateForm})
+    templateShow.value = false
+    await loadRules()
+  } finally {
+    ruleLoading.value = false
+  }
+}
+
+async function removeTemplate(row) {
+  await ElMessageBox.confirm(t('deleteConfirm'), {type: 'warning'})
+  await templateDelete(row.templateId)
+  await loadRules()
+}
+
+onMounted(loadRules)
 
 defineOptions({
   name: 'setting'
@@ -208,6 +396,30 @@ function submitPwd() {
 
 </script>
 <style scoped lang="scss">
+.sub-title {
+  margin: 14px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.rule-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+
+  .rule-remove {
+    cursor: pointer;
+    flex-shrink: 0;
+    color: var(--el-text-color-secondary);
+
+    &:hover {
+      color: var(--el-color-danger);
+    }
+  }
+}
+
 .box {
   padding: 40px 40px;
 

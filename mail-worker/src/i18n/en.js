@@ -22,6 +22,8 @@ const en = {
 	totalSendLack: 'Not enough total remaining sends',
 	senderAccountNotExist: 'Sender email does not exist',
 	signatureLengthLimit: 'Signature must be 5000 characters or fewer',
+	invalidScheduleTime: 'That is not a valid date and time',
+	sendAlreadyLeft: 'Too late - the message has already been handed to the provider',
 	noResendToken: 'Resend API token not configured',
 	noSendProvider: 'Email sending service is not configured',
 	sendEmailNotCurUser: 'Sender email does not belong to current user',

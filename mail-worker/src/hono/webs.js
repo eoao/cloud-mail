@@ -25,4 +25,5 @@ import '../api/send-provider-api'
 import '../api/ai-api'
 import '../api/cf-api'
 import '../api/search-api'
+import '../api/rule-api'
 export default app;

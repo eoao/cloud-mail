@@ -10,6 +10,9 @@ import BizError from '../error/biz-error';
 import emailUtils from '../utils/email-utils';
 import fileUtils from '../utils/file-utils';
 import providerService from './send-provider';
+import jobService from './job-service';
+import { jobType } from '../job/handlers';
+import r2Service from './r2-service';
 import attService from './att-service';
 import { parseHTML } from 'linkedom';
 import userService from './user-service';
@@ -340,9 +343,14 @@ const emailService = {
 
 		let sendResult = {};
 
+		// A scheduled or undo-window send is validated and stored now, then handed
+		// to a queue job at `deferUntil`. Nothing reaches a provider until then,
+		// which is what makes "undo" actually undo rather than recall.
+		const deferUntil = this.resolveSendTime(params);
+
 		// Providers are tried in priority order for this sending domain, with
 		// failover; see src/service/send-provider.
-		if (!allInternal) {
+		if (!allInternal && !deferUntil) {
 
 			const outgoing = [...imageDataList, ...attachments];
 
@@ -379,7 +387,12 @@ const emailService = {
 		emailData.content = html;
 		emailData.text = text;
 		emailData.accountId = accountId;
-		emailData.status = sendResult.status === 'delivered' ? emailConst.status.DELIVERED : emailConst.status.SENT;
+		if (deferUntil && !allInternal) {
+			emailData.status = emailConst.status.SCHEDULED;
+			emailData.scheduledAt = deferUntil;
+		} else {
+			emailData.status = sendResult.status === 'delivered' ? emailConst.status.DELIVERED : emailConst.status.SENT;
+		}
 		emailData.type = emailConst.type.SEND;
 		emailData.userId = userId;
 		// Column keeps its historical name; it now holds any provider's message id.
@@ -444,6 +457,17 @@ const emailService = {
 			await this.HandleOnSiteEmail(c, receiveEmail, emailResult, attList);
 		}
 
+		// Attachments are on disk by now, so the delivery job can rebuild them
+		// from R2 rather than carrying them in the job payload.
+		if (emailResult.status === emailConst.status.SCHEDULED) {
+			await jobService.enqueue(c, jobType.SEND_EMAIL, { emailId: emailResult.emailId }, {
+				runAfter: emailResult.scheduledAt,
+				dedupeKey: `${jobType.SEND_EMAIL}:${emailResult.emailId}`,
+				priority: 10
+			});
+			c.executionCtx?.waitUntil?.(jobService.kick(c));
+		}
+
 		const dateStr = dayjs().format('YYYY-MM-DD');
 		let daySendTotal = await c.env.kv.get(kvConst.SEND_DAY_COUNT + dateStr);
 
@@ -460,6 +484,185 @@ const emailService = {
 
 	// sendByCloudflareEmail / sendByResend / toCloudflareAttachments moved to
 	// src/service/send-provider/drivers.js when sending became pluggable.
+
+	/**
+	 * When (if ever) this send should be deferred.
+	 *
+	 * `scheduleAt` is an explicit time; `undoSeconds` is the grace window the
+	 * compose window asks for. Returns a 'YYYY-MM-DD HH:mm:ss' string, or null
+	 * for "send immediately".
+	 */
+	resolveSendTime({ scheduleAt, undoSeconds }) {
+
+		if (scheduleAt) {
+			const at = dayjs(scheduleAt);
+
+			if (!at.isValid()) {
+				throw new BizError(t('invalidScheduleTime'));
+			}
+
+			// A time already in the past means "now", not "never".
+			if (at.isBefore(dayjs())) {
+				return null;
+			}
+
+			return at.format('YYYY-MM-DD HH:mm:ss');
+		}
+
+		const grace = Number(undoSeconds) || 0;
+
+		if (grace <= 0) {
+			return null;
+		}
+
+		return dayjs().add(Math.min(grace, 120), 'second').format('YYYY-MM-DD HH:mm:ss');
+	},
+
+	/**
+	 * Hand a stored SCHEDULED message to a provider. Runs from the queue, so it
+	 * rebuilds attachments from storage rather than from the request that
+	 * created the message.
+	 */
+	async deliverEmail(c, emailId) {
+
+		const row = await this.selectById(c, emailId);
+
+		if (!row) {
+			return { skipped: 'message no longer exists' };
+		}
+
+		// Cancelled during the undo window, or already delivered by a retry.
+		if (row.status !== emailConst.status.SCHEDULED) {
+			return { skipped: `status is ${row.status}` };
+		}
+
+		const accountRow = await accountService.selectById(c, row.accountId);
+
+		if (!accountRow) {
+			throw new BizError(t('senderAccountNotExist'));
+		}
+
+		const recipients = JSON.parse(row.recipient || '[]').map(r => r.address).filter(Boolean);
+		const cc = JSON.parse(row.cc || '[]').map(r => r.address).filter(Boolean);
+		const bcc = JSON.parse(row.bcc || '[]').map(r => r.address).filter(Boolean);
+
+		const attRows = await attService.selectByEmailIds(c, [emailId]);
+		const outgoing = await this.attachmentsFromStorage(c, attRows);
+
+		const domain = emailUtils.getDomain(accountRow.email);
+
+		const sendResult = await providerService.send(c, domain, {
+			name: row.name,
+			accountEmail: accountRow.email,
+			receiveEmail: recipients,
+			cc,
+			bcc,
+			subject: row.subject,
+			text: row.text,
+			html: row.content,
+			sendType: row.inReplyTo ? 'reply' : 'send',
+			messageId: row.inReplyTo
+		}, (encoding) => encoding === 'buffer'
+			? this.toArrayBufferAttachments(outgoing)
+			: this.toResendAttachments(outgoing));
+
+		await orm(c).update(email).set({
+			status: sendResult.status === 'delivered' ? emailConst.status.DELIVERED : emailConst.status.SENT,
+			resendEmailId: sendResult.providerMessageId ?? null,
+			scheduledAt: ''
+		}).where(eq(email.emailId, emailId)).run();
+
+		return { emailId, provider: sendResult.type };
+	},
+
+	/** Read attachment bodies back out of R2/KV/S3 for a deferred send. */
+	async attachmentsFromStorage(c, attRows) {
+
+		const out = [];
+
+		for (const row of attRows ?? []) {
+			const obj = await r2Service.getObj(c, row.key);
+
+			if (!obj) {
+				console.warn(`attachment ${row.key} is missing from storage; sending without it`);
+				continue;
+			}
+
+			out.push({
+				content: await obj.arrayBuffer(),
+				filename: row.filename,
+				mimeType: row.mimeType,
+				contentType: row.mimeType,
+				contentId: row.contentId
+			});
+		}
+
+		return out;
+	},
+
+	/**
+	 * Undo a send that has not left yet. Only works while the message is still
+	 * SCHEDULED - once a provider has it, it is gone.
+	 */
+	async cancelScheduled(c, emailId, userId) {
+
+		const row = await orm(c).update(email)
+			.set({ status: emailConst.status.CANCELED, scheduledAt: '' })
+			.where(and(
+				eq(email.emailId, Number(emailId)),
+				eq(email.userId, userId),
+				eq(email.status, emailConst.status.SCHEDULED)
+			))
+			.returning().get();
+
+		if (!row) {
+			throw new BizError(t('sendAlreadyLeft'), 409);
+		}
+
+		return row;
+	},
+
+	/** Hide a message from the inbox until a given time. */
+	async snooze(c, emailIds, until, userId) {
+
+		const ids = (emailIds ?? []).map(Number).filter(Boolean);
+
+		if (ids.length === 0) {
+			return 0;
+		}
+
+		const at = until ? dayjs(until) : null;
+
+		if (until && !at.isValid()) {
+			throw new BizError(t('invalidScheduleTime'));
+		}
+
+		const rows = await orm(c).update(email)
+			.set({ snoozeUntil: until ? at.format('YYYY-MM-DD HH:mm:ss') : '' })
+			.where(and(eq(email.userId, userId), inArray(email.emailId, ids)))
+			.returning({ emailId: email.emailId }).all();
+
+		return rows.length;
+	},
+
+	/**
+	 * Clear snoozes whose time has passed. Runs hourly from the queue.
+	 *
+	 * Counts via RETURNING rather than meta.changes: the email table carries FTS
+	 * triggers, and their writes are included in the change count, so it reports
+	 * several times the number of messages actually touched.
+	 */
+	async wakeSnoozed(c) {
+		const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
+
+		const { results } = await c.env.db.prepare(
+			`UPDATE email SET snooze_until = ''
+			  WHERE snooze_until != '' AND snooze_until <= ?
+			  RETURNING email_id`
+		).bind(now).all();
+
+		return (results ?? []).length;
+	},
 
 	async toResendAttachments(attachments = []) {
 		const result = [];
