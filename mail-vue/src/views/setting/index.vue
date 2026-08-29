@@ -30,6 +30,41 @@
         </div>
       </div>
     </div>
+    <!-- New-mail alerts -->
+    <div class="container">
+      <div class="title">{{ $t('notifications') }}</div>
+      <div class="item">
+        <div>{{ $t('notifyDesktop') }}</div>
+        <div>
+          <el-switch v-model="notify.desktop" @change="toggleDesktop"/>
+          <span v-if="notifyPermission === 'denied'" class="notify-warn">{{ $t('notifyBlocked') }}</span>
+          <span v-else-if="notifyPermission === 'unsupported'" class="notify-warn">{{ $t('notifyUnsupported') }}</span>
+        </div>
+      </div>
+      <div class="item">
+        <div>{{ $t('notifySound') }}</div>
+        <div class="notify-row">
+          <el-switch v-model="notify.sound" @change="persistNotify"/>
+          <el-slider v-model="notify.volume" :min="0" :max="1" :step="0.1" style="width: 120px"
+                     :disabled="!notify.sound" @change="persistNotify"/>
+          <el-button size="small" :disabled="!notify.sound" @click="testChime">{{ $t('test') }}</el-button>
+        </div>
+      </div>
+      <div class="item">
+        <div>{{ $t('notifyBadge') }}</div>
+        <div><el-switch v-model="notify.badge" @change="persistNotify"/></div>
+      </div>
+      <div class="item">
+        <div>{{ $t('notifyQuietHours') }}</div>
+        <div class="notify-row">
+          <el-time-select v-model="notify.quietFrom" start="00:00" step="00:30" end="23:30"
+                          :placeholder="$t('notifyQuietFrom')" style="width: 110px" @change="persistNotify"/>
+          <el-time-select v-model="notify.quietTo" start="00:00" step="00:30" end="23:30"
+                          :placeholder="$t('notifyQuietTo')" style="width: 110px" @change="persistNotify"/>
+        </div>
+      </div>
+    </div>
+
     <!-- Inbound rules -->
     <div class="container">
       <div class="title">{{ $t('rules') }}</div>
@@ -136,8 +171,8 @@
           placeholder="Select"
           @change="changeLang"
       >
-        <el-option label="中文" value="zh" @pointerdown.prevent.stop="changeLang('zh')"/>
-        <el-option label="English" value="en" @pointerdown.prevent.stop="changeLang('en')"/>
+        <el-option v-for="item in locales" :key="item.value" :label="item.label" :value="item.value"
+                   @pointerdown.prevent.stop="changeLang(item.value)"/>
       </el-select>
     </div>
     <div class="del-email" v-perm="'my:delete'">
@@ -166,6 +201,10 @@ import {
   templateList, templateSet, templateDelete
 } from '@/request/rule.js'
 import {labelList} from '@/request/search.js'
+import {locales} from '@/i18n/index.js'
+import {
+  prefs as notify, savePrefs, permission, requestPermission, playChime
+} from '@/composables/use-notifications.js'
 import {resetPassword, userDelete} from "@/request/my.js";
 import {useUserStore} from "@/store/user.js";
 import router from "@/router/index.js";
@@ -182,6 +221,32 @@ const setPwdLoading = ref(false)
 const setNameShow = ref(false)
 const accountName = ref(null)
 const langSelect = ref(settingStore.lang)
+
+// ---- new-mail alerts ----------------------------------------------------
+
+const notifyPermission = ref(permission())
+
+function persistNotify() {
+  savePrefs({...notify.value})
+}
+
+// Asking for permission has to be driven by a real click, so it happens on the
+// toggle rather than on page load.
+async function toggleDesktop(on) {
+  if (on) {
+    notifyPermission.value = await requestPermission()
+    if (notifyPermission.value !== 'granted') {
+      notify.value.desktop = false
+    }
+  }
+  persistNotify()
+}
+
+function testChime() {
+  if (!playChime(notify.value.volume)) {
+    ElMessage({message: t('notifySoundFailed'), type: 'warning'})
+  }
+}
 
 // ---- rules and templates ------------------------------------------------
 
@@ -396,6 +461,18 @@ function submitPwd() {
 
 </script>
 <style scoped lang="scss">
+.notify-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.notify-warn {
+  margin-left: 10px;
+  font-size: 12px;
+  color: var(--el-color-warning);
+}
+
 .sub-title {
   margin: 14px 0 8px;
   font-size: 13px;

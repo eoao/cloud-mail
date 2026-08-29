@@ -16,9 +16,9 @@ export async function init() {
 
     const token = localStorage.getItem('token');
     if (!settingStore.lang) {
-        let lang = navigator.language.split('-')[0]
-        lang = lang === 'zh' ? lang : 'en'
-        settingStore.lang = lang
+        const browser = navigator.language.split('-')[0]
+        // Everything we do not ship a translation for falls back to English.
+        settingStore.lang = ['zh', 'en', 'tr'].includes(browser) ? browser : 'en'
     }
 
     i18n.global.locale.value = settingStore.lang

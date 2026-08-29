@@ -34,6 +34,7 @@ import {starAdd, starCancel} from "@/request/star.js";
 import {defineOptions, h, onMounted, reactive, ref, watch} from "vue";
 import {sleep} from "@/utils/time-utils.js";
 import {isVisible, pollDelay, whenVisible} from "@/utils/poll-utils.js";
+import {notifyNewMail, setBadge} from "@/composables/use-notifications.js";
 import router from "@/router/index.js";
 import {Icon} from "@iconify/vue";
 import { useRoute } from 'vue-router'
@@ -54,6 +55,13 @@ const params = reactive({
 
 // A search hit is a summary row, so open the detail view the same way the list
 // does rather than trying to render a partial message.
+// Unread badge source. The scroll component holds the loaded page, which is the
+// only unread figure available without another request - good enough for a
+// badge, and free.
+function unreadCount() {
+  return scroll.value?.list?.filter?.(e => e.unread === 0).length ?? 0
+}
+
 function openSearchResult(row) {
   emailStore.contentData.email = emailStore.toContentEmail(row)
   emailStore.contentData.delType = 'logic'
@@ -128,6 +136,13 @@ async function latest() {
 
         //确保请求回来后，账号没有切换，时间排序没有改变，全部邮件类型没变
         emptyStreak = list.length > 0 ? 0 : emptyStreak + 1;
+
+        // Alert before the list is touched: the arrival is what matters, not
+        // whether the rows made it past the account/sort guards below.
+        if (list.length > 0) {
+          const fresh = list.filter(email => !existIds.has(email.emailId))
+          notifyNewMail(fresh, unreadCount() + fresh.length, openSearchResult)
+        }
 
         if (accountId === accountStore.currentAccountId && params.timeSort === curTimeSort && allReceive === accountStore.currentAccount.allReceive) {
           if (list.length > 0) {
