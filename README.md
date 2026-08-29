@@ -50,6 +50,8 @@ node tools/setup/bin/cloud-mail-setup.mjs --doctor
 
 详见 [tools/setup/README.md](tools/setup/README.md)，其中也说明了为什么收信不需要但发信需要第三方服务商。
 
+如需使用桌面邮件客户端，请运行 [IMAP/SMTP 桥接服务](tools/imap-bridge/README.md) —— Workers 无法建立原始 TCP 连接，因此这些协议需要一个独立的小组件。
+
 ## 项目展示
 
 - [在线演示](https://skymail.ink)<br>

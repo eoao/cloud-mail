@@ -1,0 +1,17 @@
+{
+  "name": "cloud-mail-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "IMAP and SMTP submission bridge for cloud-mail",
+  "type": "module",
+  "bin": {
+    "cloud-mail-bridge": "bin/cloud-mail-bridge.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node bin/cloud-mail-bridge.mjs",
+    "test": "node --test test/*.test.mjs"
+  }
+}

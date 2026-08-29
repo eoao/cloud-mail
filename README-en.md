@@ -49,6 +49,10 @@ node tools/setup/bin/cloud-mail-setup.mjs --doctor
 See [tools/setup/README.md](tools/setup/README.md), including why sending needs
 a provider even though receiving does not.
 
+To use a desktop mail client, run the
+[IMAP/SMTP bridge](tools/imap-bridge/README.md) — Workers cannot open raw TCP
+sockets, so those protocols need a small component of their own.
+
 ## Project Showcase
 
 - [Live Demo](https://skymail.ink)<br>
