@@ -1,6 +1,8 @@
 import { env } from 'cloudflare:test';
 import { describe, it, expect } from 'vitest';
-import { dbInit } from '../src/init/init';
+import { dbInit, SCHEMA_VERSION } from '../src/init/init';
+import { ensureSchema, resetForTest } from '../src/init/auto-migrate';
+import KvConst from '../src/const/kv-const';
 
 // The migration chain is the worst thing to get wrong: a broken fresh install
 // leaves an operator with no app and no obvious cause, and a chain that is not
@@ -108,6 +110,46 @@ describe('migration chain', () => {
 
 		expect(perms.n).toBeGreaterThan(0);
 		expect(roles.n).toBeGreaterThan(0);
+	});
+
+	it('records the schema version so a later deploy can compare', async () => {
+		expect(await env.kv.get(KvConst.SCHEMA_VERSION)).toBe(SCHEMA_VERSION);
+	});
+
+	it('migrates itself when the database is behind the code', async () => {
+		// This is the failure the automatic path exists to remove: deploy new
+		// code, forget /api/init, and every request hits a column that does not
+		// exist yet.
+		await env.kv.delete(KvConst.SCHEMA_VERSION);
+		await env.db.prepare('DROP TABLE IF EXISTS task').run();
+		resetForTest();
+
+		expect(await ensureSchema(env)).toBe('migrated');
+
+		const row = await env.db.prepare(
+			`SELECT name FROM sqlite_master WHERE name = 'task'`
+		).first();
+
+		expect(row?.name).toBe('task');
+		expect(await env.kv.get(KvConst.SCHEMA_VERSION)).toBe(SCHEMA_VERSION);
+	});
+
+	it('does not migrate again once the version matches', async () => {
+		resetForTest();
+		expect(await ensureSchema(env)).toBe('current');
+		// And the isolate remembers, so it is not even a KV read next time.
+		expect(await ensureSchema(env)).toBe('cached');
+	});
+
+	it('degrades instead of taking the app down when migration fails', async () => {
+		// A broken migration must not turn every request into a 500.
+		resetForTest();
+
+		const broken = { kv: { get: async () => { throw new Error('kv unavailable'); } } };
+
+		expect(await ensureSchema(broken)).toBe('failed');
+		// And it stays retryable rather than latching off.
+		expect(await ensureSchema(broken)).toBe('failed');
 	});
 
 	it('creates the indexes the hot queries rely on', async () => {

@@ -14,10 +14,15 @@ import aiService from '../service/ai-service';
 import threadService from '../service/thread-service';
 import jobService from '../service/job-service';
 import { jobType } from '../job/handlers';
+import { ensureSchema } from '../init/auto-migrate';
 
 export async function email(message, env, ctx) {
 
 	try {
+
+		// Inbound mail writes thread_id and the triage columns, so a deploy that
+		// has not been migrated yet would reject real mail. Catch up first.
+		await ensureSchema(env);
 
 		const {
 			receive,

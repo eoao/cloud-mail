@@ -3,6 +3,13 @@ import providerService from '../service/send-provider';
 import webhookUtils from '../utils/webhook-utils';
 import emailUtils from '../utils/email-utils';
 import {emailConst} from "../const/entity-const";
+import KvConst from '../const/kv-const';
+
+/**
+ * Bump this whenever a migration step is added. The worker compares it against
+ * what the database reports and migrates itself if it is behind.
+ */
+export const SCHEMA_VERSION = 'v4_2';
 
 const dbInit = {
 	async init(c) {
@@ -20,6 +27,19 @@ const dbInit = {
 		if (!webhookUtils.timingSafeEqual(String(secret), String(expected))) {
 			return c.text('❌ init secret mismatch', 403);
 		}
+
+		await this.migrate(c);
+		return c.text('success');
+	},
+
+	/**
+	 * The migration chain, without the HTTP wrapper.
+	 *
+	 * Separated so the worker can run it itself when it notices the database is
+	 * behind the code - see src/init/auto-migrate.js. Every step is idempotent,
+	 * so running it again is a no-op.
+	 */
+	async migrate(c) {
 
 		await this.intDB(c);
 		await this.v1_1DB(c);
@@ -52,7 +72,12 @@ const dbInit = {
 		await this.v4_1DB(c);
 		await this.v4_2DB(c);
 		await settingService.refresh(c);
-		return c.text('success');
+
+		// Record what the database now is, so the next deploy can tell whether it
+		// is ahead of it.
+		await c.env.kv.put(KvConst.SCHEMA_VERSION, SCHEMA_VERSION);
+
+		return SCHEMA_VERSION;
 	},
 
 	// v4_2: two-factor authentication.

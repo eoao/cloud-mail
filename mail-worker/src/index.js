@@ -8,6 +8,7 @@ import oauthService from './service/oauth-service';
 import analysisService from './service/analysis-service';
 import jobService from './service/job-service';
 import { jobType } from './job/handlers';
+import { ensureSchema } from './init/auto-migrate';
 
 export { JobRunner } from './do/job-runner';
 
@@ -17,6 +18,11 @@ export default {
 		const url = new URL(req.url)
 
 		if (url.pathname.startsWith('/api/')) {
+
+			// Awaited, not backgrounded: the point is that the first request after
+			// a deploy succeeds rather than hitting a column that does not exist.
+			await ensureSchema(env);
+
 			url.pathname = url.pathname.replace('/api', '')
 			req = new Request(url.toString(), req)
 			return app.fetch(req, env, ctx);
@@ -32,6 +38,9 @@ export default {
 	async scheduled(c, env, ctx) {
 
 		const ctxLike = { env };
+
+		// An instance that only ever receives mail still gets migrated.
+		await ensureSchema(env);
 
 		// Cheap bookkeeping stays inline.
 		await verifyRecordService.clearRecord(ctxLike)
