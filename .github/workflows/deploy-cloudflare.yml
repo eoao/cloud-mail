@@ -6,6 +6,7 @@ on:
     paths:
       - "mail-worker/**"
       - "mail-vue/**"
+      - ".github/workflows/deploy-cloudflare.yml"
   workflow_dispatch:
 
 jobs:
@@ -103,9 +104,23 @@ jobs:
             sed -i '/^project_link = /d' "$CONFIG_FILE"
           fi
           
-          if [ -z "$CUSTOM_DOMAIN" ]; then
-            sed -i '/\[\[routes\]\]/,/^$/d' "$CONFIG_FILE"
-          fi
+          # 删除模板里的路由占位块，按 CUSTOM_DOMAIN 重新生成
+          # CUSTOM_DOMAIN 支持逗号分隔的多个域名，每个域名生成一个 [[routes]]
+          sed -i '/\[\[routes\]\]/,/^$/d' "$CONFIG_FILE"
+
+          IFS=',' read -ra CUSTOM_DOMAIN_LIST <<< "$CUSTOM_DOMAIN"
+
+          for custom_domain in "${CUSTOM_DOMAIN_LIST[@]}"; do
+
+            custom_domain=$(printf '%s' "$custom_domain" | tr -d '[:space:]')
+
+            if [ -z "$custom_domain" ]; then
+              continue
+            fi
+
+            printf '\n[[routes]]\npattern = "%s"\ncustom_domain = true\n' "$custom_domain" >> "$CONFIG_FILE"
+            echo "✅ Custom domain: $custom_domain"
+          done
           
           if [ "$(printf '%s' "$CLOUDFLARE_EMAIL" | tr '[:upper:]' '[:lower:]')" = "true" ]; then
             cat >> "$CONFIG_FILE" <<'EOF'
@@ -116,7 +131,6 @@ jobs:
           fi
 
           sed -i "s|\${NAME}|${NAME}|g" "$CONFIG_FILE"
-          sed -i "s|\${CUSTOM_DOMAIN}|${CUSTOM_DOMAIN}|g" "$CONFIG_FILE"
           sed -i "s|\"\${DOMAIN}\"|${DOMAIN}|g" "$CONFIG_FILE"
           sed -i "s|\${ADMIN}|${ADMIN}|g" "$CONFIG_FILE"
           sed -i "s|\${JWT_SECRET}|${JWT_SECRET}|g" "$CONFIG_FILE"
@@ -236,7 +250,9 @@ jobs:
           echo "🛠️ Starting database initialization..."
           sleep 15
           
-          WORKER_URL="${CUSTOM_DOMAIN:+https://$CUSTOM_DOMAIN}"
+          # CUSTOM_DOMAIN 可能配置了多个域名，初始化用第一个
+          FIRST_DOMAIN=$(printf '%s' "${CUSTOM_DOMAIN%%,*}" | tr -d '[:space:]')
+          WORKER_URL="${FIRST_DOMAIN:+https://$FIRST_DOMAIN}"
           WORKER_URL="${WORKER_URL:-${{ steps.deploy.outputs.worker_url }}}"
           
           if [ -z "$WORKER_URL" ]; then
