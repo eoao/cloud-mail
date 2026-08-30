@@ -1,0 +1,240 @@
+name: 📮 Setup Email Routing to Worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      zone_ids:
+        description: "Zone ID 列表，逗号或空格分隔。留空则读取仓库变量 EMAIL_ROUTING_ZONE_IDS"
+        required: false
+        default: ""
+      worker_name:
+        description: "接收邮件的 Worker 名字，留空则用仓库变量 NAME，默认 cloud-mail"
+        required: false
+        default: ""
+      rule_email:
+        description: "可选：额外为该邮箱地址建一条 literal 规则，只在域名匹配的 zone 上生效"
+        required: false
+        default: ""
+      delete_rule_emails:
+        description: "可选：删除这些邮箱地址的 literal 规则，逗号分隔。用于清理配错的规则"
+        required: false
+        default: ""
+      prune_wrong_worker:
+        description: "删除指向其它 Worker 的规则（只保留上面这个 Worker 的）"
+        type: boolean
+        required: false
+        default: false
+      dry_run:
+        description: "只检查不写入，删除也只列出不执行"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  setup-routing:
+    name: 📮 Configure routing rules
+    runs-on: ubuntu-latest
+
+    env:
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || vars.CLOUDFLARE_API_TOKEN }}
+      ZONE_IDS: ${{ inputs.zone_ids || vars.EMAIL_ROUTING_ZONE_IDS }}
+      WORKER_NAME: ${{ inputs.worker_name || secrets.NAME || vars.NAME || 'cloud-mail' }}
+      RULE_EMAIL: ${{ inputs.rule_email }}
+      DELETE_RULE_EMAILS: ${{ inputs.delete_rule_emails }}
+      PRUNE_WRONG_WORKER: ${{ inputs.prune_wrong_worker }}
+      DRY_RUN: ${{ inputs.dry_run }}
+
+    steps:
+      - name: 🔑 校验 Token / Verify API token
+        run: |
+          set -uo pipefail
+
+          if [ -z "$CF_API_TOKEN" ]; then
+            echo "❌ CLOUDFLARE_API_TOKEN is not set."
+            exit 1
+          fi
+
+          if [ -z "$ZONE_IDS" ]; then
+            echo "❌ No zone id given. Pass the zone_ids input or set the EMAIL_ROUTING_ZONE_IDS variable."
+            exit 1
+          fi
+
+          if ! VERIFY=$(curl --fail-with-body --silent --show-error \
+                --header "Authorization: Bearer ${CF_API_TOKEN}" \
+                --url "https://api.cloudflare.com/client/v4/user/tokens/verify")
+          then
+            echo "❌ Token verification failed:"
+            echo "$VERIFY" | jq -c '.errors' 2>/dev/null || echo "$VERIFY"
+            echo "::error:: 检查 token 是否有效、是否过期"
+            exit 1
+          fi
+
+          echo "✅ Token status: $(jq -r '.result.status' <<< "$VERIFY")"
+
+      - name: 📮 配置路由规则 / Configure routing rules
+        run: |
+          # 不用 set -e，让每个 zone 都跑完，最后统一汇报
+          set -uo pipefail
+
+          API="https://api.cloudflare.com/client/v4"
+
+          api() {
+            curl --fail-with-body --silent --show-error \
+              --header "Authorization: Bearer ${CF_API_TOKEN}" \
+              --header "Content-Type: application/json" \
+              "$@"
+          }
+
+          # 失败时把 Cloudflare 的错误码打出来，而不是只留一个 curl: (22)
+          print_errors() {
+            jq -r '.errors[]? | "   code=\(.code) \(.message)"' <<< "$1" 2>/dev/null || echo "   $1"
+          }
+
+          # 删除一条路由规则，dry run 时只列出
+          delete_rule() {
+            local zone_id="$1" tag="$2" label="$3"
+
+            if [ -z "$tag" ]; then
+              return
+            fi
+
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "   🔍 dry run 将删除: ${label} [${tag}]"
+              return
+            fi
+
+            local res
+            if res=$(api --request DELETE --url "$API/zones/${zone_id}/email/routing/rules/${tag}"); then
+              echo "   🗑️ 已删除: ${label} [${tag}]"
+            else
+              echo "   ❌ 删除失败: ${label} [${tag}]"
+              print_errors "$res"
+              FAILED=1
+            fi
+          }
+
+          CATCH_ALL=$(jq -n --arg worker "$WORKER_NAME" \
+            '{name:"Catch-all to Worker",enabled:true,matchers:[{type:"all"}],actions:[{type:"worker",value:[$worker]}]}')
+
+          RULE_DOMAIN=""
+          if [ -n "$RULE_EMAIL" ]; then
+            RULE_DOMAIN="${RULE_EMAIL##*@}"
+          fi
+
+          FAILED=0
+
+          for ZONE_ID in $(printf '%s' "$ZONE_IDS" | tr ',' ' '); do
+
+            # zone 是否在 token 作用域内
+            if ! ZONE_JSON=$(api --url "$API/zones/${ZONE_ID}"); then
+              echo "❌ ${ZONE_ID} zone 不可访问，token 的 Zone Resources 可能没包含它"
+              print_errors "$ZONE_JSON"
+              FAILED=1
+              continue
+            fi
+
+            ZONE_NAME=$(jq -r '.result.name' <<< "$ZONE_JSON")
+
+            # Email Routing 是否已启用
+            ROUTING_ENABLED="unknown"
+            if ROUTING_JSON=$(api --url "$API/zones/${ZONE_ID}/email/routing"); then
+              ROUTING_ENABLED=$(jq -r '.result.enabled' <<< "$ROUTING_JSON")
+            fi
+
+            echo "== ${ZONE_NAME} (${ZONE_ID})  routing_enabled=${ROUTING_ENABLED}"
+
+            if [ "$ROUTING_ENABLED" != "true" ]; then
+              echo "   ⚠️ Email Routing 未启用，先在面板 Onboard Domain"
+            fi
+
+            # 先清理配错的规则，再写正确的
+            if [ -n "$DELETE_RULE_EMAILS" ] || [ "$PRUNE_WRONG_WORKER" = "true" ]; then
+
+              if ! RULES_JSON=$(api --url "$API/zones/${ZONE_ID}/email/routing/rules?per_page=50"); then
+                echo "   ❌ 规则列表读取失败，跳过清理"
+                print_errors "$RULES_JSON"
+                FAILED=1
+                RULES_JSON='{"result":[]}'
+              fi
+
+              # 需要删除的地址
+              for DEL_EMAIL in $(printf '%s' "$DELETE_RULE_EMAILS" | tr ',' ' '); do
+                # 用进程替换而不是管道，否则 delete_rule 里的 FAILED 会丢在子 shell 里
+                while read -r TAG NAME; do
+                  delete_rule "$ZONE_ID" "$TAG" "$NAME (${DEL_EMAIL})"
+                done < <(jq -r --arg addr "$DEL_EMAIL" \
+                  '.result[]? | select(any(.matchers[]?; .type=="literal" and .field=="to" and .value==$addr)) | "\(.tag) \(.name)"' \
+                  <<< "$RULES_JSON")
+              done
+
+              # 指向其它 Worker 的规则
+              if [ "$PRUNE_WRONG_WORKER" = "true" ]; then
+                while read -r TAG NAME; do
+                  delete_rule "$ZONE_ID" "$TAG" "$NAME (指向其它 Worker)"
+                done < <(jq -r --arg worker "$WORKER_NAME" \
+                  '.result[]? | select(any(.actions[]?; .type=="worker" and (.value | index($worker) | not))) | "\(.tag) \(.name)"' \
+                  <<< "$RULES_JSON")
+              fi
+
+            fi
+
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "   ⏭️ dry run，跳过写入"
+              continue
+            fi
+
+            # catch-all 规则
+            if CATCH_RES=$(api --request PUT \
+                  --url "$API/zones/${ZONE_ID}/email/routing/rules/catch_all" \
+                  --data "$CATCH_ALL")
+            then
+              echo "   ✅ catch-all → worker ${WORKER_NAME}"
+            else
+              echo "   ❌ catch-all 写入失败"
+              print_errors "$CATCH_RES"
+              FAILED=1
+            fi
+
+            # 可选的单地址规则，只在域名匹配的 zone 上处理
+            if [ -z "$RULE_EMAIL" ] || [ "$RULE_DOMAIN" != "$ZONE_NAME" ]; then
+              continue
+            fi
+
+            RULE_BODY=$(jq -n --arg addr "$RULE_EMAIL" --arg worker "$WORKER_NAME" \
+              '{name:("Route " + $addr),enabled:true,priority:0,matchers:[{type:"literal",field:"to",value:$addr}],actions:[{type:"worker",value:[$worker]}]}')
+
+            # 已存在同地址的规则就更新，避免每次运行都新建一条
+            RULE_TAG=""
+            if RULES_JSON=$(api --url "$API/zones/${ZONE_ID}/email/routing/rules?per_page=50"); then
+              RULE_TAG=$(jq -r --arg addr "$RULE_EMAIL" \
+                '[.result[]? | select(any(.matchers[]?; .type=="literal" and .field=="to" and .value==$addr)) | .tag][0] // ""' \
+                <<< "$RULES_JSON")
+            fi
+
+            if [ -n "$RULE_TAG" ]; then
+              RULE_RES=$(api --request PUT --url "$API/zones/${ZONE_ID}/email/routing/rules/${RULE_TAG}" --data "$RULE_BODY")
+              RULE_STATUS=$?
+            else
+              RULE_RES=$(api --request POST --url "$API/zones/${ZONE_ID}/email/routing/rules" --data "$RULE_BODY")
+              RULE_STATUS=$?
+            fi
+
+            if [ "$RULE_STATUS" -eq 0 ]; then
+              echo "   ✅ ${RULE_EMAIL} → worker ${WORKER_NAME}"
+            else
+              echo "   ❌ ${RULE_EMAIL} 规则写入失败"
+              print_errors "$RULE_RES"
+              FAILED=1
+            fi
+
+          done
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "::error:: 有 zone 配置失败，403 通常是 token 缺 Zone → Email Routing Rules → Edit，或作用域没覆盖该 zone"
+            exit 1
+          fi
+
+          echo "✅ All zones configured."
