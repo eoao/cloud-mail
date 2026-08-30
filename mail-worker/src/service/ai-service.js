@@ -19,7 +19,7 @@ const aiService = {
 				return '';
 			}
 
-			const result = await ai.run(c.env.ai_model || '@cf/meta/llama-3.1-8b-instruct', {
+			const result = await ai.run(c.env.ai_model || '@cf/meta/llama-3.1-8b-instruct-fast', {
 				messages: [
 					{
 						role: 'system',
@@ -35,7 +35,7 @@ const aiService = {
 			});
 
 			const content = typeof result === 'string' ? result : result?.response || '';
-			const json = JSON.parse(content);
+			const json = typeof content === 'string' ? JSON.parse(content) : content;
 			if (typeof json.code !== 'string') {
 				return '';
 			}

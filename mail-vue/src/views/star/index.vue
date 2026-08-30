@@ -2,7 +2,7 @@
   <emailScroll type="star" ref="scroll"
                :allow-star="false"
                :cancel-success="cancelStar"
-               :getEmailList="starList"
+               :getEmailList="getEmailList"
                :emailDelete="emailDelete"
                :star-add="starAdd"
                :star-cancel="starCancel"
@@ -28,11 +28,15 @@ const scroll = ref({})
 const emailStore = useEmailStore();
 
 function jumpContent(email) {
-  emailStore.contentData.email = email
+  emailStore.contentData.email = emailStore.toContentEmail(email)
   emailStore.contentData.delType = 'logic'
   emailStore.contentData.showStar = true
   emailStore.contentData.showReply = true
-  router.push('/message')
+  router.push('/mail')
+}
+
+function getEmailList(emailId, size) {
+  return emailStore.fetchList(full => starList(emailId, size, full))
 }
 
 function cancelStar(email) {

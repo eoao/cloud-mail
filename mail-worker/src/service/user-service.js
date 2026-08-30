@@ -3,7 +3,7 @@ import accountService from './account-service';
 import orm from '../entity/orm';
 import user from '../entity/user';
 import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
-import { emailConst, isDel, roleConst, userConst } from '../const/entity-const';
+import { emailConst, isDel, roleConst, settingConst, userConst } from '../const/entity-const';
 import kvConst from '../const/kv-const';
 import KvConst from '../const/kv-const';
 import cryptoUtils from '../utils/crypto-utils';
@@ -18,6 +18,8 @@ import { t } from '../i18n/i18n'
 import reqUtils from '../utils/req-utils';
 import {oauth} from "../entity/oauth";
 import oauthService from "./oauth-service";
+import settingService from './setting-service';
+import starService from './star-service';
 
 const userService = {
 
@@ -68,7 +70,7 @@ const userService = {
 	selectByEmail(c, email) {
 		return orm(c).select().from(user).where(
 			and(
-				eq(user.email, email),
+				sql`${user.email} COLLATE NOCASE = ${email}`,
 				eq(user.isDel, isDel.NORMAL)))
 			.get();
 	},
@@ -95,6 +97,12 @@ const userService = {
 	},
 
 	async delete(c, userId) {
+		const { syncDelete } = await settingService.query(c);
+		if (syncDelete === settingConst.syncDelete.OPEN) {
+			await this.physicsDelete(c, { userIds: String(userId) });
+			await c.env.kv.delete(kvConst.AUTH_INFO + userId)
+			return;
+		}
 		await orm(c).update(user).set({ isDel: isDel.DELETE }).where(eq(user.userId, userId)).run();
 		await c.env.kv.delete(kvConst.AUTH_INFO + userId)
 	},
@@ -102,6 +110,7 @@ const userService = {
 	async physicsDelete(c, params) {
 		let { userIds } = params;
 		userIds = userIds.split(',').map(Number);
+		await starService.removeByUserIds(c, userIds);
 		await accountService.physicsDeleteByUserIds(c, userIds);
 		await oauthService.deleteByUserIds(c, userIds);
 		await orm(c).delete(user).where(inArray(user.userId, userIds)).run();
@@ -115,6 +124,15 @@ const userService = {
 		num = Number(num);
 		timeSort = Number(timeSort);
 		params.isDel = Number(params.isDel);
+
+		if (isNaN(size)) {
+			size = 50;
+		}
+
+		if (isNaN(num)) {
+			num = 1;
+		}
+
 		if (size > 50) {
 			size = 50;
 		}
@@ -130,7 +148,7 @@ const userService = {
 
 
 		if (email) {
-			conditions.push(sql`${user.email} COLLATE NOCASE LIKE ${'%'+ email + '%'}`);
+			conditions.push(sql`${user.email} COLLATE NOCASE LIKE ${email + '%'}`);
 		}
 
 
@@ -144,7 +162,8 @@ const userService = {
 			username: oauth.username,
 			trustLevel: oauth.trustLevel,
 			avatar: oauth.avatar,
-			name: oauth.name
+			name: oauth.name,
+			platform: oauth.platform
 		}).from(user).leftJoin(oauth, eq(oauth.userId, user.userId))
 			.where(and(...conditions));
 
@@ -304,7 +323,7 @@ const userService = {
 
 	async add(c, params) {
 
-		const { email, type, password } = params;
+		let { email, type, password } = params;
 
 		if (!c.env.domain.includes(emailUtils.getDomain(email))) {
 			throw new BizError(t('notEmailDomain'));
@@ -324,7 +343,13 @@ const userService = {
 			throw new BizError(t('isRegAccount'));
 		}
 
-		const role = roleService.selectById(c, type);
+		let role;
+		if (type === undefined) {
+			role = await roleService.selectDefaultRole(c);
+			type = role?.roleId;
+		} else {
+			role = await roleService.selectById(c, type);
+		}
 
 		if (!role) {
 			throw new BizError(t('roleNotExist'));
@@ -340,6 +365,10 @@ const userService = {
 	},
 
 	async resetDaySendCount(c) {
+		// 仅 UTC 0 点执行，便于配合每小时 cron
+		if (new Date().getUTCHours() !== 0) {
+			return;
+		}
 		const roleList = await roleService.selectByIdsAndSendType(c, 'email:send', roleConst.sendType.DAY);
 		const roleIds = roleList.map(action => action.roleId);
 		await orm(c).update(user).set({ sendCount: 0 }).where(inArray(user.type, roleIds)).run();

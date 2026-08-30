@@ -57,6 +57,14 @@ const accountService = {
 			throw new BizError(t('isRegAccount'));
 		}
 
+		if (email.includes('+')) {
+			const baseEmail = emailUtils.getBaseEmail(email);
+			const baseAccount = await this.selectByEmailIncludeDel(c, baseEmail);
+			if (!baseAccount || baseAccount.userId !== userId) {
+				throw new BizError(t('notOwner'));
+			}
+		}
+
 		const userRow = await userService.selectById(c, userId);
 		const roleRow = await roleService.selectById(c, userRow.type);
 
@@ -153,6 +161,12 @@ const accountService = {
 
 		if (accountRow.userId !== user.userId) {
 			throw new BizError(t('noUserAccount'));
+		}
+
+		const { syncDelete } = await settingService.query(c);
+		if (syncDelete === settingConst.syncDelete.OPEN) {
+			await this.physicsDelete(c, { accountId });
+			return;
 		}
 
 		await orm(c).update(account).set({ isDel: isDel.DELETE }).where(

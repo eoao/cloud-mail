@@ -45,9 +45,19 @@
           <el-table-column show-overflow-tooltip :tooltip-formatter="tableRowFormatter" :label="$t('tabEmailAddress')"
                            :min-width="emailWidth">
             <template #default="props">
-              <div style="display: flex;gap: 5px">
+              <div style="display: flex;gap: 5px;align-items: center">
                 <div class="email-row">{{ props.row.email }}</div>
-                <el-tag type="warning" v-if="props.row.username">L</el-tag>
+                <template v-if="oauthPlatform(props.row)">
+                  <el-avatar v-if="oauthPlatform(props.row).iconType === 'image'"
+                             :src="oauthPlatform(props.row).icon"
+                             :size="16"
+                             class="oauth-platform-icon"/>
+                  <Icon v-else
+                        :icon="oauthPlatform(props.row).icon"
+                        width="16"
+                        height="16"
+                        class="oauth-platform-icon"/>
+                </template>
               </div>
             </template>
           </el-table-column>
@@ -135,7 +145,7 @@
     </el-scrollbar>
     <el-dialog class="dialog" v-model="setPwdShow" :title="$t('changePassword')" @closed="resetUserForm">
       <div class="dialog-box">
-        <el-input v-model="userForm.password" type="password" :placeholder="$t('newPassword')" autocomplete="off">
+        <el-input v-model="userForm.password" type="password" :placeholder="$t('newPassword')" autocomplete="off" @keyup.enter="updatePwd">
         </el-input>
         <el-button class="btn" type="primary" :loading="settingLoading" @click="updatePwd"
         >{{ $t('save') }}
@@ -155,22 +165,24 @@
     </el-dialog>
     <el-dialog v-model="showAdd" :title="$t('addUser')" @closed="resetAddForm">
       <div class="container">
-        <el-input v-model="addForm.email" type="text" :placeholder="$t('emailAccount')" autocomplete="off">
+        <el-input v-model="addForm.email" type="text" :placeholder="$t('emailAccount')" autocomplete="off" @keyup.enter="submit">
           <template #append>
             <div @click.stop="openSelect">
-              <el-select
-                  ref="mySelect"
-                  v-model="addForm.suffix"
-                  :placeholder="$t('select')"
-                  class="select"
-              >
-                <el-option
-                    v-for="item in domainList"
-                    :key="item"
-                    :label="item"
-                    :value="item"
-                />
-              </el-select>
+              <div inert>
+                <el-select
+                    ref="mySelect"
+                    v-model="addForm.suffix"
+                    :placeholder="$t('select')"
+                    class="select"
+                >
+                  <el-option
+                      v-for="item in domainList"
+                      :key="item"
+                      :label="item"
+                      :value="item"
+                  />
+                </el-select>
+              </div>
               <div>
                 <span>{{ addForm.suffix }}</span>
                 <Icon class="setting-icon" icon="mingcute:down-small-fill" width="20" height="20"/>
@@ -178,7 +190,7 @@
             </div>
           </template>
         </el-input>
-        <el-input type="password" v-model="addForm.password" :placeholder="$t('password')"/>
+        <el-input type="password" v-model="addForm.password" :placeholder="$t('password')" @keyup.enter="submit"/>
         <el-select v-model="addForm.type" :placeholder="$t('perm')">
           <el-option v-for="item in roleList" :label="item.name" :value="item.roleId" :key="item.roleId"/>
         </el-select>
@@ -227,12 +239,12 @@
     </el-dialog>
     <el-dialog class="account-dialog" v-model="detailsShow" :title="t('userDetails')"  >
       <div class="details">
-        <div v-if="userDetails.username"><span class="details-item-title">LinuxDo:</span>
-          <el-avatar :src="userDetails.avatar" :size="30" class="linuxdo-avatar"  />
-          <span style="margin: 0 10px">用户名：{{userDetails.username}}</span>
-          <span>
-                    等级：<el-tag type="success">{{userDetails.trustLevel}}</el-tag>
-                  </span>
+        <div v-if="userDetails.platform || userDetails.username" class="oauth-details">
+          <el-avatar :src="userDetails.avatar" :size="30" class="oauth-avatar"/>
+          <span>{{ $t('username') }}：{{ userDetails.username }}</span>
+          <span v-if="userDetails.trustLevel != null">
+            {{ $t('trustLevel') }}：<el-tag type="success">{{ userDetails.trustLevel }}</el-tag>
+          </span>
         </div>
         <div v-if="!sendNumShow"><span
             class="details-item-title">{{ $t('tabSent') }}:</span>{{ userDetails.sendEmailCount }}
@@ -396,6 +408,19 @@ const {t, locale} = useI18n();
 const roleStore = useRoleStore()
 const userStore = useUserStore()
 const settingStore = useSettingStore()
+const oauthPlatformMap = {
+  google: { key: 'google', label: 'Google', icon: 'devicon:google', iconType: 'iconify' },
+  github: { key: 'github', label: 'GitHub', icon: 'codicon:github-inverted', iconType: 'iconify' },
+  linuxdo: { key: 'linuxdo', label: 'LinuxDo', icon: '/image/linuxdo.webp', iconType: 'image' },
+}
+function oauthPlatform(row) {
+  if (row?.platform && oauthPlatformMap[row.platform]) {
+    return oauthPlatformMap[row.platform]
+  }
+  // 旧数据可能只有 username、无 platform
+  if (row?.username) return oauthPlatformMap.linuxdo
+  return null
+}
 const filteredValue = ['normal', 'del']
 const filters = [{text: t('active'), value: 'normal'}, {text: t('deleted'), value: 'del'}]
 const preserveExpanded = ref(false)
@@ -682,8 +707,6 @@ const openSelect = () => {
 
 function resetAddForm() {
   addForm.email = ''
-  addForm.suffix = settingStore.domainList[0]
-  addForm.type = null
   addForm.password = ''
 }
 
@@ -692,6 +715,8 @@ function openAdd() {
 }
 
 function submit() {
+
+  if (addLoading.value) return
 
   if (!addForm.email) {
     ElMessage({
@@ -743,7 +768,7 @@ function submit() {
   form.email = form.email + form.suffix
   userAdd(form).then(() => {
     addLoading.value = false
-    addForm.email = ''
+    showAdd.value = false
     ElMessage({
       message: t('addSuccessMsg'),
       type: "success",
@@ -895,6 +920,7 @@ function httpSetStatus(user) {
 }
 
 function setType() {
+  if (settingLoading.value) return
   settingLoading.value = true
   userSetType({type: userForm.type, userId: userForm.userId}).then(() => {
     chooseUser.type = userForm.type
@@ -922,6 +948,8 @@ function search() {
 }
 
 function updatePwd() {
+
+  if (settingLoading.value) return
 
   if (!userForm.password) {
     ElMessage({
@@ -1147,9 +1175,19 @@ function adjustWidth() {
   }
 }
 
-:deep(.linuxdo-avatar) {
-  position: relative !important;
-  top: 10px;
+.oauth-details {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+:deep(.oauth-avatar) {
+  flex-shrink: 0;
+}
+
+:deep(.oauth-platform-icon) {
+  flex-shrink: 0;
 }
 
 .account-pagination {

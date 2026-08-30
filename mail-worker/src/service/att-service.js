@@ -241,7 +241,11 @@ const attService = {
 		const delKeyList = attListResult.flatMap(r => r.results ? r.results.map(row => row.key) : []);
 
 		if (delKeyList.length > 0) {
-			await this.batchDelete(c, delKeyList);
+			try {
+				await this.batchDelete(c, delKeyList);
+			} catch (e) {
+				console.error('删除附件文件失败：', e);
+			}
 		}
 
 	},
