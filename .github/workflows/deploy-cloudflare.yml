@@ -17,6 +17,7 @@ jobs:
     env:
       NAME: ${{ secrets.NAME || vars.NAME || 'cloud-mail' }}
       CUSTOM_DOMAIN: ${{ secrets.CUSTOM_DOMAIN || vars.CUSTOM_DOMAIN }}
+      CUSTOM_DOMAIN_FROM_SECRET: ${{ secrets.CUSTOM_DOMAIN != '' }}
       DOMAIN: ${{ secrets.DOMAIN || vars.DOMAIN }}
       ADMIN: ${{ secrets.ADMIN || vars.ADMIN }}
       JWT_SECRET: ${{ secrets.JWT_SECRET || vars.JWT_SECRET }}
@@ -92,6 +93,11 @@ jobs:
           
           if [ -z "$CUSTOM_DOMAIN" ]; then
             echo "::warning:: CUSTOM_DOMAIN variable is not set."
+          elif [ "$CUSTOM_DOMAIN_FROM_SECRET" = "true" ]; then
+            # secret 的值在日志里会被打码，不说明来源就很难发现 secret 盖住了 variable
+            echo "::warning:: CUSTOM_DOMAIN 取自 secret，同名 variable 会被忽略。改域名请改 secret，或删掉 secret 只留 variable"
+          else
+            echo "ℹ️ CUSTOM_DOMAIN 取自 variable"
           fi
           
           CONFIG_FILE="wrangler-action.toml"
