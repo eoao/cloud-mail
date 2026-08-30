@@ -70,7 +70,7 @@ const userService = {
 	selectByEmail(c, email) {
 		return orm(c).select().from(user).where(
 			and(
-				eq(user.email, email),
+				sql`${user.email} COLLATE NOCASE = ${email}`,
 				eq(user.isDel, isDel.NORMAL)))
 			.get();
 	},
@@ -124,6 +124,15 @@ const userService = {
 		num = Number(num);
 		timeSort = Number(timeSort);
 		params.isDel = Number(params.isDel);
+
+		if (isNaN(size)) {
+			size = 50;
+		}
+
+		if (isNaN(num)) {
+			num = 1;
+		}
+
 		if (size > 50) {
 			size = 50;
 		}
@@ -139,7 +148,7 @@ const userService = {
 
 
 		if (email) {
-			conditions.push(sql`${user.email} COLLATE NOCASE LIKE ${'%'+ email + '%'}`);
+			conditions.push(sql`${user.email} COLLATE NOCASE LIKE ${email + '%'}`);
 		}
 
 
@@ -153,7 +162,8 @@ const userService = {
 			username: oauth.username,
 			trustLevel: oauth.trustLevel,
 			avatar: oauth.avatar,
-			name: oauth.name
+			name: oauth.name,
+			platform: oauth.platform
 		}).from(user).leftJoin(oauth, eq(oauth.userId, user.userId))
 			.where(and(...conditions));
 
@@ -313,7 +323,7 @@ const userService = {
 
 	async add(c, params) {
 
-		const { email, type, password } = params;
+		let { email, type, password } = params;
 
 		if (!c.env.domain.includes(emailUtils.getDomain(email))) {
 			throw new BizError(t('notEmailDomain'));
@@ -333,7 +343,13 @@ const userService = {
 			throw new BizError(t('isRegAccount'));
 		}
 
-		const role = roleService.selectById(c, type);
+		let role;
+		if (type === undefined) {
+			role = await roleService.selectDefaultRole(c);
+			type = role?.roleId;
+		} else {
+			role = await roleService.selectById(c, type);
+		}
 
 		if (!role) {
 			throw new BizError(t('roleNotExist'));
@@ -349,6 +365,10 @@ const userService = {
 	},
 
 	async resetDaySendCount(c) {
+		// 仅 UTC 0 点执行，便于配合每小时 cron
+		if (new Date().getUTCHours() !== 0) {
+			return;
+		}
 		const roleList = await roleService.selectByIdsAndSendType(c, 'email:send', roleConst.sendType.DAY);
 		const roleIds = roleList.map(action => action.roleId);
 		await orm(c).update(user).set({ sendCount: 0 }).where(inArray(user.type, roleIds)).run();

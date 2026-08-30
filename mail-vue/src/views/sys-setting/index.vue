@@ -6,7 +6,7 @@
     <el-scrollbar class="scroll" v-if="!firstLoading">
       <div class="scroll-body">
         <div class="card-grid">
-          <!-- Website Settings Card -->
+          <!-- Basic Settings Card -->
           <div class="settings-card">
             <div class="card-title">{{ $t('websiteSetting') }}</div>
             <div class="card-content">
@@ -213,6 +213,63 @@
                   </el-button>
                 </div>
               </div>
+              <div class="setting-item">
+                <div>
+                  <span>{{ $t('autoClean') }}</span>
+                  <el-tooltip effect="dark" :content="$t('autoCleanDesc')">
+                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+                  </el-tooltip>
+                </div>
+                <div class="forward">
+                  <span>{{ setting.autoCleanDays > 0 ? $t('autoCleanRetain', { days: setting.autoCleanDays }) : $t('disabled') }}</span>
+                  <el-button class="opt-button" style="margin-top: 0" @click="openAutoClean" size="small"
+                             type="primary">
+                    <Icon icon="fluent:settings-48-regular" width="16" height="16"/>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="card-title">{{ $t('emailPush') }}</div>
+            <div class="card-content">
+              <div class="setting-item">
+                <div><span>{{ $t('tgBot') }}</span></div>
+                <div class="forward">
+                  <span>{{ setting.tgBotStatus === 0 ? $t('enabled') : $t('disabled') }}</span>
+                  <el-button class="opt-button" size="small" type="primary" @click="openTgSetting">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
+              <div class="setting-item">
+                <div><span>{{ $t('otherEmail') }}</span></div>
+                <div class="forward">
+                  <span>{{ setting.forwardStatus === 0 ? $t('enabled') : $t('disabled') }}</span>
+                  <el-button class="opt-button" size="small" type="primary" @click="openThirdEmailSetting">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
+              <div class="setting-item">
+                <div><span>{{ $t('webhook') }}</span></div>
+                <div class="forward">
+                  <span>{{ setting.webhookStatus === 0 ? $t('enabled') : $t('disabled') }}</span>
+                  <el-button class="opt-button" size="small" type="primary" @click="openWebhookSetting">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
+              <div class="setting-item">
+                <div><span>{{ $t('forwardingRules') }}</span></div>
+                <div class="forward">
+                  <span>{{ setting.ruleType === 0 ? $t('forwardAll') : $t('rules') }}</span>
+                  <el-button class="opt-button" size="small" type="primary" @click="openForwardRules">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -252,39 +309,6 @@
                   <div class="storage-type">
                     <el-tag>{{ setting.storageType }}</el-tag>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="settings-card">
-            <div class="card-title">{{ $t('emailPush') }}</div>
-            <div class="card-content">
-              <div class="setting-item">
-                <div><span>{{ $t('tgBot') }}</span></div>
-                <div class="forward">
-                  <span>{{ setting.tgBotStatus === 0 ? $t('enabled') : $t('disabled') }}</span>
-                  <el-button class="opt-button" size="small" type="primary" @click="openTgSetting">
-                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
-                  </el-button>
-                </div>
-              </div>
-              <div class="setting-item">
-                <div><span>{{ $t('otherEmail') }}</span></div>
-                <div class="forward">
-                  <span>{{ setting.forwardStatus === 0 ? $t('enabled') : $t('disabled') }}</span>
-                  <el-button class="opt-button" size="small" type="primary" @click="openThirdEmailSetting">
-                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
-                  </el-button>
-                </div>
-              </div>
-              <div class="setting-item">
-                <div><span>{{ $t('forwardingRules') }}</span></div>
-                <div class="forward">
-                  <span>{{ setting.ruleType === 0 ? $t('forwardAll') : $t('rules') }}</span>
-                  <el-button class="opt-button" size="small" type="primary" @click="openForwardRules">
-                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
-                  </el-button>
                 </div>
               </div>
             </div>
@@ -397,6 +421,26 @@
             </div>
           </div>
 
+          <!-- OAuth Login Card -->
+          <div class="settings-card">
+            <div class="card-title">{{ $t('oauthLogin') }}</div>
+            <div class="card-content">
+              <div class="setting-item" v-for="p in oauthPlatforms" :key="p.key">
+                <div>
+                  <el-avatar v-if="p.iconType === 'image'" :src="p.icon" :size="22" class="oauth-icon"/>
+                  <Icon v-else :icon="p.icon" width="22" height="22" class="oauth-icon"/>
+                  <span>{{ p.label }}</span>
+                </div>
+                <div class="forward">
+                  <span>{{ setting[p.key + 'Switch'] === 0 ? $t('enabled') : $t('disabled') }}</span>
+                  <el-button class="opt-button" size="small" type="primary" @click="openOauthSetting(p)">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="settings-card about">
             <div class="card-title">{{ $t('about') }}</div>
             <div class="card-content">
@@ -486,6 +530,20 @@
           <el-input type="text" style="margin-top: 15px" placeholder="Secret Key" v-model="turnstileForm.secretKey" @keyup.enter="saveTurnstileKey"/>
           <el-button type="primary" :loading="settingLoading" @click="saveTurnstileKey">{{ $t('save') }}</el-button>
         </form>
+      </el-dialog>
+      <el-dialog v-model="oauthSettingShow" :title="$t('oauthSetting') + ' - ' + oauthForm.label" width="340"
+                 @closed="oauthForm.clientId = ''; oauthForm.clientSecret = ''; oauthForm.switch = 1">
+        <div class="dialog-content">
+          <el-input type="text" :placeholder="$t('clientId')" v-model="oauthForm.clientId"/>
+          <el-input type="text" style="margin-top: 15px" :placeholder="$t('clientSecret')" v-model="oauthForm.clientSecret"/>
+        </div>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-switch v-model="oauthForm.switch" :active-value="0" :inactive-value="1" :active-text="$t('enable')"
+                       :inactive-text="$t('disable')"/>
+            <el-button type="primary" :loading="settingLoading" @click="saveOauth">{{ $t('save') }}</el-button>
+          </div>
+        </template>
       </el-dialog>
       <el-dialog
           v-model="showSetBackground"
@@ -607,6 +665,48 @@
             <el-button :loading="settingLoading" type="primary" @click="forwardEmailSave">
               {{ $t('save') }}
             </el-button>
+          </div>
+        </template>
+      </el-dialog>
+      <el-dialog
+          v-model="webhookShow"
+          class="forward-dialog"
+          @closed="webhookFormatShow = false"
+      >
+        <template #header>
+          <div class="forward-head">
+            <span class="forward-set-title">{{ $t('webhook') }}</span>
+            <el-tooltip effect="dark" :content="$t('webhookDesc')">
+              <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+            </el-tooltip>
+          </div>
+        </template>
+        <div class="forward-set-body">
+          <el-input :placeholder="$t('webhookUrl')" v-model="webhookUrl" @keyup.enter="webhookSave"></el-input>
+          <el-input :placeholder="$t('webhookSecret')" v-model="webhookSecret" @keyup.enter="webhookSave"></el-input>
+          <div class="tg-msg-label">
+            <span>{{ t('webhookRetry') }}</span>
+            <el-input-number v-model="webhookRetry" :min="0" :max="5" controls-position="right"/>
+          </div>
+          <div v-show="webhookFormatShow" class="webhook-format">
+            <pre>Content-Type: application/json
+Authorization: &lt;secret&gt;</pre>
+            <pre>{{ webhookPayloadExample }}</pre>
+          </div>
+        </div>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-switch v-model="webhookStatus" :active-value="0" :inactive-value="1" :active-text="$t('enable')"
+                       :inactive-text="$t('disable')"/>
+            <div class="webhook-footer-right">
+              <div class="webhook-format-title" @click="webhookFormatShow = !webhookFormatShow">
+                <span>{{ $t('webhookFormat') }}</span>
+                <Icon class="webhook-format-icon" :class="{ open: webhookFormatShow }" icon="mingcute:down-small-fill" width="18" height="18"/>
+              </div>
+              <el-button :loading="settingLoading" type="primary" @click="webhookSave">
+                {{ $t('save') }}
+              </el-button>
+            </div>
           </div>
         </template>
       </el-dialog>
@@ -795,6 +895,22 @@
         </el-form>
         <el-button type="primary" style="width: 100%;" :loading="settingLoading" @click="saveBlackList">{{ $t('save') }}</el-button>
       </el-dialog>
+      <el-dialog v-model="autoCleanShow" :title="t('autoClean')" class="forward-dialog" @closed="resetAutoClean">
+        <el-form>
+          <el-form-item :label="t('autoCleanDays')" label-position="top">
+            <el-input-number v-model="autoCleanDays" :min="0" :max="3650" style="width: 100%"/>
+          </el-form-item>
+          <el-form-item :label="t('autoCleanExclude')" label-position="top">
+            <el-input-tag
+                tag-type="warning"
+                :placeholder="$t('autoCleanExcludeDesc')"
+                v-model="autoCleanExclude"
+                @add-tag="autoCleanExcludeAddTag"
+            />
+          </el-form-item>
+        </el-form>
+        <el-button type="primary" style="width: 100%;" :loading="settingLoading" @click="saveAutoClean">{{ $t('save') }}</el-button>
+      </el-dialog>
       <el-dialog v-model="aiCodeFilterShow" class="forward-dialog" @closed="resetAiCodeFilter">
         <template #header>
           <div class="forward-head">
@@ -823,10 +939,10 @@ import {useUiStore} from "@/store/ui.js";
 import {useUserStore} from "@/store/user.js";
 import {useAccountStore} from "@/store/account.js";
 import {Icon} from "@iconify/vue";
-import {cvtR2Url} from "@/utils/convert.js";
+import {cvtR2Url, toOssDomain} from "@/utils/convert.js";
 import {storeToRefs} from "pinia";
 import {debounce} from 'lodash-es'
-import {isDomain, isEmail} from "@/utils/verify-utils.js";
+import {isDomain, isEmail, isIpUrl} from "@/utils/verify-utils.js";
 import loading from "@/components/loading/index.vue";
 import {getTextWidth} from "@/utils/text.js";
 import {fileToBase64} from "@/utils/file-utils.js"
@@ -837,7 +953,7 @@ defineOptions({
   name: 'sys-setting'
 })
 
-const currentVersion = 'v3.1.0'
+const currentVersion = 'v3.2.0'
 const hasUpdate = ref(false)
 let getUpdateErrorCount = 1;
 const {t, locale} = useI18n();
@@ -850,12 +966,14 @@ const userStore = useUserStore();
 const editTitleShow = ref(false)
 const resendTokenFormShow = ref(false)
 const blackFormShow = ref(false)
+const autoCleanShow = ref(false)
 const aiCodeFilterShow = ref(false)
 const r2DomainShow = ref(false)
 const turnstileShow = ref(false)
 const tgSettingShow = ref(false)
 const noticePopupShow = ref(false)
 const thirdEmailShow = ref(false)
+const webhookShow = ref(false)
 const forwardRulesShow = ref(false)
 const emailPrefixShow = ref(false)
 const showResendList = ref(false)
@@ -869,6 +987,8 @@ const r2DomainInput = ref('')
 const loginOpacity = ref(0)
 const minEmailPrefix = ref(0)
 const emailPrefixFilter = ref([])
+const autoCleanDays = ref(0)
+const autoCleanExclude = ref([])
 const backgroundUrl = ref('')
 let backgroundFile = {}
 const showSetBackground = ref(false)
@@ -885,6 +1005,20 @@ const resendTokenForm = reactive({
 const turnstileForm = reactive({
   siteKey: '',
   secretKey: ''
+})
+
+const oauthPlatforms = [
+  { key: 'google', label: 'Google', icon: 'devicon:google', iconType: 'iconify' },
+  { key: 'github', label: 'GitHub', icon: 'codicon:github-inverted', iconType: 'iconify' },
+  { key: 'linuxdo', label: 'LinuxDo', icon: '/image/linuxdo.webp', iconType: 'image' },
+]
+const oauthSettingShow = ref(false)
+const oauthForm = reactive({
+  key: '',
+  label: '',
+  clientId: '',
+  clientSecret: '',
+  switch: 1,
 })
 
 const s3 = reactive({
@@ -935,6 +1069,23 @@ const tgBotStatus = ref(0)
 const tgBotToken = ref('')
 const forwardEmail = ref([])
 const forwardStatus = ref(0)
+const webhookUrl = ref('')
+const webhookStatus = ref(1)
+const webhookRetry = ref(0)
+const webhookSecret = ref('')
+const webhookFormatShow = ref(false)
+const webhookPayloadExample = `{
+  "emailId": 1,
+  "sendEmail": "hello@example.com",
+  "sendName": "hello",
+  "toEmail": "admin@example.com",
+  "toName": "admin",
+  "subject": "Hello",
+  "text": "Hello",
+  "content": "<div>Hello</div>",
+  "code": "123456",
+  "createTime": "2099-12-30 23:59:59"
+}`
 const emailColumnWidth = ref(0)
 const tokenColumnWidth = ref(0)
 const ruleType = ref(0)
@@ -1120,8 +1271,24 @@ function openThirdEmailSetting() {
   thirdEmailShow.value = true
 }
 
+function openWebhookSetting() {
+  webhookStatus.value = setting.value.webhookStatus
+  webhookUrl.value = setting.value.webhookUrl || ''
+  webhookRetry.value = setting.value.webhookRetry ?? 0
+  webhookSecret.value = setting.value.webhookSecret || ''
+  webhookShow.value = true
+}
+
 function openEmailPrefix() {
   emailPrefixShow.value = true
+}
+
+function openAutoClean() {
+  autoCleanDays.value = setting.value.autoCleanDays ?? 0
+  autoCleanExclude.value = setting.value.autoCleanExclude
+      ? setting.value.autoCleanExclude.split(',').filter(Boolean)
+      : []
+  autoCleanShow.value = true
 }
 
 function openForwardRules() {
@@ -1227,6 +1394,29 @@ function forwardEmailSave() {
   editSetting(form)
 }
 
+function webhookSave() {
+  let retry = Number(webhookRetry.value)
+  if (isNaN(retry) || retry < 0) {
+    retry = 0
+  }
+  const url = toOssDomain(webhookUrl.value.trim())
+  if (isIpUrl(url)) {
+    ElMessage({
+      message: t('webhookIpNotSupported'),
+      type: 'warning',
+      plain: true
+    })
+    return
+  }
+  const form = {
+    webhookStatus: webhookStatus.value,
+    webhookUrl: url,
+    webhookRetry: retry,
+    webhookSecret: webhookSecret.value.trim()
+  }
+  editSetting(form)
+}
+
 
 function ruleEmailSave() {
   const form = {
@@ -1254,6 +1444,13 @@ function resetBlackList() {
   blackListForm.value.blackSubject = setting.value.blackSubject ? setting.value.blackSubject.split(',') : []
 }
 
+function resetAutoClean() {
+  autoCleanDays.value = setting.value.autoCleanDays ?? 0
+  autoCleanExclude.value = setting.value.autoCleanExclude
+      ? setting.value.autoCleanExclude.split(',').filter(Boolean)
+      : []
+}
+
 function resetAiCodeFilter() {
   aiCodeFilter.value = setting.value.aiCodeFilter ? setting.value.aiCodeFilter.split(',') : []
 }
@@ -1263,6 +1460,13 @@ function saveEmailPrefix() {
   form.minEmailPrefix = minEmailPrefix.value
   form.emailPrefixFilter = emailPrefixFilter.value
   editSetting(form, true)
+}
+
+function saveAutoClean() {
+  editSetting({
+    autoCleanDays: autoCleanDays.value,
+    autoCleanExclude: autoCleanExclude.value.join(',')
+  }, true)
 }
 
 function saveAiCodeFilter() {
@@ -1311,6 +1515,20 @@ function banEmailAddTag(val) {
   })
 }
 
+function autoCleanExcludeAddTag(val) {
+  const emails = Array.from(new Set(
+      val.split(/[,，]/).map(item => item.trim()).filter(item => item)
+  ));
+
+  autoCleanExclude.value.splice(autoCleanExclude.value.length - 1, 1)
+
+  emails.forEach(email => {
+    if (isEmail(email) && !autoCleanExclude.value.includes(email)) {
+      autoCleanExclude.value.push(email)
+    }
+  })
+}
+
 function aiCodeFilterAddTag(val) {
   const emails = Array.from(new Set(
       val.split(/[,，]/).map(item => item.trim()).filter(item => item)
@@ -1342,6 +1560,23 @@ function delBackground() {
       })
     })
   })
+}
+
+function openOauthSetting(p) {
+  oauthForm.key = p.key
+  oauthForm.label = p.label
+  oauthForm.clientId = setting.value[p.key + 'ClientId'] || ''
+  oauthForm.clientSecret = setting.value[p.key + 'ClientSecret'] || ''
+  oauthForm.switch = setting.value[p.key + 'Switch'] ?? 1
+  oauthSettingShow.value = true
+}
+
+function saveOauth() {
+  const form = {}
+  form[oauthForm.key + 'ClientId'] = oauthForm.clientId
+  form[oauthForm.key + 'ClientSecret'] = oauthForm.clientSecret
+  form[oauthForm.key + 'Switch'] = oauthForm.switch
+  editSetting(form)
 }
 
 function saveTurnstileKey() {
@@ -1500,6 +1735,7 @@ function editSetting(settingForm, refreshStatus = true) {
     turnstileShow.value = false
     tgSettingShow.value = false
     thirdEmailShow.value = false
+    webhookShow.value = false
     forwardRulesShow.value = false
     addVerifyCountShow.value = false
     regVerifyCountShow.value = false
@@ -1507,6 +1743,8 @@ function editSetting(settingForm, refreshStatus = true) {
     addS3Show.value = false
     emailPrefixShow.value = false
     aiCodeFilterShow.value = false
+    autoCleanShow.value = false
+    oauthSettingShow.value = false
   }).catch((e) => {
     loginOpacity.value = setting.value.loginOpacity
     setting.value = {...setting.value, ...JSON.parse(backup)}
@@ -1642,6 +1880,14 @@ function editSetting(settingForm, refreshStatus = true) {
   }
 }
 
+.oauth-icon {
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
 .r2domain-item {
   display: flex;
   gap: 10px;
@@ -1684,6 +1930,29 @@ function editSetting(settingForm, refreshStatus = true) {
 .dialog-footer {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+}
+
+.webhook-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.webhook-format-title {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  color: var(--el-color-primary);
+  font-size: 13px;
+}
+
+.webhook-format-icon {
+  transition: transform 0.2s;
+  &.open {
+    transform: rotate(180deg);
+  }
 }
 
 .notice-popup-item {
@@ -1842,6 +2111,19 @@ function editSetting(settingForm, refreshStatus = true) {
     .el-select {
       width: v-bind(tgMsgLabelWidth);
     }
+    .el-input-number {
+      width: 120px;
+    }
+  }
+
+  .webhook-format pre {
+    margin: 8px 0 0;
+    padding: 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-x: auto;
+    border-radius: 4px;
+    background: var(--el-fill-color-light);
   }
 }
 
