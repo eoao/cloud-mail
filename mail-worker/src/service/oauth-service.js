@@ -1,7 +1,7 @@
 import BizError from "../error/biz-error";
 import orm from "../entity/orm";
 import {oauth} from "../entity/oauth";
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import userService from "./user-service";
 import loginService from "./login-service";
 import cryptoUtils from "../utils/crypto-utils";
@@ -33,6 +33,80 @@ const oauthService = {
 	},
 
 	async linuxDoLogin(c, params) {
+		return await this.saveAndLogin(c, await this.linuxDoUser(c, params));
+	},
+
+	async githubLogin(c, params) {
+		return await this.saveAndLogin(c, await this.githubUser(c, params));
+	},
+
+	async googleLogin(c, params) {
+		return await this.saveAndLogin(c, await this.googleUser(c, params));
+	},
+
+	//绑定当前登录用户，和登录流程共用授权码换取用户信息
+	async bindCurUser(c, params, userId) {
+
+		const { platform } = params;
+
+		const userInfo = await this.platformUser(c, platform, params);
+
+		const oauthRow = await this.getById(c, userInfo.oauthUserId);
+
+		if (oauthRow && oauthRow.userId && oauthRow.userId !== userId) {
+			throw new BizError(t('oauthBindOther'));
+		}
+
+		const bindRow = await this.selectByUserIdAndPlatform(c, userId, platform);
+
+		if (bindRow && bindRow.oauthUserId !== userInfo.oauthUserId) {
+			throw new BizError(t('oauthBindRepeat'));
+		}
+
+		await this.saveUser(c, userInfo);
+
+		return await orm(c).update(oauth).set({ userId }).where(eq(oauth.oauthUserId, userInfo.oauthUserId)).returning().get();
+	},
+
+	async unbindCurUser(c, params, userId) {
+
+		const { platform } = params;
+
+		const bindRow = await this.selectByUserIdAndPlatform(c, userId, platform);
+
+		if (!bindRow) {
+			throw new BizError(t('oauthNotBind'));
+		}
+
+		await orm(c).delete(oauth).where(eq(oauth.oauthId, bindRow.oauthId)).run();
+	},
+
+	async curUserList(c, userId) {
+		return await orm(c).select().from(oauth).where(eq(oauth.userId, userId)).all();
+	},
+
+	async selectByUserIdAndPlatform(c, userId, platform) {
+		return await orm(c).select().from(oauth).where(and(eq(oauth.userId, userId), eq(oauth.platform, platform))).get();
+	},
+
+	async platformUser(c, platform, params) {
+
+		const platformFns = {
+			github: this.githubUser,
+			google: this.googleUser,
+			linuxdo: this.linuxDoUser
+		};
+
+		const platformFn = Object.hasOwn(platformFns, platform) ? platformFns[platform] : null;
+
+		if (!platformFn) {
+			throw new BizError(t('oauthNotExist'));
+		}
+
+		return await platformFn.call(this, c, params);
+	},
+
+	async linuxDoUser(c, params) {
 
 		const { code, redirectUri } = params;
 
@@ -77,10 +151,10 @@ const oauthService = {
 		userInfo.avatar = userInfo.avatar_url;
 		userInfo.platform = 'linuxdo';
 
-		return await this.saveAndLogin(c, userInfo)
+		return userInfo;
 	},
 
-	async githubLogin(c, params) {
+	async githubUser(c, params) {
 
 		const { code, redirectUri } = params;
 
@@ -129,10 +203,10 @@ const oauthService = {
 		userInfo.avatar = userInfo.avatar_url;
 		userInfo.platform = 'github';
 
-		return await this.saveAndLogin(c, userInfo);
+		return userInfo;
 	},
 
-	async googleLogin(c, params) {
+	async googleUser(c, params) {
 
 		const { code, redirectUri } = params;
 
@@ -176,7 +250,7 @@ const oauthService = {
 		userInfo.avatar = userInfo.picture;
 		userInfo.platform = 'google';
 
-		return await this.saveAndLogin(c, userInfo);
+		return userInfo;
 	},
 
 	async saveAndLogin(c, userInfo) {
