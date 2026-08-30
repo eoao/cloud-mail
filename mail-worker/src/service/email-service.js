@@ -42,6 +42,10 @@ const emailService = {
 			type = 0;
 		}
 
+		if (isNaN(accountId)) {
+			throw new BizError(t('emptyAccountId'));
+		}
+
 		if (isNaN(size)) {
 			size = 10;
 		}
