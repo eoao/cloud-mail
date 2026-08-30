@@ -1,0 +1,43 @@
+name: Configure Email Routing
+
+on:
+  workflow_dispatch:
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Route all configured domains to cloud-mail
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          put_rule() {
+            local zone_id="$1"
+            local path="$2"
+            local body="$3"
+            curl --fail-with-body --silent --show-error \
+              --request PUT \
+              --url "https://api.cloudflare.com/client/v4/zones/${zone_id}/email/routing/rules/${path}" \
+              --header "Authorization: Bearer ${CF_API_TOKEN}" \
+              --header "Content-Type: application/json" \
+              --data "${body}" >/dev/null
+          }
+
+          catch_all='{"name":"Catch-all to Cloud Mail","enabled":true,"matchers":[{"type":"all"}],"actions":[{"type":"worker","value":["cloud-mail"]}]}'
+          for zone_id in \
+            2101b5a92e2a01f24a33e49b608a1dcd \
+            000d80880fc23ca36df963cd42f1bdc5 \
+            578cde22bd0b32b19e73d4e779f1832a \
+            7161038092f7af6215614fb1ca6a9aca \
+            aa25e0c46f731ca006dbe918a5070a5e \
+            2d9524c9a759217d6783cbd42ea91019
+          do
+            put_rule "${zone_id}" catch_all "${catch_all}"
+          done
+
+          admin_rule='{"name":"Admin to Cloud Mail","enabled":true,"priority":0,"matchers":[{"field":"to","type":"literal","value":"admin@cuijianzhuang.com"}],"actions":[{"type":"worker","value":["cloud-mail"]}]}'
+          put_rule 000d80880fc23ca36df963cd42f1bdc5 9da670f1c8294a8dbdc36d0f8af041bf "${admin_rule}"
