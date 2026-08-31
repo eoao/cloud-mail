@@ -12,9 +12,9 @@ const oauthService = {
 
 	async bindUser(c, params) {
 
-		const { email, oauthUserId, code } = params;
+		const { email, oauthUserId, platform, code } = params;
 
-		const oauthRow = await this.getById(c, oauthUserId);
+		const oauthRow = await this.getById(c, oauthUserId, platform);
 
 		let userRow = await userService.selectByIdIncludeDel(c, oauthRow.userId);
 
@@ -51,7 +51,7 @@ const oauthService = {
 
 		const userInfo = await this.platformUser(c, platform, params);
 
-		const oauthRow = await this.getById(c, userInfo.oauthUserId);
+		const oauthRow = await this.getById(c, userInfo.oauthUserId, platform);
 
 		if (oauthRow && oauthRow.userId && oauthRow.userId !== userId) {
 			throw new BizError(t('oauthBindOther'));
@@ -65,7 +65,8 @@ const oauthService = {
 
 		await this.saveUser(c, userInfo);
 
-		return await orm(c).update(oauth).set({ userId }).where(eq(oauth.oauthUserId, userInfo.oauthUserId)).returning().get();
+		return await orm(c).update(oauth).set({ userId })
+			.where(this.oauthUserWhere(userInfo.oauthUserId, platform)).returning().get();
 	},
 
 	async unbindCurUser(c, params, userId) {
@@ -268,12 +269,13 @@ const oauthService = {
 
 	async saveUser(c, userInfo) {
 
-		const userInfoRow = await this.getById(c, userInfo.oauthUserId);
+		const userInfoRow = await this.getById(c, userInfo.oauthUserId, userInfo.platform);
 
 		if (!userInfoRow) {
 			return await orm(c).insert(oauth).values(userInfo).returning().get();
 		} else {
-			return await orm(c).update(oauth).set(userInfo).where(eq(oauth.oauthUserId, userInfo.oauthUserId)).returning().get();
+			return await orm(c).update(oauth).set(userInfo)
+				.where(this.oauthUserWhere(userInfo.oauthUserId, userInfo.platform)).returning().get();
 		}
 
 	},
@@ -284,8 +286,14 @@ const oauthService = {
 		}
 	},
 
-	async getById(c, oauthUserId) {
-		return await orm(c).select().from(oauth).where(eq(oauth.oauthUserId, oauthUserId)).get();
+	//第三方用户id只在各自平台内唯一，不同平台可能撞号，必须带上platform
+	async getById(c, oauthUserId, platform) {
+		return await orm(c).select().from(oauth).where(this.oauthUserWhere(oauthUserId, platform)).get();
+	},
+
+	oauthUserWhere(oauthUserId, platform) {
+		const condition = eq(oauth.oauthUserId, oauthUserId);
+		return platform ? and(condition, eq(oauth.platform, platform)) : condition;
 	},
 
 	async deleteByUserId(c, userId) {
