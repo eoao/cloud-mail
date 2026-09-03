@@ -55,12 +55,16 @@ export const useEmailStore = defineStore('email', {
             if (id && this.detailMap[id]) {
                 return this.detailMap[id]
             }
+            if (email?.content || email?.text) {
+                if (id) this.detailMap[id] = email
+                return email
+            }
             return {
                 ...email,
                 emailId: id || 0,
-                content: '',
-                text: '',
-                attList: [],
+                content: email?.content || '',
+                text: email?.text || '',
+                attList: email?.attList || [],
                 recipient: email?.recipient || '[]',
             }
         },

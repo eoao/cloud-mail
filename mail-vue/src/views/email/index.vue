@@ -110,6 +110,7 @@ async function latest() {
               if (!existIds.has(email.emailId)) {
 
                 existIds.add(email.emailId)
+                emailStore.detailMap[email.emailId] = email
                 scroll.value.addItem(email)
 
                 await sleep(50)
