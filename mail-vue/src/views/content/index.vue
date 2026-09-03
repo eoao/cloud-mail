@@ -35,8 +35,13 @@
             <el-alert v-if="email.status === 5" :closable="false" :title="$t('delayed')" class="email-msg" type="warning" show-icon />
           </div>
           <el-scrollbar class="htm-scrollbar" :class="!email.attList?.length ? 'bottom-distance' : ''">
-            <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
-            <pre v-else class="email-text" >{{email.text}}</pre>
+            <div v-if="detailLoading" style="padding: 20px 0;">
+              <el-skeleton :rows="8" animated />
+            </div>
+            <template v-else>
+              <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
+              <pre v-else class="email-text">{{ email.text }}</pre>
+            </template>
           </el-scrollbar>
           <div class="att" v-if="email.attList?.length > 0">
             <div class="att-title">
@@ -78,7 +83,7 @@ import ShadowHtml from '@/components/shadow-html/index.vue'
 import {computed, reactive, ref, watch, onMounted, onUnmounted} from "vue";
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {emailDelete, emailRead} from "@/request/email.js";
+import {emailDelete, emailRead, emailDetail} from "@/request/email.js";
 import {Icon} from "@iconify/vue";
 import {useEmailStore} from "@/store/email.js";
 import {useAccountStore} from "@/store/account.js";
@@ -107,6 +112,7 @@ const email = computed(() => emailStore.contentData.email || {
 })
 const showPreview = ref(false)
 const srcList = reactive([])
+const detailLoading = ref(false)
 
 const { t } = useI18n()
 watch(() => accountStore.currentAccountId, () => {
@@ -114,6 +120,35 @@ watch(() => accountStore.currentAccountId, () => {
 })
 
 let readRequesting = false
+
+function loadMissingDetail() {
+  const current = email.value
+  if (!current?.emailId) return
+
+  // 1. 優先檢查 detailMap 快取
+  const cached = emailStore.detailMap[current.emailId]
+  if (cached?.content || cached?.text) {
+    emailStore.contentData.email = cached
+    return
+  }
+
+  // 2. 若已有正文，無需重複拉取
+  if (current.content || current.text) return
+
+  // 3. 內文未就緒（如新郵件即時點擊或直接整理頁面），立即按需發起詳情請求
+  detailLoading.value = true
+  emailDetail(current.emailId).then(data => {
+    if (data) {
+      emailStore.detailMap[current.emailId] = data
+      emailStore.contentData.email = data
+    }
+  }).catch(err => {
+    console.error('Failed to load email detail:', err)
+  }).finally(() => {
+    detailLoading.value = false
+    tryMarkRead()
+  })
+}
 
 function tryMarkRead() {
   if (!emailStore.contentData.showUnread || readRequesting) return
@@ -148,7 +183,13 @@ watch(
   { flush: 'post' }
 )
 
+watch(
+  () => email.value?.emailId,
+  () => loadMissingDetail()
+)
+
 onMounted(() => {
+  loadMissingDetail()
   tryMarkRead()
   window.addEventListener('keydown', handleKeyDown);
 })
