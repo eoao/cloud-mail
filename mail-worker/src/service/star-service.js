@@ -71,7 +71,8 @@ const starService = {
 			});
 		} else {
 			list.forEach(emailRow => {
-				emailRow.text = emailService.toListText(emailRow);
+				emailRow.listText = emailService.toListText(emailRow);
+				delete emailRow.text;
 				delete emailRow.content;
 			});
 		}

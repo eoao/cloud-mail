@@ -23,11 +23,14 @@ export const useEmailStore = defineStore('email', {
     },
     actions: {
         fetchList(request) {
-            request(1).then(data => {
-                const list = Array.isArray(data) ? data : data?.list
-                this.applyFullList(list)
-            }).catch(e => {
-                console.error(e)
+            return request(0).then(data => {
+                request(1).then(fullData => {
+                    const list = Array.isArray(fullData) ? fullData : fullData?.list
+                    this.applyFullList(list)
+                }).catch(e => {
+                    console.error(e)
+                })
+                return data
             })
             return request(0)
         },

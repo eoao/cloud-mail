@@ -27,7 +27,7 @@ html, body {
 }
 
 body {
-    font-family: -apple-system, Inter, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+    font-family: Inter, "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
     line-height: 1.5;
     color: var(--el-text-color-primary);
     font-size: 14px;
@@ -114,10 +114,12 @@ button, input, select, textarea {
     --el-color-primary-light-9: #e6f7ff;
 
     --extra-light-fill: #FAFCFF;
+    --settings-page-background: #fafbfc;
     --light-ill: #F5F7FA;
     --light-border: #E4E7ED;
     --header-actions-border: inset 0 -1px 0 0 var(--el-border-color-lighter);
-    --aside-backgound: #001529;
+    --aside-backgound: #191A23;
+    --aside-menu-active-background: #27282D;
     --loadding-background: rgba(255, 255, 255, 0.8);
     --dark-border: #CDD0D6;
     --base-fill: #F0F2F5;
@@ -145,9 +147,11 @@ button, input, select, textarea {
 
 .dark {
     --extra-light-fill: #191919;
+    --settings-page-background: var(--extra-light-fill);
     --light-ill: #262727;
     --light-border: #414243;
     --aside-backgound: #141414;
+    --aside-menu-active-background: rgba(255, 255, 255, 0.08);
     --header-actions-border: inset 0 -1px 0 0 var(--el-border-color-lighter);
     --loadding-background: rgba(0, 0, 0, 0.3);
     --dark-border: #636466;

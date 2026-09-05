@@ -339,6 +339,8 @@ async function latest() {
         continue
       }
 
+      emailStore.applyFullList(list)
+
       for (let email of list) {
 
         sysEmailScroll.value.addItem(email)

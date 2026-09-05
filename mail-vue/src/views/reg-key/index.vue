@@ -398,7 +398,7 @@ function openAdd() {
 .scrollbar {
   height: calc(100% - 48px);
   position: relative;
-  background: var(--extra-light-fill);
+  background: var(--settings-page-background);
   @media (max-width: 372px) {
     height: calc(100% - 85px);
   }

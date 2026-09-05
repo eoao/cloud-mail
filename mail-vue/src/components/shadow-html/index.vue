@@ -36,8 +36,8 @@ function updateContent() {
         all: initial;
         width: 100%;
         height: 100%;
-        font-family: -apple-system, Inter, BlinkMacSystemFont,
-                    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-family: Inter, 'Helvetica Neue', Helvetica, 'PingFang SC',
+                    'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
         font-size: 14px;
         line-height: 1.5;
         color: #13181D;
@@ -114,7 +114,7 @@ watch(() => props.html, () => {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  font-family: -apple-system, Inter, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-family: Inter, "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
 }
 
 .content-html {
